@@ -1,6 +1,5 @@
 <h1 style="text-align:center">自然语言处理应用</h1>
 
-[TOC]
 
 ## 实验介绍
 
@@ -30,7 +29,7 @@
 
 本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
 
-> **提示：**华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
 创建OBS桶的参考配置如下：
 
@@ -104,7 +103,8 @@ BERT预训练阶段包含两个任务（两个输出）：
 - Mask语言模型（Mask LM）：预测被掩盖掉（mask）的单词；
 - NextSentence预测（NSP）：判断句子对是否具有上下文关系，即句子B是否时句子A的下一句。
 
-### 代码梳理
+
+#### 代码梳理
 
 model_zoo:Bert_NEZHA中包含两个模块：
 
@@ -214,6 +214,7 @@ class BertModel(nn.Cell):
 `BertAttention`为Multi-Head Attention：
 
 ![Multi-Head Attention](https://pic3.zhimg.com/80/v2-58d60594bc3e9cbe47faec82ef29fd76_720w.jpg)
+
 [4] 图片来源于https://zhuanlan.zhihu.com/p/34781297 和https://arxiv.org/pdf/1706.03762.pdf
 
 创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
@@ -304,7 +305,7 @@ class BertNERModel(nn.Cell):
 
 可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
-### 代码梳理
+#### 代码梳理
 
 创建训练作业的参考配置：
 
@@ -324,11 +325,11 @@ class BertNERModel(nn.Cell):
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
 4. 在训练日志中可以看到`epoch: 3, step: 10005, outputs are (1.4425085, False)`等字段，即微调过程的输出；
 
-## 验证BERT
+### 验证BERT
 
 在TNEWS验证集上对微调后的BERT模型做验证（evaluation）。
 
-### 代码梳理
+#### 代码梳理
 
 验证BERT依赖如下几个模块：
 
