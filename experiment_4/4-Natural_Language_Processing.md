@@ -94,7 +94,7 @@ BERT（Bidirectional Encoder Representations from Transformers），即基于Tra
 
 更多BERT的介绍可以参考[Link](https://www.jianshu.com/p/d110d0c13063)
 
-### 预训练BERT模型
+### 预训练BERT
 
 [BERT](https://github.com/google-research/bert)模型包含由不同隐含层数（number hidden layers）和隐含层单元数（hidden size）构成的不同版本。通常情况下使用Bert需要预训练（pretrain）和微调（fine-tune）两个阶段。预训练BERT模型通常需要在大数据集上多卡并行训练多天。本实验先以部分zhwiki数据集为例展示预训练的过程。
 
@@ -102,7 +102,6 @@ BERT预训练阶段包含两个任务（两个输出）：
 
 - Mask语言模型（Mask LM）：预测被掩盖掉（mask）的单词；
 - NextSentence预测（NSP）：判断句子对是否具有上下文关系，即句子B是否时句子A的下一句。
-
 
 #### 代码梳理
 

@@ -2,8 +2,6 @@
 
 import os
 # os.environ['DEVICE_ID'] = '0'
-# Log level includes 3(ERROR), 2(WARNING), 1(INFO), 0(DEBUG).
-os.environ['GLOG_v'] = '1'
 
 import matplotlib.pyplot as plt
 import numpy as np

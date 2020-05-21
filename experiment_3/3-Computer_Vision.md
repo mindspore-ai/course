@@ -60,7 +60,7 @@ experiment_3
 ├── 脚本等文件
 └── cifar10
     ├── batches.meta.txt
-    ├── test
+    ├── eval
     │   └── test_batch.bin
     └── train
         ├── data_batch_1.bin
@@ -169,20 +169,20 @@ else:
                            num_shards=device_num, shard_id=device_id)
 ```
 
-导入并使用model_zoo里的resnet50模型：
-
-```python
-from mindspore.model_zoo.resnet import resnet50
-# create model
-net = resnet50(class_num = class_num)
-```
-
 使用数据增强，如随机裁剪、随机水平反转：
 
 ```python
 # define map operations
 random_crop_op = C.RandomCrop((32, 32), (4, 4, 4, 4))
 random_horizontal_flip_op = C.RandomHorizontalFlip(device_id / (device_id + 1))
+```
+
+导入并使用model_zoo里的resnet50模型：
+
+```python
+from mindspore.model_zoo.resnet import resnet50
+# create model
+net = resnet50(class_num = class_num)
 ```
 
 `model_zoo.resnet`中resnet50定义如下：
