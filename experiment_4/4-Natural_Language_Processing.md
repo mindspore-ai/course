@@ -1,6 +1,5 @@
 <h1 style="text-align:center">自然语言处理应用</h1>
 
-
 ## 实验介绍
 
 本实验主要介绍使用MindSpore开发和训练[BERT](https://arxiv.org/pdf/1810.04805.pdf)模型。建议先了解MindSpore model_zoo上的BERT模型。
@@ -108,10 +107,9 @@ BERT预训练阶段包含两个任务（两个输出）：
 model_zoo:Bert_NEZHA中包含两个模块：
 
 - `bert_for_pre_training.py`：包含`GetMaskedLMOutput`, `GetNextSentenceOutput`, `BertPreTraining`, `BertPretrainingLoss`, `BertNetworkWithLoss`, `BertTrainOneStepCell`, `BertTrainOneStepWithLossScaleCell`；
-- `bert_model.py`：包含`BertModel`机器依赖的`EmbeddingLookup`,`EmbeddingPostprocessor`和`BertTransformer`
-（`BertAttention->BertSelfAttention->BertEncoderCell`)
+- `bert_model.py`：包含`BertModel`及其依赖的`EmbeddingLookup`,`EmbeddingPostprocessor`和`BertTransformer`（`BertAttention->BertSelfAttention->BertEncoderCell`)。
 
-`GetMaskedLMOutput`接在BERT基础模型的后面，用于获取Mask LM的输出，
+`GetMaskedLMOutput`接在BERT基础模型的后面，用于获取Mask LM的输出。
 
 `GetNextSentenceOutput`在BERT基础模型的后面接了一个全连接层和Softmax层，用于获取NSP的输出。
 
@@ -271,6 +269,8 @@ mox.file.copy_parallel(src_url='bert_classfication-3_3335.ckpt',
 
 预训练和微调两种情况下BERT基础模型是相同的，只是最后会在基础模型上加上不同的任务层，用于解决文本分类（新闻分类、情感分类）、序列标注（命名实体识别、问答）等任务。
 
+#### 代码梳理
+
 微调BERT依赖如下几个模块：
 
 - `finetune.py`：包含Loss打印、数据处理、优化器、模型保存等；
@@ -301,11 +301,10 @@ class BertNERModel(nn.Cell):
 
 `BertCLS`和`BertNER`在任务模型上接了损失函数，作为`BertFinetuneCell`的输入。
 
+
 #### 创建训练作业
 
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
-
-#### 代码梳理
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业
 
 创建训练作业的参考配置：
 

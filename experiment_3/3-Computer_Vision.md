@@ -71,7 +71,7 @@ experiment_3
 
 ## 实验步骤
 
-参考MindSpore官网[在云上使用MindSpore](https://www.mindspore.cn/tutorial/zh-CN/0.2.0-alpha/advanced_use/use_on_the_cloud.html)
+参考MindSpore官网[在云上使用MindSpore](https://www.mindspore.cn/tutorial/zh-CN/0.2.0-alpha/advanced_use/use_on_the_cloud.html)。
 
 ### 代码梳理
 
