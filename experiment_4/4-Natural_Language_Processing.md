@@ -1,10 +1,8 @@
 <h1 style="text-align:center">自然语言处理应用</h1>
 
-[TOC]
-
 ## 实验介绍
 
-本实验主要介绍使用MindSpore开发和训练[BERT](https://arxiv.org/pdf/1810.04805.pdf)模型。建议先了解MindSpore官网上model_zoo上的BERT模型。
+本实验主要介绍使用MindSpore开发和训练[BERT](https://arxiv.org/pdf/1810.04805.pdf)模型。建议先了解MindSpore model_zoo上的BERT模型。
 
 ## 实验目的
 
@@ -30,7 +28,7 @@
 
 本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
 
-> **提示：**华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
 创建OBS桶的参考配置如下：
 
@@ -44,9 +42,9 @@
 
 ### 数据集准备
 
-**预训练（pretrain）数据集**：下载[zhwiki数据集](https://dumps.wikimedia.org/zhwiki)，使用[WikiExtractor](https://github.com/attardi/wil kiextractor)进行预处理，然后使用[google-research/bert:create_pretraining_data.py](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)将数据转为TFRecord格式；
+**预训练（pretrain）数据集**：下载[zhwiki数据集](https://dumps.wikimedia.org/zhwiki)，使用[WikiExtractor](https://github.com/attardi/wikiextractor)进行预处理，然后使用[google-research/bert:create_pretraining_data.py](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)将数据转为TFRecord格式；
 
-zhwiki为中文维基百科数据集，需要将其处理为具有上下文关系的句子对，然后基于词典vocab.txt对每个句子对进行token化，然后存储为特定数据格式（如Json、TFRecord、MindRecord）。
+zhwiki为中文维基百科数据集，需要将其处理为具有上下文关系的句子对，然后基于词典vocab.txt对每个句子对进行token化，最后存储为特定数据格式（如Json、TFRecord、MindRecord）。
 
 **微调（finetune）数据集**：使用[CLUEbenchmark/CLUEPretrainedModels中的脚本](https://github.com/CLUEbenchmark/CLUEPretrainedModels/blob/master/baselines/models/bert/run_classifier_tnews.sh)下载、处理TNEWS数据集，并将数据转为TFRecord格式。
 
@@ -93,25 +91,25 @@ BERT（Bidirectional Encoder Representations from Transformers），即基于Tra
 - Transformer是一种注意力（Attention）机制，用来学习文本中单词上下文之间的关系；
 - 双向是指通过Masked Language Model（MLM）方法，随机的掩盖掉句子中的某些单词，然后利用前后未掩盖的信息来预测掩盖的单词；
 
-更多BERT的介绍可以参考[Link](https://www.jianshu.com/p/d110d0c13063)
+[BERT](https://github.com/google-research/bert)模型包含由不同隐含层数（number hidden layers）和隐含层单元数（hidden size）构成的不同版本。更多BERT的介绍可以参考[Link](https://www.jianshu.com/p/d110d0c13063)
 
-### 预训练BERT模型
+### 预训练BERT
 
-[BERT](https://github.com/google-research/bert)模型包含由不同隐含层数（number hidden layers）和隐含层单元数（hidden size）构成的不同版本。通常情况下使用Bert需要预训练（pretrain）和微调（fine-tune）两个阶段。预训练BERT模型通常需要在大数据集上多卡并行训练多天。本实验先以部分zhwiki数据集为例展示预训练的过程。
+通常情况下使用Bert需要预训练（pretrain）和微调（fine-tune）两个阶段。预训练BERT模型通常需要在大数据集上多卡并行训练多天。本实验先以部分zhwiki数据集为例展示预训练的过程。
 
 BERT预训练阶段包含两个任务（两个输出）：
 
 - Mask语言模型（Mask LM）：预测被掩盖掉（mask）的单词；
 - NextSentence预测（NSP）：判断句子对是否具有上下文关系，即句子B是否时句子A的下一句。
 
-### 代码梳理
+#### 代码梳理
 
 model_zoo:Bert_NEZHA中包含两个模块：
 
 - `bert_for_pre_training.py`：包含`GetMaskedLMOutput`, `GetNextSentenceOutput`, `BertPreTraining`, `BertPretrainingLoss`, `BertNetworkWithLoss`, `BertTrainOneStepCell`, `BertTrainOneStepWithLossScaleCell`；
-- `bert_model.py`：包含`BertModel`依赖的
+- `bert_model.py`：包含`BertModel`及其依赖的`EmbeddingLookup`,`EmbeddingPostprocessor`和`BertTransformer`（`BertAttention->BertSelfAttention->BertEncoderCell`)。
 
-`GetMaskedLMOutput`接在BERT基础模型的后面，用于获取Mask LM的输出，
+`GetMaskedLMOutput`接在BERT基础模型的后面，用于获取Mask LM的输出。
 
 `GetNextSentenceOutput`在BERT基础模型的后面接了一个全连接层和Softmax层，用于获取NSP的输出。
 
@@ -162,7 +160,7 @@ class BertNetworkWithLoss(nn.Cell):
 
 `BertTrainOneStepCell`在`BertNetworkWithLoss`上加上了反向传播和梯度更新（优化器），接收数据输入，更新模型权重。`BertTrainOneStepWithLossScaleCell`在此基础上引入了损失缩放（Loss Scaling）。损失缩放是为了应对反向传播过程中梯度数值较小，计算时（如采用FP16）会被当做0处理，所以先对Loss做一个放大，然后再对梯度进行缩小。
 
-`bert_model.py`中`BertModel`接收数据输入，经过`EmbeddingLookup`, `EmbeddingPostprocessor`, `BertTransformer`和`Dense`计算后得到输出。
+`bert_model.py`中`BertModel`接收数据输入，经过`Lookup`, `EmbeddingPostprocessor`, `BertTransformer`和`Dense`计算后得到输出。
 
 ![BERT Model](https://www.lyrn.ai/wp-content/uploads/2018/11/transformer.png)
 
@@ -214,6 +212,7 @@ class BertModel(nn.Cell):
 `BertAttention`为Multi-Head Attention：
 
 ![Multi-Head Attention](https://pic3.zhimg.com/80/v2-58d60594bc3e9cbe47faec82ef29fd76_720w.jpg)
+
 [4] 图片来源于https://zhuanlan.zhihu.com/p/34781297 和https://arxiv.org/pdf/1706.03762.pdf
 
 创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
@@ -262,13 +261,15 @@ mox.file.copy_parallel(src_url='bert_classfication-3_3335.ckpt',
 1. 点击提交以开始训练；
 2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 在训练日志中可以看到`epoch: 10 step: 10, loss is 10.741777`等字段，即预训练过程的loss数据。
+4. 在训练日志中可以看到`epoch: 10, outputs are:([10.741777], False)`等字段，即预训练过程的loss数据。
 
 ### 微调BERT
 
 通常情况下，需要基于与训练的BERT模型在各类细分任务上做微调（finetune），提高BERT在具体任务上的效果。本实验在CLUEbenchmark/CLUE提供的TNEWS数据集上对预训练的BERT做微调，即学习一个短文本分类任务。
 
 预训练和微调两种情况下BERT基础模型是相同的，只是最后会在基础模型上加上不同的任务层，用于解决文本分类（新闻分类、情感分类）、序列标注（命名实体识别、问答）等任务。
+
+#### 代码梳理
 
 微调BERT依赖如下几个模块：
 
@@ -300,11 +301,10 @@ class BertNERModel(nn.Cell):
 
 `BertCLS`和`BertNER`在任务模型上接了损失函数，作为`BertFinetuneCell`的输入。
 
+
 #### 创建训练作业
 
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
-
-### 代码梳理
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业
 
 创建训练作业的参考配置：
 
@@ -324,11 +324,11 @@ class BertNERModel(nn.Cell):
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
 4. 在训练日志中可以看到`epoch: 3, step: 10005, outputs are (1.4425085, False)`等字段，即微调过程的输出；
 
-## 验证BERT
+### 验证BERT
 
 在TNEWS验证集上对微调后的BERT模型做验证（evaluation）。
 
-### 代码梳理
+#### 代码梳理
 
 验证BERT依赖如下几个模块：
 
