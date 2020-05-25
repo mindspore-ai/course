@@ -1,6 +1,5 @@
 <h1 style="text-align:center">计算机视觉应用</h1>
 
-
 ## 实验介绍
 
 本实验主要介绍使用MindSpore在CIFAR10数据集上训练ResNet50。本实验建议使用MindSpore model_zoo中提供的ResNet50。
@@ -72,11 +71,7 @@ experiment_3
 
 ## 实验步骤
 
-参考MindSpore官网[计算机视觉应用](https://www.mindspore.cn/tutorial/zh-CN/0.1.0-alpha/advanced_use/computer_vision_application.html)教程，使用MindSpore在CIFAR10数据集上训练ResNet50，并进行验证。建议：
-
-- 使用单卡训练即可；
-- 理解并熟悉教程中涉及的源码；
-- 使用MindSpore model_zoo中提供的ResNet50。
+参考MindSpore官网[在云上使用MindSpore](https://www.mindspore.cn/tutorial/zh-CN/0.2.0-alpha/advanced_use/use_on_the_cloud.html)
 
 ### 代码梳理
 

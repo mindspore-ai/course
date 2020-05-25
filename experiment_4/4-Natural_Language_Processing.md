@@ -3,7 +3,7 @@
 
 ## 实验介绍
 
-本实验主要介绍使用MindSpore开发和训练[BERT](https://arxiv.org/pdf/1810.04805.pdf)模型。建议先了解MindSpore官网上model_zoo上的BERT模型。
+本实验主要介绍使用MindSpore开发和训练[BERT](https://arxiv.org/pdf/1810.04805.pdf)模型。建议先了解MindSpore model_zoo上的BERT模型。
 
 ## 实验目的
 
@@ -43,9 +43,9 @@
 
 ### 数据集准备
 
-**预训练（pretrain）数据集**：下载[zhwiki数据集](https://dumps.wikimedia.org/zhwiki)，使用[WikiExtractor](https://github.com/attardi/wil kiextractor)进行预处理，然后使用[google-research/bert:create_pretraining_data.py](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)将数据转为TFRecord格式；
+**预训练（pretrain）数据集**：下载[zhwiki数据集](https://dumps.wikimedia.org/zhwiki)，使用[WikiExtractor](https://github.com/attardi/wikiextractor)进行预处理，然后使用[google-research/bert:create_pretraining_data.py](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)将数据转为TFRecord格式；
 
-zhwiki为中文维基百科数据集，需要将其处理为具有上下文关系的句子对，然后基于词典vocab.txt对每个句子对进行token化，然后存储为特定数据格式（如Json、TFRecord、MindRecord）。
+zhwiki为中文维基百科数据集，需要将其处理为具有上下文关系的句子对，然后基于词典vocab.txt对每个句子对进行token化，最后存储为特定数据格式（如Json、TFRecord、MindRecord）。
 
 **微调（finetune）数据集**：使用[CLUEbenchmark/CLUEPretrainedModels中的脚本](https://github.com/CLUEbenchmark/CLUEPretrainedModels/blob/master/baselines/models/bert/run_classifier_tnews.sh)下载、处理TNEWS数据集，并将数据转为TFRecord格式。
 
@@ -92,11 +92,11 @@ BERT（Bidirectional Encoder Representations from Transformers），即基于Tra
 - Transformer是一种注意力（Attention）机制，用来学习文本中单词上下文之间的关系；
 - 双向是指通过Masked Language Model（MLM）方法，随机的掩盖掉句子中的某些单词，然后利用前后未掩盖的信息来预测掩盖的单词；
 
-更多BERT的介绍可以参考[Link](https://www.jianshu.com/p/d110d0c13063)
+[BERT](https://github.com/google-research/bert)模型包含由不同隐含层数（number hidden layers）和隐含层单元数（hidden size）构成的不同版本。更多BERT的介绍可以参考[Link](https://www.jianshu.com/p/d110d0c13063)
 
 ### 预训练BERT
 
-[BERT](https://github.com/google-research/bert)模型包含由不同隐含层数（number hidden layers）和隐含层单元数（hidden size）构成的不同版本。通常情况下使用Bert需要预训练（pretrain）和微调（fine-tune）两个阶段。预训练BERT模型通常需要在大数据集上多卡并行训练多天。本实验先以部分zhwiki数据集为例展示预训练的过程。
+通常情况下使用Bert需要预训练（pretrain）和微调（fine-tune）两个阶段。预训练BERT模型通常需要在大数据集上多卡并行训练多天。本实验先以部分zhwiki数据集为例展示预训练的过程。
 
 BERT预训练阶段包含两个任务（两个输出）：
 
@@ -108,7 +108,8 @@ BERT预训练阶段包含两个任务（两个输出）：
 model_zoo:Bert_NEZHA中包含两个模块：
 
 - `bert_for_pre_training.py`：包含`GetMaskedLMOutput`, `GetNextSentenceOutput`, `BertPreTraining`, `BertPretrainingLoss`, `BertNetworkWithLoss`, `BertTrainOneStepCell`, `BertTrainOneStepWithLossScaleCell`；
-- `bert_model.py`：包含`BertModel`依赖的
+- `bert_model.py`：包含`BertModel`机器依赖的`EmbeddingLookup`,`EmbeddingPostprocessor`和`BertTransformer`
+（`BertAttention->BertSelfAttention->BertEncoderCell`)
 
 `GetMaskedLMOutput`接在BERT基础模型的后面，用于获取Mask LM的输出，
 
@@ -161,7 +162,7 @@ class BertNetworkWithLoss(nn.Cell):
 
 `BertTrainOneStepCell`在`BertNetworkWithLoss`上加上了反向传播和梯度更新（优化器），接收数据输入，更新模型权重。`BertTrainOneStepWithLossScaleCell`在此基础上引入了损失缩放（Loss Scaling）。损失缩放是为了应对反向传播过程中梯度数值较小，计算时（如采用FP16）会被当做0处理，所以先对Loss做一个放大，然后再对梯度进行缩小。
 
-`bert_model.py`中`BertModel`接收数据输入，经过`EmbeddingLookup`, `EmbeddingPostprocessor`, `BertTransformer`和`Dense`计算后得到输出。
+`bert_model.py`中`BertModel`接收数据输入，经过`Lookup`, `EmbeddingPostprocessor`, `BertTransformer`和`Dense`计算后得到输出。
 
 ![BERT Model](https://www.lyrn.ai/wp-content/uploads/2018/11/transformer.png)
 
