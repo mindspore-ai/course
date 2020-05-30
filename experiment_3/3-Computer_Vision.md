@@ -2,7 +2,7 @@
 
 ## 实验介绍
 
-本实验主要介绍使用MindSpore在CIFAR10数据集上训练ResNet50。本实验建议使用MindSpore model_zoo中提供的ResNet50。
+本实验主要介绍使用MindSpore在CIFAR-10数据集上训练ResNet50。本实验使用MindSpore model_zoo中提供的ResNet50模型定义，以及MindSpore官网教程[在云上使用MindSpore](https://www.mindspore.cn/tutorial/zh-CN/0.2.0-alpha/advanced_use/use_on_the_cloud.html)里的训练脚本。
 
 ## 实验目的
 
@@ -42,7 +42,7 @@
 
 ### 数据集准备
 
-CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图片，训练集50000张，测试集10000张，共10类，每类6000张。CIFAR-10数据集的官网：[THE MNIST DATABASE](http://www.cs.toronto.edu/~kriz/cifar.html)。
+CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图片，训练集50000张，测试集10000张，共10类，每类6000张。CIFAR-10数据集的官网：[The CIFAR-10 and CIFAR-100 datasets](http://www.cs.toronto.edu/~kriz/cifar.html)。
 
 从CIFAR-10官网下载“CIFAR-10 binary version (suitable for C programs)”到本地并解压。
 
@@ -56,7 +56,8 @@ CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图�
 
 ```
 experiment_3
-├── 脚本等文件
+├── dataset.py
+├── resnet50_train.py
 └── cifar10
     ├── batches.meta.txt
     ├── eval
@@ -70,8 +71,6 @@ experiment_3
 ```
 
 ## 实验步骤
-
-参考MindSpore官网[在云上使用MindSpore](https://www.mindspore.cn/tutorial/zh-CN/0.2.0-alpha/advanced_use/use_on_the_cloud.html)。
 
 ### 代码梳理
 
@@ -154,7 +153,7 @@ def get_lr(global_step,
     return learning_rate
 ```
 
-MindSpore支持直接读取cifar10数据集：
+MindSpore支持直接读取CIFAR-10数据集：
 
 ```python
 if device_num == 1 or not do_train:
@@ -221,7 +220,15 @@ class ResNet(nn.Cell):
 
 ResNet的不同版本均由5个阶段（stage）组成，其中ResNet50结构为Convx1 -> ResidualBlockx3 -> ResidualBlockx4 -> ResidualBlockx6 -> ResidualBlockx5 -> Pooling+FC。
 
-`ResidualBlock`为残差模块，相比传统卷积多了一个short-cut支路，用于将浅层的信息直接传递到深层，使得网络可以很深，而不会出现训练时梯度消失/爆炸的问题：
+![ResNet Architectures](images/resnet_archs.png)
+
+[1] 图片来源于https://arxiv.org/pdf/1512.03385.pdf
+
+`ResidualBlock`为残差模块，相比传统卷积多了一个short-cut支路，用于将浅层的信息直接传递到深层，使得网络可以很深，而不会出现训练时梯度消失/爆炸的问题。ResNet50采用了下图右侧Bottleneck形式的残差模块：
+
+![ResNet Block](images/resnet_block.png)
+
+[2] 图片来源于https://arxiv.org/pdf/1512.03385.pdf
 
 ```python
 class ResidualBlock(nn.Cell):
@@ -245,7 +252,6 @@ class ResidualBlock(nn.Cell):
 
         self.relu = nn.ReLU()
 
-        # 如果in
         self.down_sample = False
         if stride != 1 or in_channel != out_channel:
             self.down_sample = True
@@ -269,6 +275,7 @@ class ResidualBlock(nn.Cell):
         out = self.conv3(out)
         out = self.bn3(out)
 
+        # ResNet50未使用带有下采样的残差支路
         if self.down_sample:
             identity = self.down_sample_layer(identity)
 
@@ -330,9 +337,9 @@ mox.file.copy_parallel(src_url='output', dst_url='s3://OBS/PATH')
 
 ## 实验结论
 
-本实验主要介绍使用MindSpore在CIFAR10数据集上训练ResNet50，了解了以下知识点：
+本实验主要介绍使用MindSpore在CIFAR-10数据集上训练ResNet50，了解了以下知识点：
 
-- 性能测试
-- 动态学习率
-- model_zoo：resnet50
-- cifar10数据集、数据增强
+- 使用自定义Callback实现性能监测；
+- 使用动态学习率提升训练效果；
+- 加载CIFAR-10数据集、数据增强；
+- ResNet50模型的结构及其MindSpore实现。
