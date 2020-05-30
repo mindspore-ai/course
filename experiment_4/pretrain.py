@@ -158,7 +158,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
     parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
-    parser.add_argument('--num_epochs', type=int, default=50, help='Number of training epochs.')
+    parser.add_argument('--num_epochs', type=int, default=5, help='Number of training epochs.')
     args, unknown = parser.parse_known_args()
 
     import moxing as mox

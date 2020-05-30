@@ -2,7 +2,14 @@
 
 ## 实验介绍
 
-本实验主要介绍使用MindSpore开发和训练[BERT](https://arxiv.org/pdf/1810.04805.pdf)模型。建议先了解MindSpore model_zoo上的BERT模型。
+本实验主要介绍使用MindSpore开发和训练[BERT](https://arxiv.org/pdf/1810.04805.pdf)模型。本实验使用MindSpore model_zoo中提供的BERT模型定义，并参考MindSpore开源仓库中的[BERT Example](https://gitee.com/mindspore/mindspore/tree/r0.2/example/Bert_NEZHA_cnwiki)模型案例。
+
+BERT（Bidirectional Encoder Representations from Transformers），即基于Transformer的双向编码表征。其中：
+
+- Transformer是一种注意力（Attention）机制，用来学习文本中单词上下文之间的关系；
+- 双向是指通过Masked Language Model（MLM）方法，随机的掩盖掉句子中的某些单词，然后利用前后未掩盖的信息来预测掩盖的单词。
+
+BERT模型包含由不同隐含层数（number hidden layers）和隐含层单元数（hidden size）构成的不同版本。更多BERT的介绍可以参考[google-research/bert](https://github.com/google-research/bert)和[Link](https://www.jianshu.com/p/d110d0c13063)
 
 ## 实验目的
 
@@ -42,21 +49,21 @@
 
 ### 数据集准备
 
-**预训练（pretrain）数据集**：下载[zhwiki数据集](https://dumps.wikimedia.org/zhwiki)，使用[WikiExtractor](https://github.com/attardi/wikiextractor)进行预处理，然后使用[google-research/bert:create_pretraining_data.py](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)将数据转为TFRecord格式；
+由于数据集较大，且预处理过程较为繁琐、耗时，本实验不进行数据预处理，请从网盘下载处理好的zhwiki_part和tnews数据集：
 
-zhwiki为中文维基百科数据集，需要将其处理为具有上下文关系的句子对，然后基于词典vocab.txt对每个句子对进行token化，最后存储为特定数据格式（如Json、TFRecord、MindRecord）。
+链接: https://pan.baidu.com/s/1F2S9Wr-ND0LMfATjv7WEug 提取码: gent
 
-**微调（finetune）数据集**：使用[CLUEbenchmark/CLUEPretrainedModels中的脚本](https://github.com/CLUEbenchmark/CLUEPretrainedModels/blob/master/baselines/models/bert/run_classifier_tnews.sh)下载、处理TNEWS数据集，并将数据转为TFRecord格式。
+**预训练（pretrain）数据集**：zhwiki dumps，为中文维基百科的文本数据，需要预处理了后才能使用。
 
-TNEWS为今日头条中文新闻（短文本）分类（Short Text Classificaiton for News）数据集。该数据集来自今日头条的新闻版块，共提取了15个类别的新闻，包括旅游，教育，金融，军事等。数据量：训练集(53,360)，验证集(10,000)，测试集(10,000)。例子：
+下载某一日期的[zhwiki dump](https://dumps.wikimedia.org/zhwiki)，使用[WikiExtractor](https://github.com/attardi/wikiextractor)进行文本进行提取和清理，然后使用[google-research/bert:create_pretraining_data.py](https://github.com/google-research/bert/blob/master/create_pretraining_data.py)进行数据集创建，包括基于词典vocab.txt对文本进行token化，生成具有上下文关系的句子对，创建Mask LM数据，最后存储为为TFRecord格式；
+
+**微调（finetune）数据集**：TNEWS，今日头条中文新闻（短文本）分类（Short Text Classificaiton for News）数据集。该数据集来自今日头条的新闻版块，共提取了15个类别的新闻，包括旅游，教育，金融，军事等。数据量：训练集(53,360)，验证集(10,000)，测试集(10,000)。例子：
 
 {"label": "102", "label_des": "news_entertainment", "sentence": "江疏影甜甜圈自拍，迷之角度竟这么好看，美吸引一切事物"}
 
-每一条数据有三个属性，从前往后分别是 分类ID，分类名称，新闻字符串（仅含标题）。
+每一条数据有三个属性，从前往后分别是分类ID，分类名称，新闻字符串（仅含标题）。
 
-本实验不进行数据预处理，请从网盘下载zhwiki_part和tnews数据集：
-
-链接: https://pan.baidu.com/s/1F2S9Wr-ND0LMfATjv7WEug 提取码: gent
+使用[CLUEbenchmark/CLUEPretrainedModels中的脚本](https://github.com/CLUEbenchmark/CLUEPretrainedModels/blob/master/baselines/models/bert/run_classifier_tnews.sh)下载、处理TNEWS数据集，并将数据转为TFRecord格式。脚本代码包含数据处理和模型评估的逻辑，只需保留数据处理部分即可。
 
 ### 脚本准备
 
@@ -84,23 +91,18 @@ experiment_4
 
 ## 实验步骤
 
-参考MindSpore开源仓库[BERT example](https://gitee.com/mindspore/mindspore/tree/r0.2/example/Bert_NEZHA_cnwiki)示例，并进行实验。
-
-BERT（Bidirectional Encoder Representations from Transformers），即基于Transformer的双向编码表征。其中：
-
-- Transformer是一种注意力（Attention）机制，用来学习文本中单词上下文之间的关系；
-- 双向是指通过Masked Language Model（MLM）方法，随机的掩盖掉句子中的某些单词，然后利用前后未掩盖的信息来预测掩盖的单词；
-
-[BERT](https://github.com/google-research/bert)模型包含由不同隐含层数（number hidden layers）和隐含层单元数（hidden size）构成的不同版本。更多BERT的介绍可以参考[Link](https://www.jianshu.com/p/d110d0c13063)
-
 ### 预训练BERT
 
-通常情况下使用Bert需要预训练（pretrain）和微调（fine-tune）两个阶段。预训练BERT模型通常需要在大数据集上多卡并行训练多天。本实验先以部分zhwiki数据集为例展示预训练的过程。
+通常情况下使用BERT需要预训练（pretrain）和微调（fine-tune）两个阶段。预训练BERT模型通常需要在大数据集上多卡并行训练多天。本实验通过在部分zhwiki数据集上训练若干Epochs为例展示预训练的过程。
 
 BERT预训练阶段包含两个任务（两个输出）：
 
 - Mask语言模型（Mask LM）：预测被掩盖掉（mask）的单词；
 - NextSentence预测（NSP）：判断句子对是否具有上下文关系，即句子B是否时句子A的下一句。
+
+![Pretrain Finetune Procedures](images/pretrain_finetune_procedures.png)
+
+[1] 图片来源于https://arxiv.org/pdf/1810.04805.pdf
 
 #### 代码梳理
 
@@ -160,11 +162,7 @@ class BertNetworkWithLoss(nn.Cell):
 
 `BertTrainOneStepCell`在`BertNetworkWithLoss`上加上了反向传播和梯度更新（优化器），接收数据输入，更新模型权重。`BertTrainOneStepWithLossScaleCell`在此基础上引入了损失缩放（Loss Scaling）。损失缩放是为了应对反向传播过程中梯度数值较小，计算时（如采用FP16）会被当做0处理，所以先对Loss做一个放大，然后再对梯度进行缩小。
 
-`bert_model.py`中`BertModel`接收数据输入，经过`Lookup`, `EmbeddingPostprocessor`, `BertTransformer`和`Dense`计算后得到输出。
-
-![BERT Model](https://www.lyrn.ai/wp-content/uploads/2018/11/transformer.png)
-
-[1] 图片来源于https://www.lyrn.ai
+`bert_model.py`中`BertModel`接收数据输入，经过`EmbeddingLookup`, `EmbeddingPostprocessor`, `BertTransformer`和`Dense`计算后得到输出（用于下游NSP和Mask LM等任务）。
 
 ```python
 class BertModel(nn.Cell):
@@ -199,21 +197,21 @@ class BertModel(nn.Cell):
 
 `EmbeddingLookup`和`EmbeddingPostprocessor`用于将输入转换成Embedding张量，Embedding如下图所示：
 
-![Embedding](https://www.lyrn.ai/wp-content/uploads/2018/11/NSP.png)
+![Embedding](images/bert_embedding.png)
 
-[2] 图片来源于https://www.lyrn.ai 和https://arxiv.org/pdf/1810.04805.pdf
+[2] 图片来源于https://arxiv.org/pdf/1810.04805.pdf
 
-`BertTransformer`采用了下图中[Transformer](https://arxiv.org/pdf/1706.03762.pdf)中的encoder部分（左侧半边），包含`BertAttention->BertSelfAttention->BertEncoderCell`。
+`BertTransformer`采用了下图中Transformer中的encoder部分（左侧半边），包含`BertAttention->BertSelfAttention->BertEncoderCell`。
 
-![Transformer](https://pic2.zhimg.com/80/v2-0e85f4d440e621803d11408b39834dd1_720w.jpg)
+![Transformer](images/transformer.jpg)
 
-[3] 图片来源于https://zhuanlan.zhihu.com/p/34781297 和https://arxiv.org/pdf/1706.03762.pdf
+[3] 图片来源于https://arxiv.org/pdf/1706.03762.pdf
 
 `BertAttention`为Multi-Head Attention：
 
-![Multi-Head Attention](https://pic3.zhimg.com/80/v2-58d60594bc3e9cbe47faec82ef29fd76_720w.jpg)
+![Multi-Head Attention](images/multi_head_attention.jpg)
 
-[4] 图片来源于https://zhuanlan.zhihu.com/p/34781297 和https://arxiv.org/pdf/1706.03762.pdf
+[4] 图片来源于https://arxiv.org/pdf/1706.03762.pdf
 
 创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
 
@@ -261,7 +259,7 @@ mox.file.copy_parallel(src_url='bert_classfication-3_3335.ckpt',
 1. 点击提交以开始训练；
 2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 在训练日志中可以看到`epoch: 10, outputs are:([10.741777], False)`等字段，即预训练过程的loss数据。
+4. 在训练日志中可以看到`epoch: 5, outputs are:([10.741777], False)`等字段，即预训练过程的loss数据（本实验仅训练若干Epochs展示训练过程）。
 
 ### 微调BERT
 
@@ -365,10 +363,10 @@ class BertNERModel(nn.Cell):
 
 ## 实验结论
 
-本实验主要介绍使用MindSpore在zhiwiki数据集上预训练BERT，在TNEWS短文本分类数据集上进行微调，包括以下特性：
+本实验主要介绍使用MindSpore在zhiwiki数据集上预训练BERT，在TNEWS短文本分类数据集上进行微调，最后对微调的模型进行验证，了解了以下知识点：
 
-- model_zoo：BERT
-- BERT预训练
-- BERT微调
-- 不同的优化器
-- 文本数据集处理
+- 常用的NLP数据集及其使用；
+- BERT模型的基本结构及其MindSpore实现；
+- BERT预训练过程及其MindSpore实现；
+- BERT微调过程及其MindSpore实现；
+- BERT验证方法及其MindSpore实现。
