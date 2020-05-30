@@ -47,9 +47,9 @@ def create_dataset(training=True, num_epoch=1, batch_size=32, resize=(32, 32),
     return ds
 
 
-class LeNet(nn.Cell):
+class LeNet5(nn.Cell):
     def __init__(self):
-        super(LeNet, self).__init__()
+        super(LeNet5, self).__init__()
         self.relu = nn.ReLU()
         self.conv1 = nn.Conv2d(1, 6, 5, stride=1, pad_mode='valid')
         self.conv2 = nn.Conv2d(6, 16, 5, stride=1, pad_mode='valid')
@@ -73,21 +73,19 @@ class LeNet(nn.Cell):
         
         return output
 
-    
-LOOP_SINK = context.get_context('enable_loop_sink')
 
 def test_train(lr=0.01, momentum=0.9, num_epoch=2, check_point_name="b_lenet"):
     ds_train = create_dataset(num_epoch=num_epoch)
     ds_eval = create_dataset(training=False)
     steps_per_epoch = ds_train.get_dataset_size()
     
-    net = LeNet()
+    net = LeNet5()
     loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
     opt = nn.Momentum(net.trainable_params(), lr, momentum)
     
     ckpt_cfg = CheckpointConfig(save_checkpoint_steps=steps_per_epoch, keep_checkpoint_max=5)
     ckpt_cb = ModelCheckpoint(prefix=check_point_name, config=ckpt_cfg)
-    loss_cb = LossMonitor(per_print_times=1 if LOOP_SINK else steps_per_epoch)
+    loss_cb = LossMonitor(steps_per_epoch)
     
     model = Model(net, loss, opt, metrics={'acc', 'loss'})
     model.train(num_epoch, ds_train, callbacks=[ckpt_cb, loss_cb], dataset_sink_mode=True)
@@ -102,7 +100,7 @@ def resume_train(lr=0.001, momentum=0.9, num_epoch=2, ckpt_name="b_lenet"):
     ds_eval = create_dataset(training=False)
     steps_per_epoch = ds_train.get_dataset_size()
     
-    net = LeNet()
+    net = LeNet5()
     loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
     opt = nn.Momentum(net.trainable_params(), lr, momentum)
     
@@ -112,7 +110,7 @@ def resume_train(lr=0.001, momentum=0.9, num_epoch=2, ckpt_name="b_lenet"):
     
     ckpt_cfg = CheckpointConfig(save_checkpoint_steps=steps_per_epoch, keep_checkpoint_max=5)
     ckpt_cb = ModelCheckpoint(prefix=ckpt_name, config=ckpt_cfg)
-    loss_cb = LossMonitor(per_print_times=1 if LOOP_SINK else steps_per_epoch)
+    loss_cb = LossMonitor(steps_per_epoch)
     
     model = Model(net, loss, opt, metrics={'acc', 'loss'})
     model.train(num_epoch, ds_train, callbacks=[ckpt_cb, loss_cb])
