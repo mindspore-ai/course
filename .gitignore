@@ -128,7 +128,13 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# system file
+# MindSpore files
+.dat
+.ir
+.meta
+.ckpt
+
+# system files
 .DS_Store
 .swap
 
