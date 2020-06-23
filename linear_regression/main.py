@@ -26,8 +26,8 @@ for epoch in range(20):
 wb = [x.default_input.asnumpy() for x in net.trainable_params()]
 w, b = np.squeeze(wb[0]), np.squeeze(wb[1])
 print('The true linear function is y = -5 * x + 0.1')
-# TODO(dongyonghan): uncomment it in MindSpore0.3.0 or later.
+# uncomment it in MindSpore0.3.0 or later.
 # print('The trained linear model is y = {0} * x + {1}'.format(w, b))
 
-for x in range(-10, 11, 5):
-    print('x = {0}, predicted y = {1}'.format(x, net(ms.Tensor([[x]], ms.float32))))
+for i in range(-10, 11, 5):
+    print('x = {0}, predicted y = {1}'.format(i, net(ms.Tensor([[i]], ms.float32))))

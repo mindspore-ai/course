@@ -80,7 +80,7 @@ x = np.arange(-5, 5, 0.3)[:32].reshape((32, 1))
 y = -5 * x +  0.1 * np.random.normal(loc=0.0, scale=20.0, size=x.shape)
 ```
 
-使用MindSpore提供的[`nn.Dense(1, 1)`算子](https://www.mindspore.cn/api/zh-CN/0.2.0-alpha/api/python/mindspore/mindspore.nn.html#mindspore.nn.Dense)作为线性模型，其中`(1, 1)`表示线性模型的输入和输出皆是1维，即`w`是1x1的矩阵。算子会随机初始化权重`w`和偏置`b`。
+使用MindSpore提供的[`nn.Dense(1, 1)`算子](https://www.mindspore.cn/api/zh-CN/0.2.0-alpha/api/python/mindspore/mindspore.nn.html#mindspore.nn.Dense)作为线性模型，其中`(1, 1)`表示线性模型的输入和输出皆是1维，即$w$是1x1的矩阵。算子会随机初始化权重$w$和偏置$b$。
 
 $$y = w * x + b$$
 
@@ -131,10 +131,10 @@ for epoch in range(20):
 wb = [x.default_input.asnumpy() for x in net.trainable_params()]
 w, b = np.squeeze(wb[0]), np.squeeze(wb[1])
 print('The true linear function is y = -5 * x + 0.1')
-print('The trained linear model is y = {0} * x + {1}'.format(w, b))
+# print('The trained linear model is y = {0} * x + {1}'.format(w, b))
 
-for x in range(-10, 11, 5):
-    print('x = {0}, predicted y = {1}'.format(x, net(ms.Tensor([[x]], ms.float32))))
+for i in range(-10, 11, 5):
+    print('x = {0}, predicted y = {1}'.format(i, net(ms.Tensor([[i]], ms.float32))))
 ```
 
     The true linear function is y = -5 * x + 0.1
