@@ -129,14 +129,15 @@ dmypy.json
 .pyre/
 
 # MindSpore files
-.dat
-.ir
-.meta
-.ckpt
+*.dat
+*.ir
+*.meta
+*.ckpt
+*.pb
 
 # system files
 .DS_Store
-.swap
+*.swap
 
 # IDE
 .idea/
