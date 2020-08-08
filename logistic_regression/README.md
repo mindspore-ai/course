@@ -24,7 +24,7 @@
 
 ## 实验环境
 
-- MindSpore 0.2.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
@@ -71,14 +71,14 @@ Iris数据集是模式识别最著名的数据集之一。数据集包含3类，
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
+从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。
 
 ### 上传文件
 
 将脚本和数据集上传到OBS桶中，组织为如下形式：
 
 ```
-experiment
+logistic_regression
 ├── main.py
 └── iris.data
 ```
@@ -105,7 +105,7 @@ from mindspore.ops import operations as P
 context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 ```
 
-读取Iris数据集`iris.data`，并作检查。
+读取Iris数据集`iris.data`，并查看部分数据。
 
 ```python
 with open('iris.data') as csv_file:
@@ -216,11 +216,21 @@ model = ms.train.Model(net, loss, opt)
 model.train(5, ds_train, callbacks=[LossMonitor(per_print_times=ds_train.get_dataset_size())], dataset_sink_mode=False)
 ```
 
-    epoch: 1 step: 2, loss is 0.62444687
-    epoch: 2 step: 2, loss is 0.57417274
-    epoch: 3 step: 2, loss is 0.5119211
-    epoch: 4 step: 2, loss is 0.46839413
-    epoch: 5 step: 2, loss is 0.44478357
+    epoch: 1 step 2, loss is 0.6358570456504822
+    Epoch time: 9946.221, per step time: 4973.111, avg loss: 0.666
+    ************************************************************
+    epoch: 2 step 2, loss is 0.5617856979370117
+    Epoch time: 132.066, per step time: 66.033, avg loss: 0.595
+    ************************************************************
+    epoch: 3 step 2, loss is 0.5153790712356567
+    Epoch time: 4.302, per step time: 2.151, avg loss: 0.540
+    ************************************************************
+    epoch: 4 step 2, loss is 0.5422952771186829
+    Epoch time: 4.457, per step time: 2.229, avg loss: 0.512
+    ************************************************************
+    epoch: 5 step 2, loss is 0.42156651616096497
+    Epoch time: 4.481, per step time: 2.241, avg loss: 0.439
+    ************************************************************
 
 然后计算模型在测试集上精度，测试集上的精度达到了1.0左右，即逻辑回归模型学会了区分2类鸢尾花。
 
@@ -234,27 +244,7 @@ print('Test accuracy is', acc)
 
     Test accuracy is 1.0
 
-### 创建训练作业
-
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
-
-创建训练作业的参考配置：
-
-- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
-- 代码目录：选择上述新建的OBS桶中的experiment目录
-- 启动文件：选择上述新建的OBS桶中的experiment目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的experiment目录，本实验使用其中的iris.data
-- 训练输出位置：选择上述新建的OBS桶中的experiment目录并在其中创建output目录
-- 作业日志路径：同训练输出位置
-- 规格：Ascend:1*Ascend 910
-- 其他均为默认
-
-启动并查看训练过程：
-
-1. 点击提交以开始训练；
-2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
-3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考上述代码梳理，在日志中找到对应的打印信息，检查实验是否成功。
+### 适配训练作业
 
 创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url对应数据存储路径(OBS路径)，脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
 
@@ -268,9 +258,31 @@ args, unknown = parser.parse_known_args()
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
 
 ```python
-import moxing as mox
-mox.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
+import moxing
+moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
 ```
+
+### 创建训练作业
+
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
+
+创建训练作业的参考配置：
+
+- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
+- 代码目录：选择上述新建的OBS桶中的logistic_regression目录
+- 启动文件：选择上述新建的OBS桶中的logistic_regression目录下的`main.py`
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的logistic_regression目录，本实验使用其中的iris.data
+- 训练输出位置：选择上述新建的OBS桶中的logistic_regression目录并在其中创建output目录
+- 作业日志路径：同训练输出位置
+- 规格：Ascend:1*Ascend 910
+- 其他均为默认
+
+启动并查看训练过程：
+
+1. 点击提交以开始训练；
+2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
+3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
+4. 参考上述代码梳理，在日志中找到对应的打印信息，检查实验是否成功。
 
 ## 实验结论
 

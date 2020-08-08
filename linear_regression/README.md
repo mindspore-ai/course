@@ -24,7 +24,7 @@
 
 ## 实验环境
 
-- MindSpore 0.2.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
@@ -47,11 +47,16 @@
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
+从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。
 
 ### 上传文件
 
-将脚本上传到OBS桶中。
+将脚本上传到OBS桶中，组织为如下形式：
+
+```
+linear_regression
+└── main.py
+```
 
 ## 实验步骤
 
@@ -131,7 +136,7 @@ for epoch in range(20):
 wb = [x.default_input.asnumpy() for x in net.trainable_params()]
 w, b = np.squeeze(wb[0]), np.squeeze(wb[1])
 print('The true linear function is y = -5 * x + 0.1')
-# print('The trained linear model is y = {0} * x + {1}'.format(w, b))
+print('The trained linear model is y = {0} * x + {1}'.format(w, b))
 
 for i in range(-10, 11, 5):
     print('x = {0}, predicted y = {1}'.format(i, net(ms.Tensor([[i]], ms.float32))))
@@ -164,10 +169,10 @@ plt.legend()
 创建训练作业的参考配置：
 
 - 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
-- 代码目录：选择上述新建的OBS桶中的experiment目录
-- 启动文件：选择上述新建的OBS桶中的experiment目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的experiment目录，本实验没有使用OBS中的数据
-- 训练输出位置：选择上述新建的OBS桶中的experiment目录并在其中创建output目录
+- 代码目录：选择上述新建的OBS桶中的linear_regression目录
+- 启动文件：选择上述新建的OBS桶中的linear_regression目录下的`main.py`
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的linear_regression目录，本实验实际上没有使用OBS中的数据
+- 训练输出位置：选择上述新建的OBS桶中的linear_regression目录并在其中创建output目录
 - 作业日志路径：同训练输出位置
 - 规格：Ascend:1*Ascend 910
 - 其他均为默认

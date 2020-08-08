@@ -8,7 +8,7 @@ K近邻算法（K-Nearest-Neighbor, KNN）是一种用于分类和回归的非�
 - 距离度量，反映了特征空间中两个样本间的相似度，距离越小，越相似。常用的有Lp距离（p=2时，即为欧式距离）、曼哈顿距离、海明距离等。
 - 分类决策规则，通常是多数表决，或者基于距离加权的多数表决（权值与距离成反比）。
 
-本实验主要介绍使用MindSpore在部分Iris数据集上进行KNN实验。
+本实验主要介绍使用MindSpore在部分wine数据集上进行KNN实验。
 
 ## 实验目的
 
@@ -24,7 +24,7 @@ K近邻算法（K-Nearest-Neighbor, KNN）是一种用于分类和回归的非�
 
 ## 实验环境
 
-- MindSpore 0.2.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
@@ -45,13 +45,43 @@ K近邻算法（K-Nearest-Neighbor, KNN）是一种用于分类和回归的非�
 - 归档数据直读：关闭
 - 企业项目、标签等配置：免
 
+### 数据准备
+
+Wine数据集是模式识别最著名的数据集之一。这些数据是对来自意大利同一地区但来自三个不同品种的葡萄酒进行化学分析的结果。分析了三种葡萄酒中每种所含13种成分的量。这些13种属性是
+
+1. Alcohol，酒精
+2. Malic acid，苹果酸
+3. Ash，灰
+4. Alcalinity of ash，灰的碱度
+5. Magnesium，镁
+6. Total phenols，总酚
+7. Flavanoids，类黄酮
+8. Nonflavanoid phenols，非黄酮酚
+9. Proanthocyanins，原花青素
+10. Color intensity，色彩强度
+11. Hue，色调
+12. OD280/OD315 of diluted wines，稀释酒的OD280/OD315
+13. Proline，脯氨酸
+
+在Wine数据集的官网[Wine Data Set](http://archive.ics.uci.edu/ml/datasets/Wine)上下载[wine.data](http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data)文件。
+
+| Data Set Characteristics:  | Multivariate   | Number of Instances:  | 178  |
+| Attribute Characteristics: | Integer, Real  | Number of Attributes: | 13   |
+| Associated Tasks:          | Classification | Missing Values?       | No   |
+
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
+从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。
 
 ### 上传文件
 
-将脚本上传到OBS桶中。
+将脚本和数据集上传到OBS桶中，组织为如下形式：
+
+```
+knn
+├── main.py
+└── wine.data
+```
 
 ## 实验步骤
 
@@ -74,46 +104,49 @@ from mindspore.ops import functional as F
 context.set_context(device_target="Ascend")
 ```
 
-读取Iris数据集`iris.data`，并查看部分数据。
+读取Wine数据集`wine.data`，并查看部分数据。
 
 ```python
-with open('iris.data') as csv_file:
+with open('wine.data') as csv_file:
     data = list(csv.reader(csv_file, delimiter=','))
-print(data[40:60]) # 打印部分数据
+print(data[56:62]+data[130:133]) # 打印部分数据
 ```
 
-    [['5.0', '3.5', '1.3', '0.3', 'Iris-setosa'], ['4.5', '2.3', '1.3', '0.3', 'Iris-setosa'], ['4.4', '3.2', '1.3', '0.2', 'Iris-setosa'], ['5.0', '3.5', '1.6', '0.6', 'Iris-setosa'], ['5.1', '3.8', '1.9', '0.4', 'Iris-setosa'], ['4.8', '3.0', '1.4', '0.3', 'Iris-setosa'], ['5.1', '3.8', '1.6', '0.2', 'Iris-setosa'], ['4.6', '3.2', '1.4', '0.2', 'Iris-setosa'], ['5.3', '3.7', '1.5', '0.2', 'Iris-setosa'], ['5.0', '3.3', '1.4', '0.2', 'Iris-setosa'], ['7.0', '3.2', '4.7', '1.4', 'Iris-versicolor'], ['6.4', '3.2', '4.5', '1.5', 'Iris-versicolor'], ['6.9', '3.1', '4.9', '1.5', 'Iris-versicolor'], ['5.5', '2.3', '4.0', '1.3', 'Iris-versicolor'], ['6.5', '2.8', '4.6', '1.5', 'Iris-versicolor'], ['5.7', '2.8', '4.5', '1.3', 'Iris-versicolor'], ['6.3', '3.3', '4.7', '1.6', 'Iris-versicolor'], ['4.9', '2.4', '3.3', '1.0', 'Iris-versicolor'], ['6.6', '2.9', '4.6', '1.3', 'Iris-versicolor'], ['5.2', '2.7', '3.9', '1.4', 'Iris-versicolor']]
+    [['1', '14.22', '1.7', '2.3', '16.3', '118', '3.2', '3', '.26', '2.03', '6.38', '.94', '3.31', '970'], ['1', '13.29', '1.97', '2.68', '16.8', '102', '3', '3.23', '.31', '1.66', '6', '1.07', '2.84', '1270'], ['1', '13.72', '1.43', '2.5', '16.7', '108', '3.4', '3.67', '.19', '2.04', '6.8', '.89', '2.87', '1285'], ['2', '12.37', '.94', '1.36', '10.6', '88', '1.98', '.57', '.28', '.42', '1.95', '1.05', '1.82', '520'], ['2', '12.33', '1.1', '2.28', '16', '101', '2.05', '1.09', '.63', '.41', '3.27', '1.25', '1.67', '680'], ['2', '12.64', '1.36', '2.02', '16.8', '100', '2.02', '1.41', '.53', '.62', '5.75', '.98', '1.59', '450'], ['3', '12.86', '1.35', '2.32', '18', '122', '1.51', '1.25', '.21', '.94', '4.1', '.76', '1.29', '630'], ['3', '12.88', '2.99', '2.4', '20', '104', '1.3', '1.22', '.24', '.83', '5.4', '.74', '1.42', '530'], ['3', '12.81', '2.31', '2.4', '24', '98', '1.15', '1.09', '.27', '.83', '5.7', '.66', '1.36', '560']]
 
-取前两类样本（共100条），将数据集的4个属性作为自变量$X$。将数据集的2个类别映射为{0, 1}，作为因变量$Y$。
+取三类样本（共178条），将数据集的13个属性作为自变量$X$。将数据集的3个类别作为因变量$Y$。
 
 ```python
-label_map = {
-    'Iris-setosa': 0,
-    'Iris-versicolor': 1,
-}
-
-X = np.array([[float(x) for x in s[:-1]] for s in data[:100]], np.float32)
-Y = np.array([label_map[s[-1]] for s in data[:100]], np.int32)
+X = np.array([[float(x) for x in s[1:]] for s in data[:178]], np.float32)
+Y = np.array([s[0] for s in data[:178]], np.int32)
 ```
 
-取样本的前两个属性进行2维可视化，可以看到在前两个属性上两类样本是线性可分的。
+取样本的某两个属性进行2维可视化，可以看到在某两个属性上样本的分布情况以及可分性。
 
 ```python
-from matplotlib import pyplot as plt
-plt.scatter(X[:50, 0], X[:50, 1], label='Iris-setosa')
-plt.scatter(X[50:, 0], X[50:, 1], label='Iris-versicolor')
-plt.xlabel('sepal length')
-plt.ylabel('sepal width')
-plt.legend()
+attrs = ['Alcohol', 'Malic acid', 'Ash', 'Alcalinity of ash', 'Magnesium', 'Total phenols',
+         'Flavanoids', 'Nonflavanoid phenols', 'Proanthocyanins', 'Color intensity', 'Hue',
+         'OD280/OD315 of diluted wines', 'Proline']
+plt.figure(figsize=(10, 8))
+for i in range(0, 4):
+    plt.subplot(2, 2, i+1)
+    a1, a2 = 2 * i, 2 * i + 1
+    plt.scatter(X[:59, a1], X[:59, a2], label='1')
+    plt.scatter(X[59:130, a1], X[59:130, a2], label='2')
+    plt.scatter(X[130:, a1], X[130:, a2], label='3')
+    plt.xlabel(attrs[a1])
+    plt.ylabel(attrs[a2])
+    plt.legend()
+plt.show()
 ```
 
-![png](images/setosa-versicolor.png)
+![wine](images/wine.png)
 
-将数据集按8:2划分为训练集（已知类别样本）和验证集（待验证样本）：
+将数据集按128:50划分为训练集（已知类别样本）和验证集（待验证样本）：
 
 ```python
-train_idx = np.random.choice(100, 80, replace=False)
-test_idx = np.array(list(set(range(100)) - set(train_idx)))
+train_idx = np.random.choice(178, 128, replace=False)
+test_idx = np.array(list(set(range(178)) - set(train_idx)))
 X_train, Y_train = X[train_idx], Y[train_idx]
 X_test, Y_test = X[test_idx], Y[test_idx]
 ```
@@ -131,11 +164,11 @@ class KnnNet(nn.Cell):
 
     def construct(self, x, X_train):
         # Tile input x to match the number of samples in X_train
-        x_tile = self.tile(x, (80, 1))
+        x_tile = self.tile(x, (128, 1))
         square_diff = F.square(x_tile - X_train)
         square_dist = self.sum(square_diff, 1)
         dist = F.sqrt(square_dist)
-        # '-dist' means the bigger the value is, the nearer the samples are
+        # -dist mean the bigger the value is, the nearer the samples are
         values, indices = self.topk(-dist, self.k)
         return indices
 
@@ -150,7 +183,7 @@ def knn(knn_net, x, X_train, Y_train):
     return cls
 ```
 
-在验证集上验证KNN算法的有效性，验证精度接近100%，说明KNN算法在该任务上十分有效。
+在验证集上验证KNN算法的有效性，取$k = 5$，验证精度接近80%，说明KNN算法在该3分类任务上有效，能根据酒的13种属性判断出酒的品种。
 
 ```python
 acc = 0
@@ -158,31 +191,61 @@ knn_net = KnnNet(5)
 for x, y in zip(X_test, Y_test):
     pred = knn(knn_net, x, X_train, Y_train)
     acc += (pred == y)
-    print('sample: %s, label: %d, prediction: %s' % (x, y, pred))
+    print('label: %d, prediction: %s' % (y, pred))
 print('Validation accuracy is %f' % (acc/len(Y_test)))
 ```
 
-    sample: [5.1 3.5 1.4 0.2], label: 0, prediction: 0
-    sample: [4.6 3.4 1.4 0.3], label: 0, prediction: 0
-    sample: [5.1 3.5 1.4 0.3], label: 0, prediction: 0
-    sample: [5.4 3.4 1.7 0.2], label: 0, prediction: 0
-    sample: [4.8 3.1 1.6 0.2], label: 0, prediction: 0
-    sample: [5.5 4.2 1.4 0.2], label: 0, prediction: 0
-    sample: [4.9 3.1 1.5 0.1], label: 0, prediction: 0
-    sample: [5.  3.2 1.2 0.2], label: 0, prediction: 0
-    sample: [5.5 3.5 1.3 0.2], label: 0, prediction: 0
-    sample: [4.5 2.3 1.3 0.3], label: 0, prediction: 0
-    sample: [5.  3.3 1.4 0.2], label: 0, prediction: 0
-    sample: [7.  3.2 4.7 1.4], label: 1, prediction: 1
-    sample: [6.3 3.3 4.7 1.6], label: 1, prediction: 1
-    sample: [6.6 2.9 4.6 1.3], label: 1, prediction: 1
-    sample: [5.2 2.7 3.9 1.4], label: 1, prediction: 1
-    sample: [5.9 3.  4.2 1.5], label: 1, prediction: 1
-    sample: [6.  2.2 4.  1. ], label: 1, prediction: 1
-    sample: [5.5 2.4 3.8 1.1], label: 1, prediction: 1
-    sample: [5.8 2.7 3.9 1.2], label: 1, prediction: 1
-    sample: [6.3 2.3 4.4 1.3], label: 1, prediction: 1
-    Validation accuracy is 1.000000
+    label: 1, prediction: 1
+    label: 3, prediction: 2
+    label: 3, prediction: 3
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 3, prediction: 3
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 3, prediction: 3
+    label: 3, prediction: 3
+    label: 3, prediction: 3
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 1, prediction: 3
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 3, prediction: 2
+    label: 3, prediction: 1
+    label: 1, prediction: 1
+    label: 3, prediction: 2
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 3, prediction: 2
+    label: 3, prediction: 3
+    label: 3, prediction: 3
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 3
+    label: 2, prediction: 2
+    label: 2, prediction: 3
+    label: 2, prediction: 2
+    label: 2, prediction: 3
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 3
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    label: 2, prediction: 2
+    Validation accuracy is 0.800000
 
 ### 创建训练作业
 
@@ -191,10 +254,10 @@ print('Validation accuracy is %f' % (acc/len(Y_test)))
 创建训练作业的参考配置：
 
 - 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
-- 代码目录：选择上述新建的OBS桶中的experiment目录
-- 启动文件：选择上述新建的OBS桶中的experiment目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的experiment目录，本实验使用其中的iris.data
-- 训练输出位置：选择上述新建的OBS桶中的experiment目录并在其中创建output目录
+- 代码目录：选择上述新建的OBS桶中的knn目录
+- 启动文件：选择上述新建的OBS桶中的knn目录下的`main.py`
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的knn目录，本实验使用其中的wine.data
+- 训练输出位置：选择上述新建的OBS桶中的knn目录并在其中创建output目录
 - 作业日志路径：同训练输出位置
 - 规格：Ascend:1*Ascend 910
 - 其他均为默认
@@ -218,10 +281,10 @@ args, unknown = parser.parse_known_args()
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
 
 ```python
-import moxing as mox
-mox.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
+import moxing
+moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'wine.data'), dst_url='wine.data')
 ```
 
 ## 实验结论
 
-本实验使用MindSpore实现了KNN算法，用来解决分类问题。取Iris数据集上的2类样本，按8:2分为已知类别样本和待验证样本，结果发现KNN算法在该任务上十分有效。
+本实验使用MindSpore实现了KNN算法，用来解决3分类问题。取wine数据集上的3类样本，分为已知类别样本和待验证样本，从验证结果可以看出KNN算法在该任务上有效，能根据酒的13种属性判断出酒的品种。

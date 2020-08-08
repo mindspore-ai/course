@@ -15,20 +15,15 @@ context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
 
 def create_dataset():
-    with open('iris.data') as csv_file:
+    with open('wine.data') as csv_file:
         data = list(csv.reader(csv_file, delimiter=','))
-    print(data[40:60]) # 打印部分数据
+    print(data[56:62]+data[130:133]) # 打印部分数据
 
-    label_map = {
-        'Iris-setosa': 0,
-        'Iris-versicolor': 1,
-    }
+    X = np.array([[float(x) for x in s[1:]] for s in data[:178]], np.float32)
+    Y = np.array([s[0] for s in data[:178]], np.int32)
 
-    X = np.array([[float(x) for x in s[:-1]] for s in data[:100]], np.float32)
-    Y = np.array([label_map[s[-1]] for s in data[:100]], np.int32)
-
-    train_idx = np.random.choice(100, 80, replace=False)
-    test_idx = np.array(list(set(range(100)) - set(train_idx)))
+    train_idx = np.random.choice(178, 128, replace=False)
+    test_idx = np.array(list(set(range(178)) - set(train_idx)))
     X_train, Y_train = X[train_idx], Y[train_idx]
     X_test, Y_test = X[test_idx], Y[test_idx]
 
@@ -45,7 +40,7 @@ class KnnNet(nn.Cell):
 
     def construct(self, x, X_train):
         # Tile input x to match the number of samples in X_train
-        x_tile = self.tile(x, (80, 1))
+        x_tile = self.tile(x, (128, 1))
         square_diff = F.square(x_tile - X_train)
         square_dist = self.sum(square_diff, 1)
         dist = F.sqrt(square_dist)
@@ -70,15 +65,16 @@ def test_knn(X_train, Y_train, X_test, Y_test):
     for x, y in zip(X_test, Y_test):
         pred = knn(knn_net, x, X_train, Y_train)
         acc += (pred == y)
-        print('sample: %s, label: %d, prediction: %s' % (x, y, pred))
+        print('label: %d, prediction: %s' % (y, pred))
     print('Validation accuracy is %f' % (acc/len(Y_test)))
 
+
 """
-# Code for PyNative mode
+# Code for PyNative mode, P.TopK is not supported
 def knn(x, X_train, Y_train, k):
     x, X_train = ms.Tensor(x), ms.Tensor(X_train)
     # Tile input x to match the number of samples in X_train
-    x_tile = P.Tile()(x, (X_train.shape()[0], 1))
+    x_tile = P.Tile()(x, (X_train.shape[0], 1))
     square_diff = F.square(x_tile - X_train)
     square_dist = P.ReduceSum()(square_diff, axis=1)
     dist = F.sqrt(square_dist)
@@ -98,13 +94,14 @@ def test_knn(X_train, Y_train, X_test, Y_test):
     print('Validation accuracy is %f' % (acc/len(Y_test)))
 """
 
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
     args, unknown = parser.parse_known_args()
 
-    import moxing as mox
-    mox.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
+    import moxing
+    moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'wine.data'), dst_url='wine.data')
 
     test_knn(*create_dataset())
