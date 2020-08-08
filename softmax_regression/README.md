@@ -22,7 +22,7 @@ Logistic函数针对的是二分类问题，而Softmax解决的是多分类问�
 
 ## 实验环境
 
-- MindSpore 0.2.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
@@ -69,14 +69,14 @@ Iris数据集是模式识别最著名的数据集之一。数据集包含3类，
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
+从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。
 
 ### 上传文件
 
 将脚本和数据集上传到OBS桶中，组织为如下形式：
 
 ```
-experiment
+softmax_regression
 ├── main.py
 └── iris.data
 ```
@@ -190,54 +190,46 @@ metrics = model.eval(ds_test)
 print(metrics)
 ```
 
-    epoch: 1 step: 3, loss is 1.0499132
-    epoch: 2 step: 3, loss is 0.80460316
-    epoch: 3 step: 3, loss is 0.59671795
-    epoch: 4 step: 3, loss is 0.42732072
-    epoch: 5 step: 3, loss is 0.4477523
-    epoch: 6 step: 3, loss is 0.41942167
-    epoch: 7 step: 3, loss is 0.3937024
-    epoch: 8 step: 3, loss is 0.38259077
-    epoch: 9 step: 3, loss is 0.3015437
-    epoch: 10 step: 3, loss is 0.39157566
-    epoch: 11 step: 3, loss is 0.25795114
-    epoch: 12 step: 3, loss is 0.25916606
-    epoch: 13 step: 3, loss is 0.24023157
-    epoch: 14 step: 3, loss is 0.26471105
-    epoch: 15 step: 3, loss is 0.27128816
-    epoch: 16 step: 3, loss is 0.20776722
-    epoch: 17 step: 3, loss is 0.13790263
-    epoch: 18 step: 3, loss is 0.23461342
-    epoch: 19 step: 3, loss is 0.19309351
-    epoch: 20 step: 3, loss is 0.21184918
-    epoch: 21 step: 3, loss is 0.2028614
-    epoch: 22 step: 3, loss is 0.22474629
-    epoch: 23 step: 3, loss is 0.25131774
-    epoch: 24 step: 3, loss is 0.18746883
-    epoch: 25 step: 3, loss is 0.18296722
-    {'loss': 0.17929109930992126, 'acc': 0.9666666666666667}
+    epoch: 1 step 3, loss is 0.9914441108703613
+    Epoch time: 15227.800, per step time: 5075.933, avg loss: 1.053
+    ************************************************************
+    epoch: 2 step 3, loss is 0.7714572548866272
+    Epoch time: 8.709, per step time: 2.903, avg loss: 0.872
+    ************************************************************
+    epoch: 3 step 3, loss is 0.6451367735862732
+    Epoch time: 6.033, per step time: 2.011, avg loss: 0.761
+    ************************************************************
+    epoch: 4 step 3, loss is 0.626476526260376
+    Epoch time: 5.793, per step time: 1.931, avg loss: 0.578
+    ************************************************************
+    epoch: 5 step 3, loss is 0.530356764793396
+    Epoch time: 5.858, per step time: 1.953, avg loss: 0.475
+    ************************************************************
+    
+    ......
+    
+    epoch: 20 step 3, loss is 0.17989404499530792
+    Epoch time: 5.808, per step time: 1.936, avg loss: 0.267
+    ************************************************************
+    epoch: 21 step 3, loss is 0.126459002494812
+    Epoch time: 5.734, per step time: 1.911, avg loss: 0.229
+    ************************************************************
+    epoch: 22 step 3, loss is 0.15500077605247498
+    Epoch time: 5.763, per step time: 1.921, avg loss: 0.194
+    ************************************************************
+    epoch: 23 step 3, loss is 0.1676429957151413
+    Epoch time: 5.737, per step time: 1.912, avg loss: 0.178
+    ************************************************************
+    epoch: 24 step 3, loss is 0.23107928037643433
+    Epoch time: 5.881, per step time: 1.960, avg loss: 0.165
+    ************************************************************
+    epoch: 25 step 3, loss is 0.19285285472869873
+    Epoch time: 5.709, per step time: 1.903, avg loss: 0.156
+    ************************************************************
 
-### 创建训练作业
+    {'acc': 0.9333333333333333, 'loss': 0.23569035530090332}
 
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
-
-创建训练作业的参考配置：
-
-- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
-- 代码目录：选择上述新建的OBS桶中的experiment目录
-- 启动文件：选择上述新建的OBS桶中的experiment目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的experiment目录，本实验使用其中的iris.data
-- 训练输出位置：选择上述新建的OBS桶中的experiment目录并在其中创建output目录
-- 作业日志路径：同训练输出位置
-- 规格：Ascend:1*Ascend 910
-- 其他均为默认
-
-启动并查看训练过程：
-
-1. 点击提交以开始训练；
-2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
-3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考上述代码梳理，在日志中找到对应的打印信息，检查实验是否成功。
+### 适配训练作业
 
 创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url对应数据存储路径(OBS路径)，脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
 
@@ -251,9 +243,31 @@ args, unknown = parser.parse_known_args()
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
 
 ```python
-import moxing as mox
-mox.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
+import moxing
+moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
 ```
+
+### 创建训练作业
+
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
+
+创建训练作业的参考配置：
+
+- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
+- 代码目录：选择上述新建的OBS桶中的softmax_regression目录
+- 启动文件：选择上述新建的OBS桶中的softmax_regression目录下的`main.py`
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的softmax_regression目录，本实验使用其中的iris.data
+- 训练输出位置：选择上述新建的OBS桶中的softmax_regression目录并在其中创建output目录
+- 作业日志路径：同训练输出位置
+- 规格：Ascend:1*Ascend 910
+- 其他均为默认
+
+启动并查看训练过程：
+
+1. 点击提交以开始训练；
+2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
+3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
+4. 参考上述代码梳理，在日志中找到对应的打印信息，检查实验是否成功。
 
 ## 实验结论
 

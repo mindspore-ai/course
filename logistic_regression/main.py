@@ -78,7 +78,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
     args, unknown = parser.parse_known_args()
 
-    import moxing as mox
-    mox.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
+    import moxing
+    moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
 
     logistic_regression(*create_dataset())
