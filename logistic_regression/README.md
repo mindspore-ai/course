@@ -47,7 +47,10 @@
 
 ### 数据准备
 
-Iris数据集是模式识别最著名的数据集之一。数据集包含3类，每类50个实例，其中每个类都涉及一种鸢尾植物。 第一类与后两类可线性分离，后两类之间不能线性分离，所以本实验取前两类数据，做一个2分类数据集。在Iris数据集的官网[Iris Data Set](http://archive.ics.uci.edu/ml/datasets/Iris)上下载[iris.data](http://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data)文件。
+Iris数据集是模式识别最著名的数据集之一。数据集包含3类，每类50个实例，其中每个类都涉及一种鸢尾植物。 第一类与后两类可线性分离，后两类之间不能线性分离，所以本实验取前两类数据，做一个2分类数据集。Iris数据集的官网：[Iris Data Set](http://archive.ics.uci.edu/ml/datasets/Iris)。
+
+- 途径一，从Iris数据集官网下载[iris.data文件](http://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data)。
+- 途径二，从华为云OBS中下载[iris.data文件](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/iris.data)。
 
 每个样本含有4个数值属性和一个类别属性：
 1. sepal length in cm

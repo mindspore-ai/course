@@ -47,7 +47,7 @@ K近邻算法（K-Nearest-Neighbor, KNN）是一种用于分类和回归的非�
 
 ### 数据准备
 
-Wine数据集是模式识别最著名的数据集之一。这些数据是对来自意大利同一地区但来自三个不同品种的葡萄酒进行化学分析的结果。分析了三种葡萄酒中每种所含13种成分的量。这些13种属性是
+Wine数据集是模式识别最著名的数据集之一，Wine数据集的官网：[Wine Data Set](http://archive.ics.uci.edu/ml/datasets/Wine)。这些数据是对来自意大利同一地区但来自三个不同品种的葡萄酒进行化学分析的结果。数据集分析了三种葡萄酒中每种所含13种成分的量。这些13种属性是
 
 1. Alcohol，酒精
 2. Malic acid，苹果酸
@@ -63,8 +63,11 @@ Wine数据集是模式识别最著名的数据集之一。这些数据是对来�
 12. OD280/OD315 of diluted wines，稀释酒的OD280/OD315
 13. Proline，脯氨酸
 
-在Wine数据集的官网[Wine Data Set](http://archive.ics.uci.edu/ml/datasets/Wine)上下载[wine.data](http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data)文件。
+- 途径一，从Wine数据集官网下载[wine.data文件](http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data)。
+- 途径二，从华为云OBS中下载[wine.data文件](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/wine.data)。
 
+| Key | Value | Key | Value |
+| :------------------------- | :------------- | :-------------------- | :--- |
 | Data Set Characteristics:  | Multivariate   | Number of Instances:  | 178  |
 | Attribute Characteristics: | Integer, Real  | Number of Attributes: | 13   |
 | Associated Tasks:          | Classification | Missing Values?       | No   |
