@@ -45,7 +45,7 @@ LeNet5 + MINST被誉为深度学习领域的“Hello world”。本实验主要�
 
 MNIST是一个手写数字数据集，训练集包含60000张手写数字，测试集包含10000张手写数字，共10类。MNIST数据集的官网：[THE MNIST DATABASE](http://yann.lecun.com/exdb/mnist/)。
 
-从MNIST官网下载如下4个文件到本地并解压：
+- 途径一，从MNIST官网下载如下4个文件到本地并解压：
 
 ```
 train-images-idx3-ubyte.gz:  training set images (9912422 bytes)
@@ -53,6 +53,8 @@ train-labels-idx1-ubyte.gz:  training set labels (28881 bytes)
 t10k-images-idx3-ubyte.gz:   test set images (1648877 bytes)
 t10k-labels-idx1-ubyte.gz:   test set labels (4542 bytes)
 ```
+
+- 途径二，从华为云OBS中下载[MNIST数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/MNIST.zip)并解压。
 
 ### 脚本准备
 
@@ -78,7 +80,7 @@ lenet5
 
 ### 创建Notebook
 
-可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
+ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用。可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
 
 创建Notebook的参考配置：
 
@@ -97,7 +99,7 @@ lenet5
 
 > **提示：** 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
 
-> **提示：** 请从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
+> **提示：** 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
 
 导入MindSpore模块和辅助模块：
 
@@ -251,10 +253,23 @@ args, unknown = parser.parse_known_args()
 
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
 
-```python
-import moxing
-moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
-```
+- 途径一，拷贝自己账户下OBS桶内的数据集。
+    
+    ```python
+    import moxing
+    moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
+    ```
+
+- 途径二，拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+    
+    ```python
+    import moxing
+    # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
+                         server="obs.cn-north-4.myhuaweicloud.com")
+    # copy dataset from obs bucket to container/cache
+    moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+    ```
 
 如需将训练输出（如模型Checkpoint）从执行容器拷贝至OBS，请参考：
 
@@ -293,7 +308,7 @@ MindSpore还支持在本地CPU/GPU/Ascend环境上运行，如Windows/Ubuntu x64
 在Windows/Ubuntu x64笔记本上运行实验：
 
 ```shell script
-vim main.py # 将第15行的context设置为`device_target='CPU'`
+# 编辑main.py 将第15行的context设置为`device_target='CPU'`
 python main.py --data_url=D:\dataset\MNIST
 ```
 
