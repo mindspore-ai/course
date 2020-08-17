@@ -20,7 +20,7 @@
 ## 实验环境
 
 - MindSpore 0.2.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
-- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
+- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
 
@@ -30,7 +30,7 @@
 
 > **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
-创建OBS桶的参考配置如下：
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
 
 - 区域：华北-北京四
 - 数据冗余存储策略：单AZ存储
@@ -52,7 +52,7 @@ CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图�
 
 ### 上传文件
 
-将脚本和数据集上传到OBS桶中，组织为如下形式：
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
 
 ```
 experiment_3
@@ -315,7 +315,7 @@ mox.file.copy_parallel(src_url='output', dst_url='s3://OBS/PATH')
 
 可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
-创建训练作业的参考配置：
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
 
 - 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
 - 代码目录：选择上述新建的OBS桶中的experiment_3目录

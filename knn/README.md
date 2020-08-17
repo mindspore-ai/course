@@ -19,23 +19,23 @@ K近邻算法（K-Nearest-Neighbor, KNN）是一种用于分类和回归的非�
 
 - 熟练使用Python。
 - 具备一定的机器学习理论知识，如KNN、无监督学习、Lp距离等。
-- 了解华为云的基本使用方法，包括[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0046.html)等功能。华为云官网：https://www.huaweicloud.com
+- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0046.html)等功能。华为云官网：https://www.huaweicloud.com
 - 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn/
 
 ## 实验环境
 
 - MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
-- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
+- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
 
 ### 创建OBS桶
 
-本实验需要使用华为云OBS存储脚本，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
 
 > **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
-创建OBS桶的参考配置如下：
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
 
 - 区域：华北-北京四
 - 数据冗余存储策略：单AZ存储
@@ -63,8 +63,8 @@ Wine数据集是模式识别最著名的数据集之一，Wine数据集的官网
 12. OD280/OD315 of diluted wines，稀释酒的OD280/OD315
 13. Proline，脯氨酸
 
-- 途径一，从Wine数据集官网下载[wine.data文件](http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data)。
-- 途径二，从华为云OBS中下载[wine.data文件](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/wine.data)。
+- 方式一，从Wine数据集官网下载[wine.data文件](http://archive.ics.uci.edu/ml/machine-learning-databases/wine/wine.data)。
+- 方式二，从华为云OBS中下载[wine.data文件](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/wine.data)。
 
 | Key | Value | Key | Value |
 | :------------------------- | :------------- | :-------------------- | :--- |
@@ -78,7 +78,7 @@ Wine数据集是模式识别最著名的数据集之一，Wine数据集的官网
 
 ### 上传文件
 
-将脚本和数据集上传到OBS桶中，组织为如下形式：
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
 
 ```
 knn
@@ -254,7 +254,7 @@ print('Validation accuracy is %f' % (acc/len(Y_test)))
 
 可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
-创建训练作业的参考配置：
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
 
 - 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
 - 代码目录：选择上述新建的OBS桶中的knn目录

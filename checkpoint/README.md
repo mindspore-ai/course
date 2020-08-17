@@ -29,7 +29,7 @@
 ## 实验环境
 
 - MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
-- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
+- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 - Windows/Ubuntu x64笔记本，NVIDIA GPU服务器，或Atlas Ascend服务器等。
 
 ## 实验准备
@@ -40,7 +40,7 @@
 
 > **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
-创建OBS桶的参考配置如下：
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
 
 - 区域：华北-北京四
 - 数据冗余存储策略：单AZ存储
@@ -54,7 +54,7 @@
 
 MNIST是一个手写数字数据集，训练集包含60000张手写数字，测试集包含10000张手写数字，共10类。MNIST数据集的官网：[THE MNIST DATABASE](http://yann.lecun.com/exdb/mnist/)。
 
-- 途径一，从MNIST官网下载如下4个文件到本地并解压：
+- 方式一，从MNIST官网下载如下4个文件到本地并解压：
 
 ```
 train-images-idx3-ubyte.gz:  training set images (9912422 bytes)
@@ -63,7 +63,7 @@ t10k-images-idx3-ubyte.gz:   test set images (1648877 bytes)
 t10k-labels-idx1-ubyte.gz:   test set labels (4542 bytes)
 ```
 
-- 途径二，从华为云OBS中下载[MNIST数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/MNIST.zip)并解压。
+- 方式二，从华为云OBS中下载[MNIST数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/MNIST.zip)并解压。
 
 ### 脚本准备
 
@@ -71,7 +71,7 @@ t10k-labels-idx1-ubyte.gz:   test set labels (4542 bytes)
 
 ### 上传文件
 
-将脚本和数据集上传到OBS桶中，组织为如下形式：
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
 
 ```
 checkpoint
@@ -91,7 +91,7 @@ checkpoint
 
 ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用。可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
 
-创建Notebook的参考配置：
+打开[ModelArts控制台-开发环境-Notebook](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/notebook)，点击“创建”按钮进入Notebook配置页面，创建Notebook的参考配置：
 
 - 计费模式：按需计费
 - 名称：checkpoint
@@ -413,14 +413,14 @@ args, unknown = parser.parse_known_args()
 
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
 
-- 途径一，拷贝自己账户下OBS桶内的数据集。
+- 方式一，拷贝自己账户下OBS桶内的数据集。
     
     ```python
     import moxing
     moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
     ```
 
-- 途径二，拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+- 方式二，拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
     
     ```python
     import moxing
@@ -443,7 +443,7 @@ moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, '
 
 可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
-创建训练作业的参考配置：
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
 
 - 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
 - 代码目录：选择上述新建的OBS桶中的checkpoint目录
