@@ -14,23 +14,23 @@
 
 - 熟练使用Python。
 - 具备一定的深度学习理论知识，如感知机、前馈神经网络、损失函数、优化器，训练策略等。
-- 了解华为云的基本使用方法，包括[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0046.html)等功能。华为云官网：https://www.huaweicloud.com
+- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0046.html)等功能。华为云官网：https://www.huaweicloud.com
 - 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn/
 
 ## 实验环境
 
 - MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
-- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
+- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
 
 ### 创建OBS桶
 
-本实验需要使用华为云OBS存储脚本，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
 
 > **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
-创建OBS桶的参考配置如下：
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
 
 - 区域：华北-北京四
 - 数据冗余存储策略：单AZ存储
@@ -44,9 +44,9 @@
 
 Fashion-MNIST是一个替代MNIST手写数字集的图像数据集。 它是由Zalando（一家德国的时尚科技公司）旗下的研究部门提供。其涵盖了来自10种类别的共7万个不同商品的正面图片。Fashion-MNIST的大小、格式和训练集/测试集划分与原始的MNIST完全一致。60000/10000的训练测试数据划分，28x28x1的灰度图片。
 
-这里介绍一下经典的MNIST（手写字母）数据集。经典的MNIST数据集包含了大量的手写数字。十几年来，来自机器学习、机器视觉、人工智能、深度学习领域的研究员们把这个数据集作为衡量算法的基准之一。实际上，MNIST数据集已经成为算法作者的必测的数据集之一，但是MNIST数据集太简单了。很多深度学习算法在测试集上的准确率已经达到99.6%！
+这里介绍一下经典的MNIST（手写字母）数据集。经典的MNIST数据集包含了大量的手写数字。十几年来，来自机器学习、机器视觉、人工智能、深度学习领域的研究员们把这个数据集作为衡量算法的基准之一。实际上，MNIST数据集已经成为算法作者的必测的数据集之一，但是MNIST数据集太简单了。很多深度学习算法在测试集上的准确率已经达到99.6%。
 
-点[这里](https://github.com/zalandoresearch/fashion-mnist/tree/master/data)下载Fashion-MNIST数据集并解压到本地。
+- 方式一，从[Fashion-MNIST GitHub仓库](https://github.com/zalandoresearch/fashion-mnist/tree/master/data/fashion)下载如下4个文件到本地并解压：
 
 ```
 train-images-idx3-ubyte     training set images（47,042,560 bytes）   
@@ -55,13 +55,15 @@ t10k-images-idx3-ubyte      test set images (7,843,840 bytes)
 t10k-labels-idx1-ubyte      test set labels (12,288 bytes) 
 ```
 
+- 方式二，从华为云OBS中下载[Fashion-MNIST数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/fashion-mnist.zip)并解压。
+
 ### 脚本准备
 
 从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
 
 ### 上传文件
 
-将脚本和数据集上传到OBS桶中，组织为如下形式：
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
 
 ```
 feedforward  
@@ -469,10 +471,23 @@ args, unknown = parser.parse_known_args()
 
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
 
-```python
-import moxing as mox
-mox.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST')
-```
+- 方式一，拷贝自己账户下OBS桶内的数据集。
+    
+    ```python
+    import moxing
+    moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST/')
+    ```
+
+- 方式二，拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+    
+    ```python
+    import moxing
+    # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
+                         server="obs.cn-north-4.myhuaweicloud.com")
+    # copy dataset from obs bucket to container/cache
+    moxing.file.copy_parallel(src_url="s3://share-course/dataset/fashion-mnist/", dst_url='Fashion-MNIST/')
+    ```
 
 如需将训练输出（如模型Checkpoint）从执行容器拷贝至OBS，请参考：
 
@@ -485,8 +500,8 @@ mox.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)
 
 可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
->**创建训练作业的参考配置：**
->
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
+
 >- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore；
 >- 代码目录：选择上述新建的OBS桶中的feedforward目录；
 >- 启动文件：选择上述新建的OBS桶中的feedforward目录下的`main.py`；

@@ -166,4 +166,5 @@ if __name__ == "__main__":
     if args.data_url.startswith('s3'):
         import moxing
         # 将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
-        moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.data_url, 'ckpt'))
+        moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
+        print('Copied checkpoints from ./ckpt to %s' % os.path.join(args.train_url, 'ckpt'))

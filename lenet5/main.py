@@ -12,7 +12,7 @@ from mindspore import nn
 from mindspore.train import Model
 from mindspore.train.callback import LossMonitor
 
-context.set_context(mode=context.GRAPH_MODE, device_target='CPU') # Ascend, CPU, GPU
+context.set_context(mode=context.GRAPH_MODE, device_target='Ascend') # Ascend, CPU, GPU
 
 
 def create_dataset(data_dir, training=True, batch_size=32, resize=(32, 32),

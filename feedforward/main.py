@@ -111,8 +111,18 @@ parser.add_argument('--data_url', required=True, default=None, help='Location of
 parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
 args, unknown = parser.parse_known_args()
 
-import moxing as mox
-mox.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST')
+import moxing
+
+# WAY1: copy dataset from your own OBS bucket.
+# moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST')
+
+# WAY2: copy dataset from other's OBS bucket, which has been set public read or public read&write.
+# set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
+                     server="obs.cn-north-4.myhuaweicloud.com")
+# copy dataset from obs bucket to container/cache
+moxing.file.copy_parallel(src_url="s3://share-course/dataset/fashion-mnist/", dst_url='Fashion-MNIST/')
+
 
 cfg = edict({
     'train_size': 60000,  # 训练集大小
