@@ -18,6 +18,37 @@ from mindspore import Tensor
 context.set_context(mode=context.GRAPH_MODE, device_target='Ascend')
 
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
+parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
+args, unknown = parser.parse_known_args()
+
+import moxing
+
+# copy dataset from your own OBS bucket.
+moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST')
+
+
+cfg = edict({
+    'train_size': 60000,  # 训练集大小
+    'test_size': 10000,  # 测试集大小
+    'channel': 1,  # 图片通道数
+    'image_height': 28,  # 图片高度
+    'image_width': 28,  # 图片宽度
+    'batch_size': 60,
+    'num_classes': 10,  # 分类类别
+    'lr': 0.001,  # 学习率
+    'epoch_size': 20,  # 训练次数
+    'data_dir_train': os.path.join('Fashion-MNIST', 'train'),
+    'data_dir_test': os.path.join('Fashion-MNIST', 'test'),
+    'save_checkpoint_steps': 1,  # 多少步保存一次模型
+    'keep_checkpoint_max': 3,  # 最多保存多少个模型
+    'output_directory': './model_fashion',  # 保存模型路径
+    'output_prefix': "checkpoint_fashion_forward"  # 保存模型文件名字
+})
+
+
 def read_image(file_name):
     '''
     :param file_name: 文件路径
@@ -94,57 +125,18 @@ class Forward_fashion(nn.Cell):
         self.fc1 = nn.Dense(cfg.channel * cfg.image_height * cfg.image_width, 128)
         self.relu = nn.ReLU()
         self.fc2 = nn.Dense(128, self.num_class)
-        self.softmax = nn.Softmax()
 
     def construct(self, x):
         x = self.flatten(x)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
-        x = self.softmax(x)
         return x
 
 
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
-parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
-args, unknown = parser.parse_known_args()
-
-import moxing
-
-# WAY1: copy dataset from your own OBS bucket.
-# moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST')
-
-# WAY2: copy dataset from other's OBS bucket, which has been set public read or public read&write.
-# set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                     server="obs.cn-north-4.myhuaweicloud.com")
-# copy dataset from obs bucket to container/cache
-moxing.file.copy_parallel(src_url="s3://share-course/dataset/fashion-mnist/", dst_url='Fashion-MNIST/')
-
-
-cfg = edict({
-    'train_size': 60000,  # 训练集大小
-    'test_size': 10000,  # 测试集大小
-    'channel': 1,  # 图片通道数
-    'image_height': 28,  # 图片高度
-    'image_width': 28,  # 图片宽度
-    'batch_size': 60,
-    'num_classes': 10,  # 分类类别
-    'lr': 0.001,  # 学习率
-    'epoch_size': 20,  # 训练次数
-    'data_dir_train': os.path.join('Fashion-MNIST', 'train'),
-    'data_dir_test': os.path.join('Fashion-MNIST', 'test'),
-    'save_checkpoint_steps': 1,  # 多少步保存一次模型
-    'keep_checkpoint_max': 3,  # 最多保存多少个模型
-    'output_directory': './model_fashion',  # 保存模型路径
-    'output_prefix': "checkpoint_fashion_forward"  # 保存模型文件名字
-})
-
 train_x, train_y, test_x, test_y = get_data()
-train_x = train_x.reshape(-1, 1, 28, 28)
-test_x = test_x.reshape(-1, 1, 28, 28)
+train_x = train_x.reshape(-1, 1, cfg.image_height, cfg.image_width)
+test_x = test_x.reshape(-1, 1, cfg.image_height, cfg.image_width)
 train_x = train_x / 255.0
 test_x = test_x / 255.0
 train_x = train_x.astype('Float32')
@@ -190,9 +182,9 @@ test_ = ds_test.create_dict_iterator().get_next()
 test = Tensor(test_['x'], mindspore.float32)
 predictions = model.predict(test)
 predictions = predictions.asnumpy()
-for i in range(10):
+for i in range(15):
     p_np = predictions[i, :]
     p_list = p_np.tolist()
     print('第' + str(i) + '个sample预测结果：', p_list.index(max(p_list)), '   真实结果：', test_['y'][i])
 
-mox.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)
+moxing.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)
