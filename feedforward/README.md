@@ -209,8 +209,8 @@ def get_data():
 
 ```python
 train_x, train_y, test_x, test_y = get_data()
-train_x = train_x.reshape(-1, 1, 28, 28)
-test_x = test_x.reshape(-1, 1, 28, 28)
+train_x = train_x.reshape(-1, 1, cfg.image_height, cfg.image_width)
+test_x = test_x.reshape(-1, 1, cfg.image_height, cfg.image_width)
 train_x = train_x / 255.0
 test_x = test_x / 255.0
 train_x = train_x.astype('Float32')
@@ -269,14 +269,12 @@ class Forward_fashion(nn.Cell):
         self.fc1 = nn.Dense(cfg.channel * cfg.image_height * cfg.image_width, 128)
         self.relu = nn.ReLU()
         self.fc2 = nn.Dense(128, self.num_class)
-        self.softmax = nn.Softmax()
 
     def construct(self, x):
         x = self.flatten(x)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
-        x = self.softmax(x)
         return x
 ```
 
@@ -305,65 +303,65 @@ model.train(cfg.epoch_size, ds_train, callbacks=[ckpoint_cb, loss_cb], dataset_s
 ```
 
     ============== Starting Training ==============
-    epoch: 1 step 1000, loss is 1.6292920112609863
-    Epoch time: 8827.199, per step time: 8.827, avg loss: 1.629
+    epoch: 1 step 1000, loss is 0.567767322063446
+    Epoch time: 11428.370, per step time: 11.428, avg loss: 0.568
     ************************************************************
-    epoch: 2 step 1000, loss is 1.6026073694229126
-    Epoch time: 1601.618, per step time: 1.602, avg loss: 1.603
+    epoch: 2 step 1000, loss is 0.3970850706100464
+    Epoch time: 2018.074, per step time: 2.018, avg loss: 0.397
     ************************************************************
-    epoch: 3 step 1000, loss is 1.6622530221939087
-    Epoch time: 1629.635, per step time: 1.630, avg loss: 1.662
+    epoch: 3 step 1000, loss is 0.31815576553344727
+    Epoch time: 1971.219, per step time: 1.971, avg loss: 0.318
     ************************************************************
-    epoch: 4 step 1000, loss is 1.6305657625198364
-    Epoch time: 1471.701, per step time: 1.472, avg loss: 1.631
+    epoch: 4 step 1000, loss is 0.3128049373626709
+    Epoch time: 1974.937, per step time: 1.975, avg loss: 0.313
     ************************************************************
-    epoch: 5 step 1000, loss is 1.5535054206848145
-    Epoch time: 1770.755, per step time: 1.771, avg loss: 1.554
+    epoch: 5 step 1000, loss is 0.3095005750656128
+    Epoch time: 2029.930, per step time: 2.030, avg loss: 0.310
     ************************************************************
-    epoch: 6 step 1000, loss is 1.5950586795806885
-    Epoch time: 1985.995, per step time: 1.986, avg loss: 1.595
+    epoch: 6 step 1000, loss is 0.25628671050071716
+    Epoch time: 1934.886, per step time: 1.935, avg loss: 0.256
     ************************************************************
-    epoch: 7 step 1000, loss is 1.6165529489517212
-    Epoch time: 1928.856, per step time: 1.929, avg loss: 1.617
+    epoch: 7 step 1000, loss is 0.24347715079784393
+    Epoch time: 1897.307, per step time: 1.897, avg loss: 0.243
     ************************************************************
-    epoch: 8 step 1000, loss is 1.5757038593292236
-    Epoch time: 1814.812, per step time: 1.815, avg loss: 1.576
+    epoch: 8 step 1000, loss is 0.28936269879341125
+    Epoch time: 1921.264, per step time: 1.921, avg loss: 0.289
     ************************************************************
-    epoch: 9 step 1000, loss is 1.5905802249908447
-    Epoch time: 1558.252, per step time: 1.558, avg loss: 1.591
+    epoch: 9 step 1000, loss is 0.4469510316848755
+    Epoch time: 1875.093, per step time: 1.875, avg loss: 0.447
     ************************************************************
-    epoch: 10 step 1000, loss is 1.5414245128631592
-    Epoch time: 1456.539, per step time: 1.457, avg loss: 1.541
+    epoch: 10 step 1000, loss is 0.2915213108062744
+    Epoch time: 1876.605, per step time: 1.877, avg loss: 0.292
     ************************************************************
-    epoch: 11 step 1000, loss is 1.5789177417755127
-    Epoch time: 1591.151, per step time: 1.591, avg loss: 1.579
+    epoch: 11 step 1000, loss is 0.24928903579711914
+    Epoch time: 1910.094, per step time: 1.910, avg loss: 0.249
     ************************************************************
-    epoch: 12 step 1000, loss is 1.5879883766174316
-    Epoch time: 2011.590, per step time: 2.012, avg loss: 1.588
+    epoch: 12 step 1000, loss is 0.12853321433067322
+    Epoch time: 1974.167, per step time: 1.974, avg loss: 0.129
     ************************************************************
-    epoch: 13 step 1000, loss is 1.5823071002960205
-    Epoch time: 1663.497, per step time: 1.663, avg loss: 1.582
+    epoch: 13 step 1000, loss is 0.14836660027503967
+    Epoch time: 1841.105, per step time: 1.841, avg loss: 0.148
     ************************************************************
-    epoch: 14 step 1000, loss is 1.6213573217391968
-    Epoch time: 1914.475, per step time: 1.914, avg loss: 1.621
+    epoch: 14 step 1000, loss is 0.26581835746765137
+    Epoch time: 1694.728, per step time: 1.695, avg loss: 0.266
     ************************************************************
-    epoch: 15 step 1000, loss is 1.6282684803009033
-    Epoch time: 1921.290, per step time: 1.921, avg loss: 1.628
+    epoch: 15 step 1000, loss is 0.2012856900691986
+    Epoch time: 1937.829, per step time: 1.938, avg loss: 0.201
     ************************************************************
-    epoch: 16 step 1000, loss is 1.5011317729949951
-    Epoch time: 1899.634, per step time: 1.900, avg loss: 1.501
+    epoch: 16 step 1000, loss is 0.14978612959384918
+    Epoch time: 1793.748, per step time: 1.794, avg loss: 0.150
     ************************************************************
-    epoch: 17 step 1000, loss is 1.566664457321167
-    Epoch time: 1495.834, per step time: 1.496, avg loss: 1.567
+    epoch: 17 step 1000, loss is 0.3085048198699951
+    Epoch time: 1667.389, per step time: 1.667, avg loss: 0.309
     ************************************************************
-    epoch: 18 step 1000, loss is 1.552886724472046
-    Epoch time: 1449.513, per step time: 1.450, avg loss: 1.553
+    epoch: 18 step 1000, loss is 0.17254383862018585
+    Epoch time: 1558.955, per step time: 1.559, avg loss: 0.173
     ************************************************************
-    epoch: 19 step 1000, loss is 1.6042685508728027
-    Epoch time: 1721.564, per step time: 1.722, avg loss: 1.604
+    epoch: 19 step 1000, loss is 0.10585948824882507
+    Epoch time: 1567.354, per step time: 1.567, avg loss: 0.106
     ************************************************************
-    epoch: 20 step 1000, loss is 1.5174891948699951
-    Epoch time: 1633.871, per step time: 1.634, avg loss: 1.517
+    epoch: 20 step 1000, loss is 0.27113234996795654
+    Epoch time: 1589.239, per step time: 1.589, avg loss: 0.271
     ************************************************************
 
 #### 评估测试
@@ -374,7 +372,7 @@ metric = model.eval(ds_test)
 print(metric)
 ```
 
-    {'acc': 0.8715863453815261}
+    {'acc': 0.8862449799196788}
 
 #### 预测
 
@@ -384,22 +382,27 @@ test_ = ds_test.create_dict_iterator().get_next()
 test = Tensor(test_['x'], mindspore.float32)
 predictions = model.predict(test)
 predictions = predictions.asnumpy()
-for i in range(10):
+for i in range(15):
     p_np = predictions[i, :]
     p_list = p_np.tolist()
     print('第' + str(i) + '个sample预测结果：', p_list.index(max(p_list)), '   真实结果：', test_['y'][i])
 ```
 
-    第0个sample预测结果： 3    真实结果： 3
-    第1个sample预测结果： 2    真实结果： 2
-    第2个sample预测结果： 3    真实结果： 3
-    第3个sample预测结果： 9    真实结果： 9
+    第0个sample预测结果： 1    真实结果： 1
+    第1个sample预测结果： 0    真实结果： 0
+    第2个sample预测结果： 2    真实结果： 2
+    第3个sample预测结果： 2    真实结果： 2
     第4个sample预测结果： 8    真实结果： 8
     第5个sample预测结果： 4    真实结果： 4
     第6个sample预测结果： 4    真实结果： 4
-    第7个sample预测结果： 8    真实结果： 8
-    第8个sample预测结果： 3    真实结果： 3
-    第9个sample预测结果： 1    真实结果： 1
+    第7个sample预测结果： 1    真实结果： 1
+    第8个sample预测结果： 6    真实结果： 2
+    第9个sample预测结果： 8    真实结果： 8
+    第10个sample预测结果： 5    真实结果： 5
+    第11个sample预测结果： 8    真实结果： 0
+    第12个sample预测结果： 5    真实结果： 5
+    第13个sample预测结果： 6    真实结果： 6
+    第14个sample预测结果： 9    真实结果： 9
 
 #### 对预测结果可视化
 
@@ -471,29 +474,18 @@ args, unknown = parser.parse_known_args()
 
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
 
-- 方式一，拷贝自己账户下OBS桶内的数据集。
-    
-    ```python
-    import moxing
-    moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST/')
-    ```
+拷贝自己账户下OBS桶内的数据集。
 
-- 方式二，拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
-    
-    ```python
-    import moxing
-    # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                         server="obs.cn-north-4.myhuaweicloud.com")
-    # copy dataset from obs bucket to container/cache
-    moxing.file.copy_parallel(src_url="s3://share-course/dataset/fashion-mnist/", dst_url='Fashion-MNIST/')
-    ```
+```python
+import moxing
+moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST/')
+```
 
 如需将训练输出（如模型Checkpoint）从执行容器拷贝至OBS，请参考：
 
 ```python
-import moxing as mox
-mox.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)    
+import moxing
+moxing.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)   
 ```
 
 ### 创建训练作业
