@@ -1,7 +1,7 @@
-# 构建语义分割网络模型应用
+# 语义分割
  
 ## 实验介绍
-本实验主要介绍使用MindSpore深度学习框架在PASCAL VOC 2012数据集上训练deeplabv3网络模型。本实验参考MindSpore开源仓库model_zoo中的[deeplabv3 Example](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/deeplabv3) 模型案例。
+本实验主要介绍使用MindSpore深度学习框架在PASCAL VOC2012数据集上训练deeplabv3网络模型。本实验使用了MindSpore开源仓库model_zoo中的[deeplabv3](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/deeplabv3)模型案例。
 
 ## deeplabv3简要介绍
 deeplabv1和deeplabv2，即带孔卷积(atrous convolution), 能够明确地调整filters的感受野，并决定DNN计算得到特征的分辨率。
@@ -9,25 +9,25 @@ deeplabv3中提出 Atrous Spatial Pyramid Pooling(ASPP)模块, 挖掘不同尺�
 详细介绍参考论文：http://arxiv.org/abs/1706.05587 。
 
 ## 实验目的
-* 了解如何使用MindSpore加载常用的PASCAL VOC 2012数据集。
+* 了解如何使用MindSpore加载常用的PASCAL VOC2012数据集。
 * 了解MindSpore的model_zoo模块，以及如何使用model_zoo中的模型。
 * 了解deeplabv3这类语义分割模型的基本结构和编程方法。
 
 ## 预备知识
 * 熟练使用Python，了解Shell及Linux操作系统基本知识。
 * 具备一定的深度学习理论知识，如Encoder、Decoder、损失函数、优化器，训练策略、Checkpoint等。
-* 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html) 、[ModelArts（AI开发平台](https://www.huaweicloud.com/product/modelarts.html) 、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0046.html) 等功能。华为云官网：https://www.huaweicloud.com。
+* 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0046.html)等功能。华为云官网：https://www.huaweicloud.com。
 * 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn/。
 
 ## 实验环境
 * MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）。
-* 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。。
+* 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。。
 
 ## 实验准备
 ### 创建OBS桶
-本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html) 了解使用OBS创建桶、上传文件、下载文件的使用方法。当数据集大时，可以使用[OBS Browser+](https://support.huaweicloud.com/browsertg-obs/obs_03_1000.html) 。
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。当数据集较大时，可以使用[OBS Browser+](https://support.huaweicloud.com/browsertg-obs/obs_03_1000.html)。
 
-> 提示： 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以[参考获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html) 获取并配置访问密钥。
+> 提示： 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以[参考获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
 打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
 
@@ -40,24 +40,24 @@ deeplabv3中提出 Atrous Spatial Pyramid Pooling(ASPP)模块, 挖掘不同尺�
 * 企业项目、标签等配置：免
 
 ## 数据集准备
-[Pascal VOC2012数据集](https://blog.csdn.net/haoji007/article/details/80361587) 主要是针对视觉任务中监督学习提供标签数据，它有二十个类别。主要有四个大类别，分别是人、常见动物、交通车辆、室内家具用品。这里只说与图像分割（segmentation）有关的信息,本用例使用已去除分割标注的颜色，仅保留了分割任务的数据集。VOC2012[官网地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html) ，[官方下载地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar) 。
+[Pascal VOC2012数据集](https://blog.csdn.net/haoji007/article/details/80361587)主要是针对视觉任务中监督学习提供标签数据，它有二十个类别。主要有四个大类别，分别是人、常见动物、交通车辆、室内家具用品。这里只说与图像分割（segmentation）有关的信息,本用例使用已去除分割标注的颜色，仅保留了分割任务的数据集。VOC2012[官网地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html)，[官方下载地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar)。
 
 本实验指导的数据集可通过如下方式获取：
-* 方式一：针对教学使用的[实验指导](https://gitee.com/mindspore/course)和 [模型案例](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo) ，为了节省下载和处理数据集的时间，我们提前准备好了数据集,可直接通过上述的[华为云OBS](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/voc2012.zip) （已去除分割标注的颜色，仅保留了分割任务的数据）获取。
-* 方式二：使用moxing接口拷贝数据集，即在ModelArts上使用moxing的拷贝功能直接拷贝共享的数据集到执行容器中：
+* 方式一，针对本实验和[模型案例](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo)，为了节省下载和处理数据集的时间，我们提前准备好了数据集，从华为云OBS中下载[VOC2012数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/voc2012.zip)（已去除分割标注的颜色，仅保留了分割任务的数据）并解压。
+* 方式二，参考[checkpoint（模型的保存和加载）](../checkpoint)实验，拷贝他人共享的OBS桶中的数据集。
     ```
     import moxing
-    # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
     moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB', server="obs.cn-north-4.myhuaweicloud.com")
-    
-    # copy dataset from obs to container/cache
-    moxing.file.copy_parallel(src_url="s3://share-course/dataset/voc2012/", dst_url='/cache/data_path')
+    moxing.file.copy_parallel(src_url="s3://share-course/dataset/voc2012/", dst_url='voc2012/')
     ```
-    
-另外，本实验采用fine-tune的训练方式，为了节省训练时间，我们提前准备好了预训练的[checkpoint文件](https://share-course.obs.myhuaweicloud.com/checkpoint/deeplabv3/deeplabv3_train_14-1_1.ckpt) ,方便直接获取使用。
+* 方式三，从官网下载数据集并进行数据集预处理：
+    - [去除数据集分割标注的颜色](https://github.com/tensorflow/models/blob/master/research/deeplab/datasets/remove_gt_colormap.py)；
+    - 通过数据集中的`VOCdevkit/VOC2012/ImageSets/Segmentation/train.txt, VOCdevkit/VOC2012/ImageSets/Segmentation/train.txt`过滤得到图像分割任务的训练集和验证集。
+
+另外，本实验采用fine-tune的训练方式，为了节省训练时间，我们提前准备好了预训练的[checkpoint文件](https://share-course.obs.myhuaweicloud.com/checkpoint/deeplabv3/deeplabv3_train_14-1_1.ckpt)，方便直接获取使用。
 
 ## 脚本准备
-从MindSpore开源仓库model_zoo中下载[deeplabv3模型案例](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/deeplabv3) 。从[课程gitee仓库](https://gitee.com/mindspore/course) 中下载相关执行脚本。
+从MindSpore开源仓库model_zoo中下载[deeplabv3模型案例](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/deeplabv3)。从[课程gitee仓库](https://gitee.com/mindspore/course)中下载相关执行脚本。
 
 ## 上传文件
 点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，可参考如下组织形式：
@@ -170,7 +170,6 @@ class LossCallBack(Callback):
         cb_params = run_context.original_args()
         print("epoch: {}, step: {}, outputs are {}".format(cb_params.cur_epoch_num, cb_params.cur_step_num,
                                                            str(cb_params.net_outputs)))
-
 ```
 
 定义model_fine_tune函数，用于对网络模型进行微调：
@@ -208,7 +207,6 @@ class LossCallBack(Callback):
     opt = Momentum(filter(lambda x: 'beta' not in x.name and 'gamma' not in x.name and 'depth' not in x.name and 'bias' not in x.name, net.trainable_params()), learning_rate=config.learning_rate, momentum=config.momentum, weight_decay=config.weight_decay)
     model = Model(net, loss, opt)
     model.train(config.epoch_size, train_dataset, callback)
-
 ```
 >提示：训练过程中，可通过修改上述示例代码路径下的deeplabv3_example/deeplabv3/src/config.py文件的相关参数来提升训练精度，本实验指导采用默认配置。
 
@@ -272,7 +270,6 @@ class MiouPrecision(Metric):
         mIoU = np.nanmean(self._mIoU)
         print('mIoU = {}'.format(mIoU))
         return mIoU
-
 ```
 
 模型完整推理过程：
@@ -298,6 +295,7 @@ eval_dataset = create_dataset(args_opt, data_path, config.epoch_size, config.bat
 mIoU = 0.6148479926928656
 ```
 
+### 适配训练作业
 由于ModelArts创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本需对传参进行解析后赋值到args_opt变量里，在后续代码里可以使用。
 ```python
 parser = argparse.ArgumentParser(description="deeplabv3 training")
@@ -306,29 +304,30 @@ parser.add_argument('--data_url', required=True, default=None, help='Train data 
 parser.add_argument('--train_url', required=True, default=None, help='Train data output url')
 parser.add_argument('--checkpoint_url', default=None, help='Checkpoint path')
 args_opt = parser.parse_args()
-
 ```
 
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器,可参考本实验：
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS中存储的数据集和Checkpoint拷贝至执行容器：
 ```python
 import moxing as mox
 mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='voc2012/')
 mox.file.copy_parallel(src_url=args_opt.checkpoint_url, dst_url='checkpoint/')
 ```
-模型训练使用的是拷贝至当前执行容器路径下的相应文件：
+模型训练使用的是拷贝至执行容器中的数据集和Checkpoint：
 ```python
 data_path = "./voc2012"
 train_checkpoint_path = "./checkpoint/deeplabv3_train_14-1_1.ckpt" #预训练的ckpt
 ```
 
->提示：如若需将训练输出（如模型Checkpoint文件）从执行容器拷贝至OBS，请参考：
->```python
->import moxing
-># dst_url形如's3://OBS/PATH'，将ckpt目录拷贝至OBS后，可在OBS的`args_opt.train_url`目录下看到ckpt目录
->moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args_opt.train_url, 'ckpt'))
->```
+如需将训练输出（如模型Checkpoint文件）从执行容器拷贝至OBS，请参考：
 
-## 创建训练作业
+```python
+import moxing
+# dst_url形如's3://OBS/PATH'，将Checkpoint拷贝至OBS后，可在OBS的`args_opt.train_url`目录下看到Checkpoint
+moxing.file.copy_parallel(src_url='checkpoint_deeplabv3-6_732.ckpt',
+                          dst_url=os.path.join(args_opt.train_url, 'checkpoint_deeplabv3-6_732.ckpt'))
+```
+
+### 创建训练作业
 可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
 打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
@@ -347,25 +346,14 @@ train_checkpoint_path = "./checkpoint/deeplabv3_train_14-1_1.ckpt" #预训练的
 1. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理。
 2. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看。
 
-> 提示：ModelArts提供了[PyCharm ToolKit工具](https://support.huaweicloud.com/tg-modelarts/modelarts_15_0003.html) ，方便基于MindSpore框架的脚本开发和调试；
+> 提示：ModelArts提供了[PyCharm ToolKit工具](https://support.huaweicloud.com/tg-modelarts/modelarts_15_0003.html)，方便基于MindSpore框架的脚本开发和调试；
 > 在使用PyCharm ToolKit工具进行传参训练时，注意参数key-value的书写格式，如本实验设置：checkpoint_url=s3://ms-course(桶名称)/deeplabv3_example/checkpoint/ 。
-> 或者可用ModelArts下的开发环境[Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html) 进行基于MindSpore框架的脚本开发和调试。
+> 或者可用ModelArts下的开发环境[Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)进行基于MindSpore框架的脚本开发和调试。
 
 ## 实验结论
-本实验主要介绍使用MindSpore在voc2012数据集上训练和推理deeplabv3网络模型，了解以下知识点：
-* 加载VOC2012数据集并进行相关数据增强等预处理操作；
+本实验主要介绍使用MindSpore在VOC2012数据集上训练和推理deeplabv3网络模型，包含以下知识点：
+* 加载VOC2012数据集并进行数据处理；
 * 了解deeplabv3网络模型结构及其在MindSpore框架下的实现；
 * 使用fine-tune功能对模型进行微调；
 * 使用自定义Callback实现性能监测；
 * 使用自定义的Miou指标进行模型推理性能评估。
-
-
-
-
-
-
-
-
-
-
-
