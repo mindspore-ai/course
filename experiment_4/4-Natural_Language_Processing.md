@@ -27,7 +27,7 @@ BERT模型包含由不同隐含层数（number hidden layers）和隐含层单�
 ## 实验环境
 
 - MindSpore 0.2.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
-- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
+- 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
 
@@ -224,7 +224,7 @@ parser.add_argument('--num_epochs', type=int, default=1, help='Number of trainin
 args, unknown = parser.parse_known_args()
 ```
 
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
 
 ```python
 import moxing as mox

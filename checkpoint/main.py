@@ -138,33 +138,40 @@ if __name__ == "__main__":
     parser.add_argument('--train_url', required=False, default=None, help='Location of training outputs.')
     args, unknown = parser.parse_known_args()
 
+    COPY_OTHER = False
     if args.data_url.startswith('s3'):
         import moxing
 
-        # WAY1: copy dataset from your own OBS bucket.
-        # moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST')
+        # WAY1: copy dataset from your own OBS bucket to container/cache.
+        moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
 
         # WAY2: copy dataset from other's OBS bucket, which has been set public read or public read&write.
-        # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-        moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                             server="obs.cn-north-4.myhuaweicloud.com")
-        # copy dataset from obs bucket to container/cache
-        moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+        # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket;
+        # moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
+        #                      server="obs.cn-north-4.myhuaweicloud.com")
+        # moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+        # COPY_OTHER = True
 
-        args.data_url = 'MNIST'
+        data_path = 'MNIST'
+    else:
+        data_path = os.path.abspath(args.data_url)
 
     # 请先删除旧的checkpoint目录`ckpt`
-    train(args.data_url)
+    train(data_path)
     print('Checkpoints after first training:')
     print('\n'.join(sorted([x for x in os.listdir('ckpt') if x.startswith('lenet')])))
 
-    resume_train(args.data_url)
+    resume_train(data_path)
     print('Checkpoints after resuming training:')
     print('\n'.join(sorted([x for x in os.listdir('ckpt') if x.startswith('lenet')])))
 
-    infer(args.data_url)
+    infer(data_path)
     if args.data_url.startswith('s3'):
         import moxing
         # 将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
+        if COPY_OTHER:
+            raise Exception('='*10, 'Set your Access Key below and remove this line', '='*10)
+            moxing.file.set_auth(ak='Your own Access Key', sk='Your own Secret Access Key',
+                                 server="obs.cn-north-4.myhuaweicloud.com")
         moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
         print('Copied checkpoints from ./ckpt to %s' % os.path.join(args.train_url, 'ckpt'))

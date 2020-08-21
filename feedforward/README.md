@@ -1,4 +1,4 @@
-# 前馈网络
+# 前馈神经网络
 
 ## 实验介绍
 
@@ -20,7 +20,7 @@
 ## 实验环境
 
 - MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
-- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
+- 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
 
@@ -472,12 +472,11 @@ parser.add_argument('--train_url', required=True, default=None, help='Location o
 args, unknown = parser.parse_known_args()
 ```
 
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
-
-拷贝自己账户下OBS桶内的数据集。
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
 
 ```python
 import moxing
+# src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
 moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST/')
 ```
 
@@ -485,6 +484,7 @@ moxing.file.copy_parallel(src_url=args.data_url, dst_url='Fashion-MNIST/')
 
 ```python
 import moxing
+# src_url为执行容器中的路径，dst_url形如's3://OBS/PATH'，目录若不存在则会新建
 moxing.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)   
 ```
 

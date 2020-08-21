@@ -2,7 +2,7 @@
 
 ## 实验介绍
 
-LeNet5 + MINST被誉为深度学习领域的“Hello world”。本实验主要介绍使用MindSpore在MNIST数据集上开发和训练一个LeNet5模型，并验证模型精度。
+LeNet5 + MNIST被誉为深度学习领域的“Hello world”。本实验主要介绍使用MindSpore在MNIST手写数字数据集上开发和训练一个LeNet5模型，并验证模型精度。
 
 ## 实验目的
 
@@ -20,7 +20,7 @@ LeNet5 + MINST被誉为深度学习领域的“Hello world”。本实验主要�
 ## 实验环境
 
 - MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
-- 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore；
+- 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore；
 - Windows/Ubuntu x64笔记本，NVIDIA GPU服务器，或Atlas Ascend服务器等。
 
 ## 实验准备
@@ -141,6 +141,7 @@ def create_dataset(data_dir, training=True, batch_size=32, resize=(32, 32),
 对其中几张图片进行可视化，可以看到图片中的手写数字，图片的大小为32x32。
 
 ```python
+import matplotlib.pyplot as plt
 ds = create_dataset('MNIST', training=False)
 data = ds.create_dict_iterator().get_next()
 images = data['image']
@@ -251,12 +252,13 @@ parser.add_argument('--train_url', required=True, default=None, help='Location o
 args, unknown = parser.parse_known_args()
 ```
 
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
 
 - 方式一，拷贝自己账户下OBS桶内的数据集。
     
     ```python
     import moxing
+    # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
     moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
     ```
 
@@ -264,20 +266,11 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing�
     
     ```python
     import moxing
-    # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+    # 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
     moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
                          server="obs.cn-north-4.myhuaweicloud.com")
-    # copy dataset from obs bucket to container/cache
     moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
     ```
-
-如需将训练输出（如模型Checkpoint）从执行容器拷贝至OBS，请参考：
-
-```python
-import moxing
-# dst_url形如's3://OBS/PATH'，将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
-moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
-```
 
 ### 创建训练作业
 
