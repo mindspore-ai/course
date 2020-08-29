@@ -14,17 +14,13 @@ RNN是一个包含大量重复神经网络模块的链式形式，在标准RNN�
 
 ![LSTM1](./images/LSTM1.png)
 
-​													**标准RNN中只包含单个tanh层的重复模块**
-
 LSTM也有与之相似的链式结构，但不同的是它的重复模块结构不同，是4个以特殊方式进行交互的神经网络。
 
 ![LSTM2](./images/LSTM2.png)
 
-​																				**LSTM示意图**
-
 这里我们先来看看图中的这些符号：
 
-![LSTM3](./IMAGES/LSTM3.png)
+![LSTM3](./images/LSTM3.png)
 
 在示意图中，从某个节点的输出到其他节点的输入，每条线都传递一个完整的向量。粉色圆圈表示pointwise操作，如节点求和，而黄色框则表示用于学习的神经网络层。合并的两条线表示连接，分开的两条线表示信息被复制成两个副本，并将传递到不同的位置。
 
@@ -66,19 +62,10 @@ sigmoid层输出0到1之间的数字，点乘操作决定多少信息可以传�
 
 ### 数据集介绍
 
-IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次实验用到的数据集是这个网站中的一些用户评论。IMDB数据集共包含50000项影评文字，训练数据和测试数据各25000项，每一项影评文字都被标记为正面评价或负面评价，所ff以本实验可以看做一个二分类问题。
+IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次实验用到的数据集是这个网站中的一些用户评论。IMDB数据集共包含50000项影评文字，训练数据和测试数据各25000项，每一项影评文字都被标记为正面评价或负面评价，所以本实验可以看做一个二分类问题。IMDB数据集官网：[Large Movie Review Dataset](http://ai.stanford.edu/~amaas/data/sentiment/)。
 
-l 从华为云对象存储服务（OBS）获取
-
-华为云开通了相应的数据存储服务OBS可直接通过链接进行数据集下载。
-
-[数据集链接]: https://obs-deeplearning.obs.cn-north-1.myhuaweicloud.com/obs-80d2/aclImdb_v1.tar.gz
-
-l 从斯坦福大学网站获取
-
-[数据集链接]: http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz
-
-
+- 方式一，从斯坦福大学官网下载[aclImdb_v1.tar.gz](http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz)并解压。
+- 方式二，从华为云OBS中下载[aclImdb_v1.tar.gz](https://obs-deeplearning.obs.cn-north-1.myhuaweicloud.com/obs-80d2/aclImdb_v1.tar.gz)并解压。
 
 ## 实验目的
 
