@@ -1,8 +1,5 @@
 import os
-import shutil
-import math
 import argparse
-import json
 from itertools import chain
 import numpy as np
 from config import lstm_cfg as cfg
@@ -12,10 +9,9 @@ import mindspore.context as context
 import mindspore.dataset as ds
 from mindspore.ops import operations as P
 from mindspore import Tensor
-from mindspore.common.initializer import initializer
-from mindspore.common.parameter import Parameter
 from mindspore.mindrecord import FileWriter
 from mindspore.train import Model
+from mindspore.train.callback import Callback
 from mindspore.nn.metrics import Accuracy
 from mindspore.train.serialization import load_checkpoint, load_param_into_net
 from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor, TimeMonitor
@@ -119,7 +115,7 @@ class ImdbParser():
             encoded_features.append(encoded_sentence)
         self.__features[seg] = encoded_features
 
-    def __padding_features(self, seg, maxlen=500, pad=0):
+    def __padding_features(self, seg, maxlen=200, pad=0):
         """ pad all features to the same length """
         padded_features = []
         for feature in self.__features[seg]:
@@ -287,10 +283,26 @@ class SentimentNet(nn.Cell):
         embeddings = self.trans(embeddings, self.perm)
         output, _ = self.encoder(embeddings, (self.h, self.c))
         # states[i] size(64,200)  -> encoding.size(64,400)
-        encoding = self.concat((output[0], output[499]))
+        encoding = self.concat((output[0], output[199]))
         outputs = self.decoder(encoding)
         return outputs
 
+
+class EvalCallBack(Callback):
+    def __init__(self, model, eval_dataset, eval_per_epoch, epoch_per_eval):
+        self.model = model
+        self.eval_dataset = eval_dataset
+        self.eval_per_epoch = eval_per_epoch
+        self.epoch_per_eval = epoch_per_eval
+
+    def epoch_end(self, run_context):
+        cb_param = run_context.original_args()
+        cur_epoch = cb_param.cur_epoch_num
+        if cur_epoch % self.eval_per_epoch == 0:
+            acc = self.model.eval(self.eval_dataset, dataset_sink_mode=False)
+            self.epoch_per_eval["epoch"].append(cur_epoch)
+            self.epoch_per_eval["acc"].append(acc["acc"])
+            print(acc)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MindSpore LSTM Example')
@@ -310,10 +322,7 @@ if __name__ == '__main__':
                         help='the target device to run, support "GPU", "CPU". Default: "GPU".')
     args = parser.parse_args(['--device_target', 'CPU', '--preprocess', 'true'])
 
-    context.set_context(
-        mode=context.GRAPH_MODE,
-        save_graphs=False,
-        device_target=args.device_target)
+    context.set_context(mode=context.GRAPH_MODE, save_graphs=False, device_target=args.device_target)
 
     if args.preprocess == "true":
         print("============== Starting Data Pre-processing ==============")
@@ -321,6 +330,7 @@ if __name__ == '__main__':
         print("======================= Successful =======================")
 
     ds_train = lstm_create_dataset(args.preprocess_path, cfg.batch_size)
+    ds_eval = lstm_create_dataset(args.preprocess_path, cfg.batch_size, training=False)
 
     iterator = ds_train.create_dict_iterator().get_next()
     first_batch_label = iterator["label"]
@@ -344,23 +354,16 @@ if __name__ == '__main__':
     model = Model(network, loss, opt, {'acc': Accuracy()})
 
     print("============== Starting Training ==============")
-    config_ck = CheckpointConfig(save_checkpoint_steps=cfg.save_checkpoint_steps,
+    config_ck = CheckpointConfig(save_checkpoint_steps=ds_train.get_dataset_size(),
                                  keep_checkpoint_max=cfg.keep_checkpoint_max)
     ckpoint_cb = ModelCheckpoint(prefix="lstm", directory=args.ckpt_path, config=config_ck)
     time_cb = TimeMonitor(data_size=ds_train.get_dataset_size())
     if args.device_target == "CPU":
-        model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb], dataset_sink_mode=False)
+        epoch_per_eval = {"epoch": [], "acc": []}
+        eval_cb = EvalCallBack(model, ds_eval, 1, epoch_per_eval)
+        model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb, eval_cb], dataset_sink_mode=False)
     else:
-        model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb])
+        epoch_per_eval = {"epoch": [], "acc": []}
+        eval_cb = EvalCallBack(model, ds_eval, 1, epoch_per_eval)
+        model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb, eval_cb])
     print("============== Training Success ==============")
-
-    args.ckpt_path = f'./lstm-{cfg.num_epochs}_390.ckpt'
-    print("============== Starting Testing ==============")
-    ds_eval = lstm_create_dataset(args.preprocess_path, cfg.batch_size, training=False)
-    param_dict = load_checkpoint(args.ckpt_path)
-    load_param_into_net(network, param_dict)
-    if args.device_target == "CPU":
-        acc = model.eval(ds_eval, dataset_sink_mode=False)
-    else:
-        acc = model.eval(ds_eval)
-    print("============== {} ==============".format(acc))

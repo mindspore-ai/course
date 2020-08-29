@@ -14,17 +14,13 @@ RNN是一个包含大量重复神经网络模块的链式形式，在标准RNN�
 
 ![LSTM1](./images/LSTM1.png)
 
-​													**标准RNN中只包含单个tanh层的重复模块**
-
 LSTM也有与之相似的链式结构，但不同的是它的重复模块结构不同，是4个以特殊方式进行交互的神经网络。
 
 ![LSTM2](./images/LSTM2.png)
 
-​																				**LSTM示意图**
-
 这里我们先来看看图中的这些符号：
 
-![LSTM3](./IMAGES/LSTM3.png)
+![LSTM3](./images/LSTM3.png)
 
 在示意图中，从某个节点的输出到其他节点的输入，每条线都传递一个完整的向量。粉色圆圈表示pointwise操作，如节点求和，而黄色框则表示用于学习的神经网络层。合并的两条线表示连接，分开的两条线表示信息被复制成两个副本，并将传递到不同的位置。
 
@@ -66,19 +62,10 @@ sigmoid层输出0到1之间的数字，点乘操作决定多少信息可以传�
 
 ### 数据集介绍
 
-IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次实验用到的数据集是这个网站中的一些用户评论。IMDB数据集共包含50000项影评文字，训练数据和测试数据各25000项，每一项影评文字都被标记为正面评价或负面评价，所ff以本实验可以看做一个二分类问题。
+IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次实验用到的数据集是这个网站中的一些用户评论。IMDB数据集共包含50000项影评文字，训练数据和测试数据各25000项，每一项影评文字都被标记为正面评价或负面评价，所以本实验可以看做一个二分类问题。IMDB数据集官网：[Large Movie Review Dataset](http://ai.stanford.edu/~amaas/data/sentiment/)。
 
-l 从华为云对象存储服务（OBS）获取
-
-华为云开通了相应的数据存储服务OBS可直接通过链接进行数据集下载。
-
-[数据集链接]: https://obs-deeplearning.obs.cn-north-1.myhuaweicloud.com/obs-80d2/aclImdb_v1.tar.gz
-
-l 从斯坦福大学网站获取
-
-[数据集链接]: http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz
-
-
+- 方式一，从斯坦福大学官网下载[aclImdb_v1.tar.gz](http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz)并解压。
+- 方式二，从华为云OBS中下载[aclImdb_v1.tar.gz](https://obs-deeplearning.obs.cn-north-1.myhuaweicloud.com/obs-80d2/aclImdb_v1.tar.gz)并解压。
 
 ## 实验目的
 
@@ -101,7 +88,7 @@ l 从斯坦福大学网站获取
 
 ### 数据集准备
 
-采用[IMDB影评数据集](http://ai.stanford.edu/~amaas/data/sentiment/)作为实验数据。同时，我们要下载[GloVe](http://nlp.stanford.edu/data/glove.6B.zip)文件，并在文件glove.6B.300d.txt开头处添加新的一行400000	300，意思是总共读取400000个单词，每个单词用300纬度的词向量表示。
+采用[IMDB影评数据集](http://ai.stanford.edu/~amaas/data/sentiment/)作为实验数据。同时，我们要下载[GloVe](http://nlp.stanford.edu/data/glove.6B.zip)文件，并在文件glove.6B.200d.txt开头处添加新的一行400000	200，意思是总共读取400000个单词，每个单词用200维度的词向量表示。
 
 ### 确定评价标准
 
@@ -155,29 +142,23 @@ experiment
 导入MindSpore模块和辅助模块:
 
 ```python
-import os
-import shutil
-import math
 import argparse
-import json
+import os
 from itertools import chain
 import numpy as np
-from config import lstm_cfg as cfg
-
-import mindspore.nn as nn
-import mindspore.context as context
-import mindspore.dataset as ds
-from mindspore.ops import operations as P
-from mindspore import Tensor
-from mindspore.common.initializer import initializer
-from mindspore.common.parameter import Parameter
-from mindspore.mindrecord import FileWriter
-from mindspore.train import Model
-from mindspore.nn.metrics import Accuracy
-from mindspore.train.serialization import load_checkpoint, load_param_into_net
-from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor, TimeMonitor
-# Install gensim with 'pip install gensim'
 import gensim
+
+from easydict import EasyDict as edict
+
+from mindspore import Model
+import mindspore.dataset as ds
+from mindspore.nn import Accuracy
+from mindspore import Tensor, nn, context
+from mindspore.train.callback import Callback
+from mindspore.ops import operations as P
+from mindspore.mindrecord import FileWriter
+from mindspore.train.serialization import load_checkpoint, load_param_into_net
+from mindspore.train.callback import CheckpointConfig, ModelCheckpoint, TimeMonitor, LossMonitor
 ```
 
 ### 预处理数据集
@@ -282,7 +263,7 @@ class ImdbParser():
             encoded_features.append(encoded_sentence)
         self.__features[seg] = encoded_features
 
-    def __padding_features(self, seg, maxlen=500, pad=0):
+    def __padding_features(self, seg, maxlen=200, pad=0):
         """ pad all features to the same length """
         padded_features = []
         for feature in self.__features[seg]:
@@ -374,7 +355,7 @@ def convert_to_mindrecord(embed_size, aclimdb_path, preprocess_path, glove_path)
     _convert_to_mindrecord(preprocess_path, test_features, test_labels, training=False)
 ```
 
-定义创建数据集函数`lstm_create_dataset`，创建训练集`ds_train`。
+定义创建数据集函数`lstm_create_dataset`，创建训练集`ds_train`和验证集`ds_eval`。
 
 ```python
 def lstm_create_dataset(data_home, batch_size, repeat_num=1, training=True):
@@ -392,6 +373,9 @@ def lstm_create_dataset(data_home, batch_size, repeat_num=1, training=True):
     data_set = data_set.repeat(count=repeat_num)
 
     return data_set
+
+ds_train = lstm_create_dataset(args.preprocess_path, cfg.batch_size)
+ds_eval = lstm_create_dataset(args.preprocess_path, cfg.batch_size, training=False)
 ```
 
 ### 定义网络
@@ -399,6 +383,7 @@ def lstm_create_dataset(data_home, batch_size, repeat_num=1, training=True):
 定义`lstm_default_state`函数来初始化网络参数及网络状态。
 
 ```python
+# Initialize short-term memory (h) and long-term memory (c) to 0
 def lstm_default_state(batch_size, hidden_size, num_layers, bidirectional):
     """init default input."""
     num_directions = 1
@@ -431,6 +416,7 @@ def lstm_default_state(batch_size, hidden_size, num_layers, bidirectional):
 ```python
 class SentimentNet(nn.Cell):
     """Sentiment network structure."""
+
     def __init__(self,
                  vocab_size,
                  embed_size,
@@ -441,6 +427,7 @@ class SentimentNet(nn.Cell):
                  weight,
                  batch_size):
         super(SentimentNet, self).__init__()
+        # Mapp words to vectors
         self.embedding = nn.Embedding(vocab_size,
                                       embed_size,
                                       embedding_table=weight)
@@ -463,14 +450,36 @@ class SentimentNet(nn.Cell):
             self.decoder = nn.Dense(num_hiddens * 2, num_classes)
 
     def construct(self, inputs):
-        # (64,500,300)
+        # input：(64,500,300)
         embeddings = self.embedding(inputs)
         embeddings = self.trans(embeddings, self.perm)
         output, _ = self.encoder(embeddings, (self.h, self.c))
         # states[i] size(64,200)  -> encoding.size(64,400)
-        encoding = self.concat((output[0], output[1]))
+        encoding = self.concat((output[0], output[199]))
         outputs = self.decoder(encoding)
         return outputs
+```
+
+### 定义回调函数
+
+定义回调函数EvalCallBack，采用一边训练的同时，在相隔固定epoch的位置对模型进行精度验证，等训练完毕后，通过查看对应模型精度的变化就能迅速地挑选出相对最优的模型，实现同步进行训练和验证。
+
+```python
+class EvalCallBack(Callback):
+    def __init__(self, model, eval_dataset, eval_per_epoch, epoch_per_eval):
+        self.model = model
+        self.eval_dataset = eval_dataset
+        self.eval_per_epoch = eval_per_epoch
+        self.epoch_per_eval = epoch_per_eval
+        
+    def epoch_end(self, run_context):
+        cb_param = run_context.original_args()
+        cur_epoch = cb_param.cur_epoch_num
+        if cur_epoch % self.eval_per_epoch == 0:
+            acc = self.model.eval(self.eval_dataset, dataset_sink_mode=False)
+            self.epoch_per_eval["epoch"].append(cur_epoch)
+            self.epoch_per_eval["acc"].append(acc["acc"])
+            print(acc)
 ```
 
 ### 配置运行信息
@@ -486,45 +495,39 @@ class SentimentNet(nn.Cell):
 - device_target：指定GPU或CPU环境。
 
 ```python
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='MindSpore LSTM Example')
-    parser.add_argument('--preprocess', type=str, default='true', choices=['true', 'false'],
-                        help='whether to preprocess data.')
-    parser.add_argument('--aclimdb_path', type=str, default="./aclImdb",
-                        help='path where the dataset is stored.')
-    parser.add_argument('--glove_path', type=str, default="./glove",
-                        help='path where the GloVe is stored.')
-    parser.add_argument('--preprocess_path', type=str, default="./preprocess",
-                        help='path where the pre-process data is stored.')
-    parser.add_argument('--ckpt_path', type=str, default="./",
-                        help='the path to save the checkpoint file.')
-    parser.add_argument('--pre_trained', type=str, default=None,
-                        help='the pretrained checkpoint file path.')
-    parser.add_argument('--device_target', type=str, default="GPU", choices=['GPU', 'CPU'],
-                        help='the target device to run, support "GPU", "CPU". Default: "GPU".')
-    args = parser.parse_args(['--device_target', 'CPU', '--preprocess', 'true'])
+parser = argparse.ArgumentParser(description='MindSpore LSTM Example')
+parser.add_argument('--preprocess', type=str, default='false', choices=['true', 'false'],			help='whether to preprocess data.')
+parser.add_argument('--aclimdb_path', type=str, default="./aclImdb",
+                    help='path where the dataset is stored.')
+parser.add_argument('--glove_path', type=str, default="./glove",
+                    help='path where the GloVe is stored.')
+parser.add_argument('--preprocess_path', type=str, default="./preprocess",
+                    help='path where the pre-process data is stored.')
+parser.add_argument('--ckpt_path', type=str, default="./",
+                    help='the path to save the checkpoint file.')
+parser.add_argument('--pre_trained', type=str, default=None,
+                    help='the pretrained checkpoint file path.')
+parser.add_argument('--device_target', type=str, default="GPU", choices=['GPU', 'CPU'],
+                    help='the target device to run, support "GPU", "CPU". Default: "GPU".')
+args = parser.parse_args(['--device_target', 'CPU', '--preprocess', 'true'])
 
-    context.set_context(
-        mode=context.GRAPH_MODE,
-        save_graphs=False,
-        device_target=args.device_target)
+context.set_context(mode=context.GRAPH_MODE, save_graphs=False, device_target=args.device_target)
 
-    if args.preprocess == "true":
-        print("============== Starting Data Pre-processing ==============")
-        convert_to_mindrecord(cfg.embed_size, args.aclimdb_path, args.preprocess_path, args.glove_path)
-        print("======================= Successful =======================")
-        
-    ds_train = lstm_create_dataset(args.preprocess_path, cfg.batch_size)
-	#实例化SentimentNet，创建网络。
-    embedding_table = np.loadtxt(os.path.join(args.preprocess_path, "weight.txt")).astype(np.float32)
-    network = SentimentNet(vocab_size=embedding_table.shape[0],
-                           embed_size=cfg.embed_size,
-                           num_hiddens=cfg.num_hiddens,
-                           num_layers=cfg.num_layers,
-                           bidirectional=cfg.bidirectional,
-                           num_classes=cfg.num_classes,
-                           weight=Tensor(embedding_table),
-                           batch_size=cfg.batch_size)
+if args.preprocess == "true":
+    print("============== Starting Data Pre-processing ==============")
+    convert_to_mindrecord(cfg.embed_size, args.aclimdb_path, args.preprocess_path, args.glove_path)
+    print("======================= Successful =======================")
+    
+#实例化SentimentNet，创建网络。
+embedding_table = np.loadtxt(os.path.join(args.preprocess_path, "weight.txt")).astype(np.float32)
+network = SentimentNet(vocab_size=embedding_table.shape[0],
+                       embed_size=cfg.embed_size,
+                       num_hiddens=cfg.num_hiddens,
+                       num_layers=cfg.num_layers,
+                       bidirectional=cfg.bidirectional,
+                       num_classes=cfg.num_classes,
+                       weight=Tensor(embedding_table),
+                       batch_size=cfg.batch_size)
 ```
 
 通过`create_dict_iterator`方法创建字典迭代器，读取已创建的数据集`ds_train`中的数据。
@@ -542,27 +545,32 @@ print(f"The feature of the first item in the first batch is below vector:\n{firs
 ### 定义优化器及损失函数
 
 ```python
-    loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True)
-    opt = nn.Momentum(network.trainable_params(), cfg.learning_rate, cfg.momentum)
-    loss_cb = LossMonitor()
+loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True)
+opt = nn.Momentum(network.trainable_params(), cfg.learning_rate, cfg.momentum)
+loss_cb = LossMonitor()
 ```
 
-### 训练并保存模型
+### 同步训练并验证模型
 
 加载训练数据集（`ds_train`）并配置好`CheckPoint`生成信息，然后使用`model.train`接口，进行模型训练，此步骤在GPU上训练用时约7分钟。CPU上需更久；根据输出可以看到loss值随着训练逐步降低，最后达到0.262左右。
 
 ```python
-	model = Model(network, loss, opt, {'acc': Accuracy()})
-    print("============== Starting Training ==============")
-    config_ck = CheckpointConfig(save_checkpoint_steps=cfg.save_checkpoint_steps,
-                                 keep_checkpoint_max=cfg.keep_checkpoint_max)
-    ckpoint_cb = ModelCheckpoint(prefix="lstm", directory=args.ckpt_path, config=config_ck)
-    time_cb = TimeMonitor(data_size=ds_train.get_dataset_size())
-    if args.device_target == "CPU":
-        model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb], dataset_sink_mode=False)
-    else:
-        model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb])
-    print("============== Training Success ==============")
+model = Model(network, loss, opt, {'acc': Accuracy()})
+print("============== Starting Training ==============")
+config_ck = CheckpointConfig(save_checkpoint_steps=ds_train.get_dataset_size(),
+                             keep_checkpoint_max=cfg.keep_checkpoint_max)
+ckpoint_cb = ModelCheckpoint(prefix="lstm", directory=args.ckpt_path,
+                             config=config_ck)
+time_cb = TimeMonitor(data_size=ds_train.get_dataset_size())
+if args.device_target == "CPU":
+    epoch_per_eval = {"epoch": [], "acc": []}
+    eval_cb = EvalCallBack(model, ds_eval, 1, epoch_per_eval)
+    model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb, eval_cb], dataset_sink_mode=False)
+else:
+    epoch_per_eval = {"epoch": [], "acc": []}
+    eval_cb = EvalCallBack(model, ds_eval, 1, epoch_per_eval)
+    model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb, eval_cb])
+print("============== Training Success ==============")
 ```
 
 ```
@@ -577,49 +585,25 @@ epoch: 1 step: 7, loss is 0.6856
 epoch: 1 step: 8, loss is 0.6819
 epoch: 1 step: 9, loss is 0.7372
 epoch: 1 step: 10, loss is 0.6948
-
 ...
-epoch: 10 step: 380, loss is 0.3090
-epoch: 10 step: 381, loss is 0.2692
-epoch: 10 step: 382, loss is 0.3088
-epoch: 10 step: 383, loss is 0.2008
-epoch: 10 step: 384, loss is 0.1450
-epoch: 10 step: 385, loss is 0.2522
-epoch: 10 step: 386, loss is 0.2532
-epoch: 10 step: 387, loss is 0.3558
-epoch: 10 step: 388, loss is 0.2641
-epoch: 10 step: 389, loss is 0.2334
-epoch: 10 step: 390, loss is 0.1966
-Epoch time: 43320.815, per step time: 111.079, avg loss: 0.262
+epoch: 10 step 774, loss is 0.3010297119617462
+epoch: 10 step 775, loss is 0.4418136477470398
+epoch: 10 step 776, loss is 0.29638347029685974
+epoch: 10 step 777, loss is 0.38901057839393616
+epoch: 10 step 778, loss is 0.3772362470626831
+epoch: 10 step 779, loss is 0.4098552167415619
+epoch: 10 step 780, loss is 0.41440871357917786
+epoch: 10 step 781, loss is 0.2255304455757141
+Epoch time: 63056.078, per step time: 80.738
+Epoch time: 63056.078, per step time: 80.738, avg loss: 0.354
 ************************************************************
+{'acc': 0.8312996158770807}
 ============== Training Success ==============
-```
-
-### 模型验证
-
-创建并加载验证数据集（`ds_eval`），加载由**训练**保存的CheckPoint文件，进行验证，查看模型质量，此步骤用时约30秒。
-
-```python
-args.ckpt_path = f'./lstm-{cfg.num_epochs}_390.ckpt'
-    print("============== Starting Testing ==============")
-    ds_eval = lstm_create_dataset(args.preprocess_path, cfg.batch_size, training=False)
-    param_dict = load_checkpoint(args.ckpt_path)
-    load_param_into_net(network, param_dict)
-    if args.device_target == "CPU":
-        acc = model.eval(ds_eval, dataset_sink_mode=False)
-    else:
-        acc = model.eval(ds_eval)
-    print("============== {} ==============".format(acc))
-```
-
-```
-============== Starting Testing ==============
-============== {'acc': 0.8495592948717948} ==============
 ```
 
 ### 训练结果评价
 
-根据以上一段代码的输出可以看到，在经历了10轮epoch之后，使用验证的数据集，对文本的情感分析正确率在85%左右，达到一个基本满意的结果。
+根据以上一段代码的输出可以看到，在经历了10轮epoch之后，使用验证的数据集，对文本的情感分析正确率在83%左右，达到一个基本满意的结果。
 
 ## 实验总结
 
