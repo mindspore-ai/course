@@ -1,4 +1,4 @@
-<h1 style="text-align:center">LSTM-IMDB情感分析实验</h1>
+# LSTM-IMDB情感分类
 
 ## 实验介绍
 

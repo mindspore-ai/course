@@ -19,7 +19,7 @@ K近邻算法（K-Nearest-Neighbor, KNN）是一种用于分类和回归的非�
 
 - 熟练使用Python。
 - 具备一定的机器学习理论知识，如KNN、无监督学习、Lp距离等。
-- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0046.html)等功能。华为云官网：https://www.huaweicloud.com
+- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)等功能。华为云官网：https://www.huaweicloud.com
 - 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn/
 
 ## 实验环境
