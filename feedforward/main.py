@@ -181,6 +181,8 @@ print(metric)
 test_ = ds_test.create_dict_iterator().get_next()
 test = Tensor(test_['x'], mindspore.float32)
 predictions = model.predict(test)
+softmax = nn.Softmax()
+predictions = softmax(predictions)
 predictions = predictions.asnumpy()
 for i in range(15):
     p_np = predictions[i, :]

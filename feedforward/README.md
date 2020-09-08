@@ -381,6 +381,8 @@ print(metric)
 test_ = ds_test.create_dict_iterator().get_next()
 test = Tensor(test_['x'], mindspore.float32)
 predictions = model.predict(test)
+softmax = nn.Softmax()
+predictions = softmax(predictions)
 predictions = predictions.asnumpy()
 for i in range(15):
     p_np = predictions[i, :]
@@ -388,21 +390,21 @@ for i in range(15):
     print('第' + str(i) + '个sample预测结果：', p_list.index(max(p_list)), '   真实结果：', test_['y'][i])
 ```
 
-    第0个sample预测结果： 1    真实结果： 1
+    第0个sample预测结果： 7    真实结果： 7
     第1个sample预测结果： 0    真实结果： 0
     第2个sample预测结果： 2    真实结果： 2
-    第3个sample预测结果： 2    真实结果： 2
-    第4个sample预测结果： 8    真实结果： 8
-    第5个sample预测结果： 4    真实结果： 4
-    第6个sample预测结果： 4    真实结果： 4
-    第7个sample预测结果： 1    真实结果： 1
-    第8个sample预测结果： 6    真实结果： 2
-    第9个sample预测结果： 8    真实结果： 8
-    第10个sample预测结果： 5    真实结果： 5
-    第11个sample预测结果： 8    真实结果： 0
-    第12个sample预测结果： 5    真实结果： 5
-    第13个sample预测结果： 6    真实结果： 6
-    第14个sample预测结果： 9    真实结果： 9
+    第3个sample预测结果： 6    真实结果： 6
+    第4个sample预测结果： 0    真实结果： 0
+    第5个sample预测结果： 6    真实结果： 6
+    第6个sample预测结果： 5    真实结果： 5
+    第7个sample预测结果： 0    真实结果： 0
+    第8个sample预测结果： 5    真实结果： 5
+    第9个sample预测结果： 7    真实结果： 7
+    第10个sample预测结果： 8    真实结果： 8
+    第11个sample预测结果： 8    真实结果： 8
+    第12个sample预测结果： 6    真实结果： 6
+    第13个sample预测结果： 7    真实结果： 9
+    第14个sample预测结果： 0    真实结果： 6
 
 #### 对预测结果可视化
 
