@@ -29,6 +29,15 @@
 
 ## 实验准备
 
+### 脚本准备
+
+从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。将脚本组织为如下形式：
+
+```
+linear_regression
+└── main.py
+```
+
 ### 创建OBS桶
 
 本实验需要使用华为云OBS存储脚本，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
@@ -45,20 +54,13 @@
 - 归档数据直读：关闭
 - 企业项目、标签等配置：免
 
-### 脚本准备
-
-从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。
-
 ### 上传文件
 
-将脚本上传到OBS桶中，组织为如下形式：
-
-```
-linear_regression
-└── main.py
-```
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本上传到OBS桶中。
 
 ## 实验步骤
+
+推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
 
 ### 代码梳理
 

@@ -27,22 +27,6 @@
 
 ## 作业准备
 
-### 创建OBS桶
-
-本实验需要使用华为云OBS存储实验脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
-
-> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
-
-打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
-
-- 区域：华北-北京四
-- 数据冗余存储策略：单AZ存储
-- 桶名称：全局唯一的字符串
-- 存储类别：标准存储
-- 桶策略：公共读
-- 归档数据直读：关闭
-- 企业项目、标签等配置：免
-
 ### 数据集准备
 
 CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图片，训练集50000张，测试集10000张，共10类，每类6000张。
@@ -60,15 +44,11 @@ CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图�
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本作业相关脚本。
-
-### 上传文件
-
-将脚本和数据集上传到OBS桶中，组织为如下形式：
+从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本作业相关脚本。将脚本和数据集组织为如下形式：
 
 ```
-project_1
-├── *.ipynb
+tuning
+├── *.ipynb # 参考后续步骤创建并打开Notebook后，新建一个Notebook脚本
 └── cifar10
     ├── batches.meta.txt
     ├── eval
@@ -81,7 +61,27 @@ project_1
         └── data_batch_5.bin
 ```
 
-### 创建并打开Notebook
+### 创建OBS桶
+
+本实验需要使用华为云OBS存储实验脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
+
+> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
+
+- 区域：华北-北京四
+- 数据冗余存储策略：单AZ存储
+- 桶名称：全局唯一的字符串
+- 存储类别：标准存储
+- 桶策略：公共读
+- 归档数据直读：关闭
+- 企业项目、标签等配置：免
+
+### 上传文件
+
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
+
+### 创建Notebook
 
 ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
 
@@ -93,17 +93,21 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 - 资源池：公共资源
 - 类型：Ascend
 - 规格：单卡1*Ascend 910
-- 存储位置：对象存储服务（OBS）->选择上述新建的OBS桶中的lenet5文件夹
+- 存储位置：对象存储服务（OBS）->选择上述新建的OBS桶中的tuning文件夹
 - 自动停止：打开->选择1小时后（后续可在Notebook中随时调整）
 
 > **注意：**
 > - 在Jupyter Notebook/JupyterLab文件列表里，展示的是关联的OBS桶里的文件，并不在当前Notebook工作环境（容器）中，Notebook中的代码无法直接访问这些文件。
 > - 打开Notebook前，选中文件列表里的所有文件/文件夹（实验脚本和数据集），并点击列表上方的“Sync OBS”按钮，使OBS桶中的所有文件同时同步到Notebook执行容器中，这样Notebook中的代码才能访问数据集。
->   - 使用Jupyter Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
+>   - 使用Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
 >   - 使用JupyterLab时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0336.html)。
->   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook执行容器中，再行使用。
-> - 打开Notebook后，选择MindSpore环境作为Kernel。
+>   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook容器中。
+> - Notebook/JupyterLab文件列表页面的“Upload/上传”功能，会将文件上传至OBS桶中，而不是Notebook执行容器中，仍需额外同步/拷贝。
+> - 在Notebook里通过代码/命令（如`wget, git`、python`urllib, requests`等）获取的文件，存在于Notebook执行容器中，但不会显示在文件列表里。
+> - 每个Notebook实例仅被分配了1个Device，如果在一个实例中打开多个Notebook页面（即多个进程），运行其中一个页面上的MindSpore代码时，请关闭其他页面的kernel，否则会出现Device被占用的错误。
 > - Notebook运行中一直处于计费状态，不使用时，在Notebook控制台页面点击实例右侧的“停止”，以停止计费。停止后，Notebook里的内容不会丢失（已同步至OBS）。下次需要使用时，点击实例右侧的“启动”即可。可参考[启动或停止Notebook实例](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0041.html)。
+
+打开Notebook后，选择MindSpore环境作为Kernel。
 
 > **提示：** 
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
