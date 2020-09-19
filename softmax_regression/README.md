@@ -27,22 +27,6 @@ Logistic函数针对的是二分类问题，而Softmax解决的是多分类问�
 
 ## 实验准备
 
-### 创建OBS桶
-
-本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
-
-> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
-
-打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
-
-- 区域：华北-北京四
-- 数据冗余存储策略：单AZ存储
-- 桶名称：全局唯一的字符串
-- 存储类别：标准存储
-- 桶策略：公共读
-- 归档数据直读：关闭
-- 企业项目、标签等配置：免
-
 ### 数据准备
 
 Iris数据集是模式识别最著名的数据集之一。数据集包含3类，每类50个实例，其中每个类都涉及一种鸢尾植物。 第一类与后两类可线性分离，后两类之间不能线性分离，所以本实验取前两类数据，做一个2分类数据集。Iris数据集的官网：[Iris Data Set](http://archive.ics.uci.edu/ml/datasets/Iris)。
@@ -72,11 +56,7 @@ Iris数据集是模式识别最著名的数据集之一。数据集包含3类，
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。
-
-### 上传文件
-
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
+从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。将脚本和数据集组织为如下形式：
 
 ```
 softmax_regression
@@ -84,7 +64,29 @@ softmax_regression
 └── iris.data
 ```
 
+### 创建OBS桶
+
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
+
+> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
+
+- 区域：华北-北京四
+- 数据冗余存储策略：单AZ存储
+- 桶名称：全局唯一的字符串
+- 存储类别：标准存储
+- 桶策略：公共读
+- 归档数据直读：关闭
+- 企业项目、标签等配置：免
+
+### 上传文件
+
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
+
 ## 实验步骤
+
+推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
 
 ### 代码梳理
 

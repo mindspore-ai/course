@@ -24,20 +24,6 @@ deeplabv3中提出 Atrous Spatial Pyramid Pooling(ASPP)模块, 挖掘不同尺�
 * 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。。
 
 ## 实验准备
-### 创建OBS桶
-本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。当数据集较大时，可以使用[OBS Browser+](https://support.huaweicloud.com/browsertg-obs/obs_03_1000.html)。
-
-> 提示： 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以[参考获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
-
-打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
-
-* 区域：华北-北京四
-* 数据冗余存储策略：单AZ存储
-* 桶名称：如ms-course
-* 存储类别：标准存储
-* 桶策略：公共读
-* 归档数据直读：关闭
-* 企业项目、标签等配置：免
 
 ## 数据集准备
 [Pascal VOC2012数据集](https://blog.csdn.net/haoji007/article/details/80361587)主要是针对视觉任务中监督学习提供标签数据，它有二十个类别。主要有四个大类别，分别是人、常见动物、交通车辆、室内家具用品。这里只说与图像分割（segmentation）有关的信息,本用例使用已去除分割标注的颜色，仅保留了分割任务的数据集。VOC2012[官网地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html)，[官方下载地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar)。
@@ -57,10 +43,9 @@ deeplabv3中提出 Atrous Spatial Pyramid Pooling(ASPP)模块, 挖掘不同尺�
 另外，本实验采用fine-tune的训练方式，为了节省训练时间，我们提前准备好了预训练的[checkpoint文件](https://share-course.obs.myhuaweicloud.com/checkpoint/deeplabv3/deeplabv3_train_14-1_1.ckpt)，方便直接获取使用。
 
 ## 脚本准备
-从MindSpore开源仓库model_zoo中下载[deeplabv3模型案例](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/deeplabv3)。从[课程gitee仓库](https://gitee.com/mindspore/course)中下载相关执行脚本。
 
-## 上传文件
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，可参考如下组织形式：
+从MindSpore开源仓库model_zoo中下载[deeplabv3模型案例](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/deeplabv3)。从[课程gitee仓库](https://gitee.com/mindspore/course)中下载相关执行脚本。将脚本和数据集组织为如下形式：
+
 ```
 deeplabv3_example
 ├── voc2012 # 数据集
@@ -70,8 +55,32 @@ deeplabv3_example
     └── main.py # 执行脚本，包括训练和推理过程
 ```
 
+### 创建OBS桶
+
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。当数据集较大时，可以使用[OBS Browser+](https://support.huaweicloud.com/browsertg-obs/obs_03_1000.html)。
+
+> 提示： 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以[参考获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
+
+* 区域：华北-北京四
+* 数据冗余存储策略：单AZ存储
+* 桶名称：如ms-course
+* 存储类别：标准存储
+* 桶策略：公共读
+* 归档数据直读：关闭
+* 企业项目、标签等配置：免
+
+## 上传文件
+
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
+
 ## 实验步骤
+
+推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
+
 ### 代码梳理
+
 `main.py`：执行脚本，包含训练和推理过程。主要包括创建数据集、网络定义、网络模型fine_tune等函数。
 
 #### 创建数据集:

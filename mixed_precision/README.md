@@ -4,8 +4,6 @@
 
 神经网络训练的时候，数据和权重等各种参数一般使用单精度浮点数（float32）进行计算和存储。在采用复杂神经网络进行训练时，由于计算量的增加，机器的内存开销变得非常大。有没有什么比较好的方法，在不提升硬件资源的基础上加快训练呢？这次我们介绍其中一种方法--混合精度训练，其本质就是就是将参数取其一半长度进行计算，即使用半精度浮点数（float16）计算，这样就能节省一半内存开销。当然，为了保证模型的精度，不能把所有的计算参数都换成半精度。为了兼顾模型精度和训练效率，MindSpore在框架中设置了一个自动混合精度训练的功能，混合精度训练方法是通过混合使用单精度和半精度数据格式来加速深度神经网络训练的过程，同时保持了单精度训练所能达到的网络精度。混合精度训练能够加速计算过程，同时减少内存使用和存取，并使得在特定的硬件上可以训练更大的模型或`batch size`。本实验我们将使用ResNet-50网络进行训练，体验MindSpore混合精度训练和单精度训练的不同之处。
 
-### 计算流程
-
 MindSpore混合精度典型的计算流程如下图所示：
 
 ![mix precision](./images/mix_precision.png)
@@ -30,10 +28,10 @@ MindSpore混合精度典型的计算流程如下图所示：
 
 ## 预备知识
 
-- 熟练使用Python。
-- 具备一定的深度学习理论知识，如Embedding、Encoder、Decoder、损失函数、优化器，训练策略、Checkpoint等。
-- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)等功能。华为云官网：[https://www.huaweicloud.com](https://www.huaweicloud.com/)
-- 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn/
+- 熟练使用Python，了解Shell及Linux操作系统基本知识。
+- 具备一定的深度学习理论知识，如卷积神经网络、损失函数、优化器，训练策略等。
+- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[Notebook（开发工具）](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0032.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)等服务。华为云官网：https://www.huaweicloud.com
+- 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn
 
 ## 实验环境
 
@@ -41,22 +39,6 @@ MindSpore混合精度典型的计算流程如下图所示：
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
-
-### 创建OBS桶
-
-本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
-
-> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
-
-打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
-
-- 区域：华北-北京四
-- 数据冗余存储策略：单AZ存储
-- 桶名称：全局唯一的字符串，如ms-course
-- 存储类别：标准存储
-- 桶策略：公共读
-- 归档数据直读：关闭
-- 企业项目、标签等配置：免
 
 ### 数据集准备
 
@@ -80,23 +62,71 @@ cifar10
 
 ### 脚本准备
 
-从[MindSpore docs](https://gitee.com/mindspore/docs/blob/r0.5/tutorials/tutorial_code/resnet/resnet.py)中下载ResNet代码；[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
-
-### 上传文件
-
-将脚本和数据集放到到experiment文件夹中，组织为如下形式：
+从[MindSpore docs](https://gitee.com/mindspore/docs/blob/r0.5/tutorials/tutorial_code/resnet/resnet.py)中下载ResNet代码；从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。将脚本和数据集组织为如下形式：
 
 ```
-experiment
+mixed_precision
 ├── datasets
 │   └──cifar10
 │── README.md
 └── mixed_precision.ipynb
 ```
 
+### 创建OBS桶
+
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
+
+> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
+
+- 区域：华北-北京四
+- 数据冗余存储策略：单AZ存储
+- 桶名称：全局唯一的字符串
+- 存储类别：标准存储
+- 桶策略：公共读
+- 归档数据直读：关闭
+- 企业项目、标签等配置：免
+
+### 上传文件
+
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
+
+### 创建Notebook
+
+ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
+
+打开[ModelArts控制台-开发环境-Notebook](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/notebook)，点击“创建”按钮进入Notebook配置页面，创建Notebook的参考配置：
+
+- 计费模式：按需计费
+- 名称：mixed_precision
+- 工作环境：Python3
+- 资源池：公共资源
+- 类型：Ascend
+- 规格：单卡1*Ascend 910
+- 存储位置：对象存储服务（OBS）->选择上述新建的OBS桶中的mixed_precision文件夹
+- 自动停止：打开->选择1小时后（后续可在Notebook中随时调整）
+
+> **注意：**
+> - 在Jupyter Notebook/JupyterLab文件列表里，展示的是关联的OBS桶里的文件，并不在当前Notebook工作环境（容器）中，Notebook中的代码无法直接访问这些文件。
+> - 打开Notebook前，选中文件列表里的所有文件/文件夹（实验脚本和数据集），并点击列表上方的“Sync OBS”按钮，使OBS桶中的所有文件同时同步到Notebook执行容器中，这样Notebook中的代码才能访问数据集。
+>   - 使用Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
+>   - 使用JupyterLab时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0336.html)。
+>   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook容器中。
+> - Notebook/JupyterLab文件列表页面的“Upload/上传”功能，会将文件上传至OBS桶中，而不是Notebook执行容器中，仍需额外同步/拷贝。
+> - 在Notebook里通过代码/命令（如`wget, git`、python`urllib, requests`等）获取的文件，存在于Notebook执行容器中，但不会显示在文件列表里。
+> - 每个Notebook实例仅被分配了1个Device，如果在一个实例中打开多个Notebook页面（即多个进程），运行其中一个页面上的MindSpore代码时，请关闭其他页面的kernel，否则会出现Device被占用的错误。
+> - Notebook运行中一直处于计费状态，不使用时，在Notebook控制台页面点击实例右侧的“停止”，以停止计费。停止后，Notebook里的内容不会丢失（已同步至OBS）。下次需要使用时，点击实例右侧的“启动”即可。可参考[启动或停止Notebook实例](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0041.html)。
+
+打开Notebook后，选择MindSpore环境作为Kernel。
+
+> **提示：** 
+> - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
+> - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
+
 ## 实验步骤
 
-### 代码梳理
+作业基于上述打开的Notebook进行，进行作业前请确保完成了上述准备工作。如果Notebook资源不足，请参考[lenet5实验](../lenet5)将本Notebook转为训练作业，再行实验。
 
 先将CIFAR-10的原始数据集可视化：
 

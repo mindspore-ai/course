@@ -34,22 +34,6 @@
 
 ## 实验准备
 
-### 创建OBS桶
-
-本实验需要使用华为云OBS存储实验脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
-
-> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
-
-打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
-
-- 区域：华北-北京四
-- 数据冗余存储策略：单AZ存储
-- 桶名称：全局唯一的字符串
-- 存储类别：标准存储
-- 桶策略：公共读
-- 归档数据直读：关闭
-- 企业项目、标签等配置：免
-
 ### 数据集准备
 
 MNIST是一个手写数字数据集，训练集包含60000张手写数字，测试集包含10000张手写数字，共10类。MNIST数据集的官网：[THE MNIST DATABASE](http://yann.lecun.com/exdb/mnist/)。
@@ -67,11 +51,7 @@ t10k-labels-idx1-ubyte.gz:   test set labels (4542 bytes)
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
-
-### 上传文件
-
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
+从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。将脚本和数据集组织为如下形式：
 
 ```
 checkpoint
@@ -85,11 +65,120 @@ checkpoint
 └── main.py
 ```
 
+### 创建OBS桶
+
+使用ModelArts训练作业/Notebook时，需要使用华为云OBS存储实验脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
+
+> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
+
+- 区域：华北-北京四
+- 数据冗余存储策略：单AZ存储
+- 桶名称：全局唯一的字符串
+- 存储类别：标准存储
+- 桶策略：公共读
+- 归档数据直读：关闭
+- 企业项目、标签等配置：免
+
+### 上传文件
+
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
+
+## 实验步骤（ModelArts训练作业）
+
+ModelArts提供了训练作业服务，训练作业资源池大，且具有作业排队等功能，适合大规模并发使用。使用训练作业时，如果有修改代码和调试的需求，有如下三个方案：
+
+1. 在本地修改代码后重新上传；
+
+2. 使用[PyCharm ToolKit](https://support.huaweicloud.com/tg-modelarts/modelarts_15_0001.html)配置一个本地Pycharm+ModelArts的开发环境，便于上传代码、提交训练作业和获取训练日志。
+
+3. 在ModelArts上创建Notebook，然后设置[Sync OBS功能](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)，可以在线修改代码并自动同步到OBS中。因为只用Notebook来编辑代码，所以创建CPU类型最低规格的Notebook就行。
+
+### 适配训练作业
+
+创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
+
+```python
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
+parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
+args, unknown = parser.parse_known_args()
+```
+
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。
+
+**方式一**
+
+- 训练开始前，拷贝自己账户下OBS桶内的数据集至执行容器。
+    
+    ```python
+    import moxing
+    # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
+    moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
+    ```
+  
+- 训练结束后，将Checkpoint拷贝到自己的OBS桶中。
+
+    ```python
+    import moxing
+    # dst_url形如's3://OBS/PATH'，将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
+    moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
+    ```
+
+**方式二**
+
+- 训练开始前，拷贝他人账户下OBS桶内的数据集至执行容器，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+
+    ```python
+    import moxing
+    # 设置他人账户的ModelArts密钥, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
+                         server="obs.cn-north-4.myhuaweicloud.com")
+    moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+    ```
+
+- 训练结束后，将Checkpoint拷贝到自己的OBS桶中，先通过`set_auth()`设置自己账户的密钥，然后再行拷贝。
+
+    ```python
+    import moxing
+    moxing.file.set_auth(ak='Your own Access Key', sk='Your own Secret Access Key',
+                         server="obs.cn-north-4.myhuaweicloud.com")
+    moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
+    ```
+
+    如果不设置自己账户的密钥，则只能将Checkpoint拷贝到他人账户下的OBS桶中。
+
+### 创建训练作业
+
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
+
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
+
+- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
+- 代码目录：选择上述新建的OBS桶中的checkpoint目录
+- 启动文件：选择上述新建的OBS桶中的checkpoint目录下的`main.py`
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的checkpoint文件夹下的MNIST目录
+- 训练输出位置：选择上述新建的OBS桶中的checkpoint目录并在其中创建output目录
+- 作业日志路径：同训练输出位置
+- 规格：Ascend:1*Ascend 910
+- 其他均为默认
+
+启动并查看训练过程：
+
+1. 点击提交以开始训练；
+2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
+3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
+4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+
 ## 实验步骤（ModelArts Notebook）
+
+ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。
 
 ### 创建Notebook
 
-ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
+可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
 
 打开[ModelArts控制台-开发环境-Notebook](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/notebook)，点击“创建”按钮进入Notebook配置页面，创建Notebook的参考配置：
 
@@ -108,8 +197,10 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 >   - 使用Jupyter Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
 >   - 使用JupyterLab时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0336.html)。
 >   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook容器中。
-> - 打开Notebook后，选择MindSpore环境作为Kernel。
+> - 每个Notebook实例仅被分配了1个Device，如果在一个实例中打开多个Notebook页面（即多个进程），运行其中一个页面上的MindSpore代码时，请关闭其他页面的kernel，否则会出现Device被占用的错误。
 > - Notebook运行中一直处于计费状态，不使用时，在Notebook控制台页面点击实例右侧的“停止”，以停止计费。停止后，Notebook里的内容不会丢失（已同步至OBS）。下次需要使用时，点击实例右侧的“启动”即可。可参考[启动或停止Notebook实例](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0041.html)。
+
+打开Notebook后，选择MindSpore环境作为Kernel。
 
 > **提示：** 
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
@@ -362,7 +453,6 @@ print('\n'.join(sorted([x for x in os.listdir('ckpt') if x.startswith('lenet')])
     lenet_1-2_1875.ckpt
     lenet_1-graph.meta
 
-
 ### 加载Checkpoint进行推理
   
 使用训练后的LeNet5模型对手写数字进行识别，使用matplotlib将推理结果可视化，可以看到识别结果基本上是正确的。
@@ -393,93 +483,6 @@ infer('MNIST')
 ```
 
 ![png](images/prediction.png)
-
-## 实验步骤（ModelArts训练作业）
-
-除了Notebook，ModelArts还提供了训练作业服务。相比Notebook，训练作业资源池更大，且具有作业排队等功能，适合大规模并发使用。使用训练作业时，也会有修改代码和调试的需求，有如下三个方案：
-
-1. 在本地修改代码后重新上传；
-
-2. 使用[PyCharm ToolKit](https://support.huaweicloud.com/tg-modelarts/modelarts_15_0001.html)配置一个本地Pycharm+ModelArts的开发环境，便于上传代码、提交训练作业和获取训练日志。
-
-3. 在ModelArts上创建Notebook，然后设置[Sync OBS功能](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)，可以在线修改代码并自动同步到OBS中。因为只用Notebook来编辑代码，所以创建CPU类型最低规格的Notebook就行。
-
-### 适配训练作业
-
-创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
-
-```python
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
-parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
-args, unknown = parser.parse_known_args()
-```
-
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。
-
-**方式一**
-
-- 训练开始前，拷贝自己账户下OBS桶内的数据集至执行容器。
-    
-    ```python
-    import moxing
-    # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
-    moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
-    ```
-  
-- 训练结束后，将Checkpoint拷贝到自己的OBS桶中。
-
-    ```python
-    import moxing
-    # dst_url形如's3://OBS/PATH'，将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
-    moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
-    ```
-
-**方式二**
-
-- 训练开始前，拷贝他人账户下OBS桶内的数据集至执行容器，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
-
-    ```python
-    import moxing
-    # 设置他人账户的ModelArts密钥, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                         server="obs.cn-north-4.myhuaweicloud.com")
-    moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
-    ```
-
-- 训练结束后，将Checkpoint拷贝到自己的OBS桶中，先通过`set_auth()`设置自己账户的密钥，然后再行拷贝。
-
-    ```python
-    import moxing
-    moxing.file.set_auth(ak='Your own Access Key', sk='Your own Secret Access Key',
-                         server="obs.cn-north-4.myhuaweicloud.com")
-    moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
-    ```
-
-    如果不设置自己账户的密钥，则只能将Checkpoint拷贝到他人账户下的OBS桶中。
-
-### 创建训练作业
-
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
-
-打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
-
-- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
-- 代码目录：选择上述新建的OBS桶中的checkpoint目录
-- 启动文件：选择上述新建的OBS桶中的checkpoint目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的checkpoint文件夹下的MNIST目录
-- 训练输出位置：选择上述新建的OBS桶中的checkpoint目录并在其中创建output目录
-- 作业日志路径：同训练输出位置
-- 规格：Ascend:1*Ascend 910
-- 其他均为默认
-
-启动并查看训练过程：
-
-1. 点击提交以开始训练；
-2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
-3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
 
 ## 实验步骤（本地CPU/GPU/Ascend）
 

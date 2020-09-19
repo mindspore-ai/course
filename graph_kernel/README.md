@@ -24,6 +24,18 @@
 
 ## 实验准备
 
+### 脚本准备
+
+从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。将脚本组织为如下形式：
+
+```
+graph_kernel  
+├── graph_kernel.ipynb   
+└── test_graph_kernel_fusion.py  
+```
+
+其中test_graph_kernel_fusion.py为图算融合测试用例，graph_kernel.ipynb为测试用例执行脚本。
+
 ### 创建OBS桶
 
 本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
@@ -40,21 +52,11 @@
 - 归档数据直读：关闭
 - 企业项目、标签等配置：免
 
-### 脚本准备
-
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。test_graph_kernel_fusion.py 和graph_kernel.ipynb。其中test_graph_kernel_fusion.py为图算融合测试用例。graph_kernel.ipynb为测试用例执行脚本。
-
 ### 上传文件
 
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
 
-```
-graph_kernel  
-├── graph_kernel.ipynb   
-└── test_graph_kernel_fusion.py  
-```
-
-### 创建并打开Notebook
+### 创建Notebook
 
 ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
 
@@ -66,17 +68,21 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 - 资源池：公共资源
 - 类型：Ascend
 - 规格：单卡1*Ascend 910
-- 存储位置：对象存储服务（OBS）->选择上述新建的OBS桶中的lenet5文件夹
+- 存储位置：对象存储服务（OBS）->选择上述新建的OBS桶中的graph_kernel文件夹
 - 自动停止：打开->选择1小时后（后续可在Notebook中随时调整）
 
 > **注意：**
 > - 在Jupyter Notebook/JupyterLab文件列表里，展示的是关联的OBS桶里的文件，并不在当前Notebook工作环境（容器）中，Notebook中的代码无法直接访问这些文件。
 > - 打开Notebook前，选中文件列表里的所有文件/文件夹（实验脚本和数据集），并点击列表上方的“Sync OBS”按钮，使OBS桶中的所有文件同时同步到Notebook执行容器中，这样Notebook中的代码才能访问数据集。
->   - 使用Jupyter Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
+>   - 使用Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
 >   - 使用JupyterLab时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0336.html)。
->   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook执行容器中，再行使用。
-> - 打开Notebook后，选择MindSpore环境作为Kernel。
+>   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook容器中。
+> - Notebook/JupyterLab文件列表页面的“Upload/上传”功能，会将文件上传至OBS桶中，而不是Notebook执行容器中，仍需额外同步/拷贝。
+> - 在Notebook里通过代码/命令（如`wget, git`、python`urllib, requests`等）获取的文件，存在于Notebook执行容器中，但不会显示在文件列表里。
+> - 每个Notebook实例仅被分配了1个Device，如果在一个实例中打开多个Notebook页面（即多个进程），运行其中一个页面上的MindSpore代码时，请关闭其他页面的kernel，否则会出现Device被占用的错误。
 > - Notebook运行中一直处于计费状态，不使用时，在Notebook控制台页面点击实例右侧的“停止”，以停止计费。停止后，Notebook里的内容不会丢失（已同步至OBS）。下次需要使用时，点击实例右侧的“启动”即可。可参考[启动或停止Notebook实例](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0041.html)。
+
+打开Notebook后，选择MindSpore环境作为Kernel。
 
 > **提示：** 
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
@@ -114,14 +120,11 @@ context.set_context(enable_graph_kernel=True)
 
 ## 实验步骤
 
+作业基于上述打开的Notebook进行，进行作业前请确保完成了上述准备工作。如果Notebook资源不足，请参考[lenet5实验](../lenet5)将本Notebook转为训练作业，再行实验。
+
 为了说明融合场景，我们构造两个简单网络，NetBasicFuse包含两个乘法和一个加法计算，NetCompositeFuse包含一个组合算子（一个乘法和加法）和一个乘法计算。保存为test_graph_kernel_fusion.py文件。对比不同场景下，启用图算融合和关闭图算融合的计算图。
 
-### 代码梳理
-
-- test_graph_kernel_fusion.py：融合场景测试用例。
-- graph_kernel.ipynb: 测试用例执行脚本。
-
-#### test_graph_kernel_fusion.py代码梳理
+### test_graph_kernel_fusion.py代码梳理
 
 导入模块
 
@@ -207,7 +210,7 @@ def test_composite_fuse():
     print("=======================================")
 ```
 
-#### graph_kernel.ipynb代码梳理
+### graph_kernel.ipynb代码梳理
 
 安装pytest测试工具
 
@@ -215,7 +218,7 @@ def test_composite_fuse():
 !pip install -U pytest
 ```
 
-#####  基础算子融合场景
+####  基础算子融合场景
 
 导入模块、变量定义、清理文件
 
@@ -251,7 +254,7 @@ if os.path.exists(test_basic_dir):
 import moxing
 moxing.file.copy_parallel(src_url=test_basic_dir, dst_url='s3://user/graph_kernel/test_basic/')  
 ```
-##### 组合算子融合场景
+#### 组合算子融合场景
 
 运行NetCompositeFuse网络测试用例test_composite_fuse生成组合算子融合场景下的初始计算图6_validate.dot和算子融合后计算图hwopt_d_end.dot并复制到obs中。
 
@@ -275,7 +278,7 @@ import moxing
 moxing.file.copy_parallel(src_url=test_composite_dir, dst_url='s3://user/graph_kernel/test_composite/')   
 ```
 
-##### 无融合场景
+#### 无融合场景
 
 改 test_graph_kernel_fusion.py中`context.set_context(enable_graph_kernel=True)`为
 `context.set_context(enable_graph_kernel=False)` 关闭图算融合。
@@ -353,7 +356,7 @@ test_composite_dir = 'test_composite_fuse_no'
 ![png](images/hwopt_d_end_composite_yes.png)
 图8：组合算子融合后计算图
 
-### 结果分析及结论
+## 实验结论
 
 从结果展示中可以看出：
 - 无融合场景初始计算图和处理后的计算图相同；
