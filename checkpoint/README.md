@@ -49,6 +49,8 @@ t10k-labels-idx1-ubyte.gz:   test set labels (4542 bytes)
 
 - 方式二，从华为云OBS中下载[MNIST数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/MNIST.zip)并解压。
 
+- 方式三，使用ModelArts训练作业/Notebook时，可以拷贝他人账户下OBS桶内的数据集，方法详见[适配训练作业](#适配训练作业)。
+
 ### 脚本准备
 
 从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。将脚本和数据集组织为如下形式：
@@ -206,7 +208,9 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
 > - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
 
-导入MindSpore模块和辅助模块：
+### 导入模块
+
+导入MindSpore模块和辅助模块，设置MindSpore上下文，如执行模式、设备等。
 
 ```python
 import os
@@ -371,7 +375,6 @@ print('\n'.join(sorted([x for x in os.listdir('ckpt') if x.startswith('lenet')])
     lenet-2_1875.ckpt
     lenet-graph.meta
 
-
 ### 加载Checkpoint继续训练
 
 ```python
@@ -483,6 +486,16 @@ infer('MNIST')
 ```
 
 ![png](images/prediction.png)
+
+### 数据拷出
+
+训练结束后，将Checkpoint拷贝到自己的OBS桶中。
+
+```python
+import moxing
+# dst_url形如's3://OBS/PATH'，将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
+moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
+```
 
 ## 实验步骤（本地CPU/GPU/Ascend）
 
