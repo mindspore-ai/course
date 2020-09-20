@@ -40,7 +40,7 @@ t10k-labels-idx1-ubyte.gz:   test set labels (4542 bytes)
 
 - 方式二，从华为云OBS中下载[MNIST数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/MNIST.zip)并解压。
 
-- 方式三，使用ModelArts训练作业/Notebook时，可以拷贝他人账户下OBS桶内的数据集，方法详见[适配训练作业](#适配训练作业)。
+- 方式三（推荐），使用ModelArts训练作业/Notebook时，可以拷贝他人账户下OBS桶内的数据集，方法详见[适配训练作业](#适配训练作业)、[数据拷贝](#数据拷贝)。
 
 ### 脚本准备
 
@@ -110,7 +110,7 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
     moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
     ```
 
-- 方式二，拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+- 方式二（推荐），拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
     
     ```python
     import moxing
@@ -178,7 +178,21 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
 > - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
 
-导入MindSpore模块和辅助模块：
+### 数据拷贝（推荐）
+
+拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+
+```python
+import moxing
+# 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
+                     server="obs.cn-north-4.myhuaweicloud.com")
+moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+```
+
+### 导入模块
+
+导入MindSpore模块和辅助模块，设置MindSpore上下文，如执行模式、设备等。
 
 ```python
 import os
