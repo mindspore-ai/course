@@ -13,10 +13,15 @@
 # limitations under the License.
 # ============================================================================
 
-"""process txt"""
-
+'''bert clue evaluation'''
 import re
 import json
+import numpy as np
+import mindspore.common.dtype as mstype
+from mindspore.common.tensor import Tensor
+from . import tokenization
+from .config import cfg
+from .CRF import postprocess
 
 def process_one_example_p(tokenizer, text, max_seq_len=128):
     """process one testline"""
@@ -57,7 +62,7 @@ def label_generation(text, probs):
     data = [text]
     probs = [probs]
     result = []
-    label2id = json.loads(open("tnews/label2id.json").read())
+    label2id = json.loads(open(cfg.label2id_file).read())
     id2label = [k for k, v in label2id.items()]
 
     for index, prob in enumerate(probs):
@@ -98,3 +103,85 @@ def label_generation(text, probs):
             te_ = text[start:index]
             labels[label] = {te_: [[start, index - 1]]}
     return labels
+
+def label_class(id_):
+    label2id = json.loads(open(cfg.label2id_file).read())
+    id2label = [k for k, v in label2id.items()]
+    return id2label[id_]
+    
+    
+f=open('./log.txt','w')
+def process(model, text, sequence_length):
+    """
+    process text.
+    """
+    data = [text]
+    features = []
+    res = []
+    ids = []
+    tokenizer_ = tokenization.FullTokenizer(vocab_file=cfg.vocab_file)
+    
+    for i in data:
+        f.write("text: " + str(i)+'\n')
+        feature = process_one_example_p(tokenizer_, i, max_seq_len=sequence_length)
+        features.append(feature)
+        input_ids, input_mask, token_type_id = feature
+        f.write("input_ids:  " + str(input_ids) + '\n')
+        f.write("input_mask:  " + str(input_mask) + '\n')
+        f.write("segment_ids: " + str(token_type_id) + '\n')
+        input_ids = Tensor(np.array(input_ids), mstype.int32)
+        input_mask = Tensor(np.array(input_mask), mstype.int32)
+        token_type_id = Tensor(np.array(token_type_id), mstype.int32)
+        if cfg.use_crf and cfg.task== "NER":
+            backpointers, best_tag_id = model.predict(input_ids, input_mask, token_type_id, Tensor(1))
+            best_path = postprocess(backpointers, best_tag_id)
+            logits = []
+            for ele in best_path:
+                logits.extend(ele)
+            ids = logits
+        else:
+            logits = model.predict(input_ids, input_mask, token_type_id, Tensor(1))
+            ids = logits.asnumpy()
+            ids = np.argmax(ids, axis=-1)
+            ids = list(ids)
+            f.write("pre_labels: " + str(ids) + '\n')
+    if cfg.task == 'NER':
+        res = label_generation(text, ids)
+    elif cfg.task == 'Classification':
+        res = label_class(ids[0])
+    else:
+        raise Exception("Task error")
+    return res
+
+def submit(model, path, sequence_length):
+    """
+    submit task
+    """
+    data = []
+    if cfg.schema_file is not None:
+        f1=open(cfg.schema_file, 'r')
+        numRows = json.load(f1)
+        up_num = numRows["numRows"]
+    else:
+        up_num = 600000000000
+    num = 0
+    for line in open(path):
+        num = num + 1
+        if num > up_num:
+            break
+        if not line.strip():
+            continue
+        oneline = json.loads(line.strip())
+        if cfg.task == 'Classification':
+            res = process(model, oneline["sentence"], sequence_length)
+            print("text", oneline["sentence"])
+        elif cfg.task == 'NER':
+            res = process(model, oneline["text"], sequence_length)
+            print("text", oneline["text"])
+        else:
+            raise Exception("Task error")
+        print("res:", res)
+        f.write("result: " + str(res) + '\n')
+        data.append(json.dumps({"label": res}, ensure_ascii=False))
+    f.close()
+    
