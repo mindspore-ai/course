@@ -171,7 +171,7 @@ def postprocess(backpointers, best_tag_id):
             local_idx = bptrs_t[i]
             best_local_id = local_idx[best_local_id]
             best_path[-1].append(best_local_id)
-            # Pop off the start tag (we dont want to return that to the caller)
+        # Pop off the start tag (we dont want to return that to the caller)
         best_path[-1].pop()
         best_path[-1].reverse()
     return best_path

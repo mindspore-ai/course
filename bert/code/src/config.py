@@ -19,45 +19,52 @@ config settings, will be used in finetune.py
 
 from easydict import EasyDict as edict
 import mindspore.common.dtype as mstype
-from mindspore.model_zoo.Bert_NEZHA import BertConfig
+from .bert_model import BertConfig
 
 cfg = edict({
-    'task': 'nothing',
-    'num_labels':15,
-    'data_file': 'tnews/train.tf_record',
-    'schema_file': 'tnews/train_schema.json',
-    'epoch_num': 3,
-    'ckpt_prefix': 'bert_classfication',
-    'ckpt_dir': None,
-    'pre_training_ckpt': 'tnews/bert_base.ckpt',
-    'use_crf': False,
-    'optimizer': 'AdamWeightDecayDynamicLR',
-    'AdamWeightDecay': edict({
-        'learning_rate': 2e-5,
-        'weight_decay': 1e-5,
-        'eps': 1e-6,
-    }),
+    'is_train':False,
+    'task': 'NER',                    # 'Classification','NER'
+    'num_labels': 41,                  # 15   41 
+    'schema_file': r'./data/clue_ner/schema.json',      #  r'./data/tnews/schema.json'   r'./data/clue_ner/schema.json'    None
+    'ckpt_prefix': 'bert-ner-crf',          # 'bert-classification' 'bert-ner'  'bert-ner-crf'  
+    
+    'data_file': r'./data/clue_ner/dev.json',    # r'./data/tnews/dev.tf_record'      r'./data/tnews/dev.json'
+                                     # r'./data/clue_ner/train.tf_record'    r'./data/clue_ner/dev.json'
+    'epoch_num': 5,
+    'ckpt_dir': 'model_finetune',
+   
+    'pre_training_ckpt': './ckpt/bert_base.ckpt',
+    'finetune_ckpt': './ckpt/bert-ner-crf-5_671.ckpt',    # bert-ner-crf-5_671.ckpt  bert-ner-5_671.ckpt   bert-classification-5_3335.ckpt
+    
+    'label2id_file': './data/clue_ner/label2id.json',        # './data/tnews/label2id.json'   './data/clue_ner/label2id.json'
+    'vocab_file': './data/vocab.txt',
+    'use_crf': True,         # only NER task is used
+    'optimizer': 'Lamb'
+})
+
+bert_optimizer_cfg = edict({
     'AdamWeightDecayDynamicLR': edict({
         'learning_rate': 2e-5,
-        'end_learning_rate': 1e-7,
+        'end_learning_rate': 1e-7,    
         'power': 1.0,
         'weight_decay': 1e-5,
         'eps': 1e-6,
     }),
     'Lamb': edict({
         'start_learning_rate': 2e-5,
-        'end_learning_rate': 1e-7,
+        'end_learning_rate': 1e-7,     
         'power': 1.0,
+        'weight_decay': 0.01,
         'decay_filter': lambda x: False,
     }),
     'Momentum': edict({
         'learning_rate': 2e-5,
         'momentum': 0.9,
-    }),
+    }), 
 })
 
 bert_net_cfg = BertConfig(
-    batch_size=16,
+    batch_size=16 if cfg.is_train else 1,
     seq_length=128,
     vocab_size=21128,
     hidden_size=768,
@@ -74,7 +81,7 @@ bert_net_cfg = BertConfig(
     input_mask_from_dataset=True,
     token_type_ids_from_dataset=True,
     dtype=mstype.float32,
-    compute_type=mstype.float16,
+    compute_type=mstype.float16,  
 )
 
 tag_to_index = {
