@@ -138,23 +138,22 @@ experiment
 导入MindSpore模块和辅助模块:
 
 ```python
-import argparse
 import os
-from itertools import chain
-import numpy as np
+import math
 import gensim
-
-from easydict import EasyDict as edict
-
-from mindspore import Model
+import argparse
+import numpy as np
 import mindspore.dataset as ds
+
+from itertools import chain
+from easydict import EasyDict as edict
+from mindspore import Model
+from mindspore import Tensor, nn, context, Parameter, ParameterTuple
 from mindspore.nn import Accuracy
-from mindspore import Tensor, nn, context
-from mindspore.train.callback import Callback
 from mindspore.ops import operations as P
 from mindspore.mindrecord import FileWriter
-from mindspore.train.serialization import load_checkpoint, load_param_into_net
-from mindspore.train.callback import CheckpointConfig, ModelCheckpoint, TimeMonitor, LossMonitor
+from mindspore.common.initializer import initializer
+from mindspore.train.callback import Callback, CheckpointConfig, ModelCheckpoint, TimeMonitor, LossMonitor
 ```
 
 ### 预处理数据集
@@ -376,35 +375,110 @@ ds_eval = lstm_create_dataset(args.preprocess_path, cfg.batch_size, training=Fal
 
 ### 定义网络
 
+定义需要单层LSTM小算子堆叠的设备类型。
+
+```python
+STACK_LSTM_DEVICE = ["CPU"]
+```
+
 定义`lstm_default_state`函数来初始化网络参数及网络状态。
 
 ```python
 # Initialize short-term memory (h) and long-term memory (c) to 0
 def lstm_default_state(batch_size, hidden_size, num_layers, bidirectional):
     """init default input."""
-    num_directions = 1
-    if bidirectional:
-        num_directions = 2
-
-    if context.get_context("device_target") == "CPU":
-        h_list = []
-        c_list = []
-        i = 0
-        while i < num_layers:
-            hi = Tensor(np.zeros((num_directions, batch_size, hidden_size)).astype(np.float32))
-            h_list.append(hi)
-            ci = Tensor(np.zeros((num_directions, batch_size, hidden_size)).astype(np.float32))
-            c_list.append(ci)
-            i = i + 1
-        h = tuple(h_list)
-        c = tuple(c_list)
-        return h, c
-
-    h = Tensor(
-        np.zeros((num_layers * num_directions, batch_size, hidden_size)).astype(np.float32))
-    c = Tensor(
-        np.zeros((num_layers * num_directions, batch_size, hidden_size)).astype(np.float32))
+    num_directions = 2 if bidirectional else 1
+    h = Tensor(np.zeros((num_layers * num_directions, batch_size, hidden_size)).astype(np.float32))
+    c = Tensor(np.zeros((num_layers * num_directions, batch_size, hidden_size)).astype(np.float32))
     return h, c
+```
+
+定义`stack_lstm_default_state`函数来初始化小算子堆叠需要的初始化网络参数及网络状态。
+
+```python
+def stack_lstm_default_state(batch_size, hidden_size, num_layers, bidirectional):
+    """init default input."""
+    num_directions = 2 if bidirectional else 1
+
+    h_list = c_list = []
+    for _ in range(num_layers):
+        h_list.append(Tensor(np.zeros((num_directions, batch_size, hidden_size)).astype(np.float32)))
+        c_list.append(Tensor(np.zeros((num_directions, batch_size, hidden_size)).astype(np.float32)))
+    h, c = tuple(h_list), tuple(c_list)
+    return h, c
+```
+
+针对CPU场景，自定义单层LSTM小算子堆叠，来实现多层LSTM大算子功能。
+
+```python
+class StackLSTM(nn.Cell):
+    """
+    Stack multi-layers LSTM together.
+    """
+
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 has_bias=True,
+                 batch_first=False,
+                 dropout=0.0,
+                 bidirectional=False):
+        super(StackLSTM, self).__init__()
+        self.num_layers = num_layers
+        self.batch_first = batch_first
+        self.transpose = P.Transpose()
+
+        # direction number
+        num_directions = 2 if bidirectional else 1
+
+        # input_size list
+        input_size_list = [input_size]
+        for i in range(num_layers - 1):
+            input_size_list.append(hidden_size * num_directions)
+
+        # layers
+        layers = []
+        for i in range(num_layers):
+            layers.append(nn.LSTMCell(input_size=input_size_list[i],
+                                      hidden_size=hidden_size,
+                                      has_bias=has_bias,
+                                      batch_first=batch_first,
+                                      bidirectional=bidirectional,
+                                      dropout=dropout))
+
+        # weights
+        weights = []
+        for i in range(num_layers):
+            # weight size
+            weight_size = (input_size_list[i] + hidden_size) * num_directions * hidden_size * 4
+            if has_bias:
+                bias_size = num_directions * hidden_size * 4
+                weight_size = weight_size + bias_size
+
+            # numpy weight
+            stdv = 1 / math.sqrt(hidden_size)
+            w_np = np.random.uniform(-stdv, stdv, (weight_size, 1, 1)).astype(np.float32)
+
+            # lstm weight
+            weights.append(Parameter(initializer(Tensor(w_np), w_np.shape), name="weight" + str(i)))
+
+        #
+        self.lstms = layers
+        self.weight = ParameterTuple(tuple(weights))
+
+    def construct(self, x, hx):
+        """construct"""
+        if self.batch_first:
+            x = self.transpose(x, (1, 0, 2))
+        # stack lstm
+        h, c = hx
+        hn = cn = None
+        for i in range(self.num_layers):
+            x, hn, cn, _, _ = self.lstms[i](x, h[i], c[i], self.weight[i])
+        if self.batch_first:
+            x = self.transpose(x, (1, 0, 2))
+        return x, (hn, cn)
 ```
 
 使用`cell`方法，定义`SentimentNet`网络。
@@ -430,14 +504,25 @@ class SentimentNet(nn.Cell):
         self.embedding.embedding_table.requires_grad = False
         self.trans = P.Transpose()
         self.perm = (1, 0, 2)
-        self.encoder = nn.LSTM(input_size=embed_size,
-                               hidden_size=num_hiddens,
-                               num_layers=num_layers,
-                               has_bias=True,
-                               bidirectional=bidirectional,
-                               dropout=0.0)
 
-        self.h, self.c = lstm_default_state(batch_size, num_hiddens, num_layers, bidirectional)
+        if context.get_context("device_target") in STACK_LSTM_DEVICE:
+            # stack lstm by user
+            self.encoder = StackLSTM(input_size=embed_size,
+                                     hidden_size=num_hiddens,
+                                     num_layers=num_layers,
+                                     has_bias=True,
+                                     bidirectional=bidirectional,
+                                     dropout=0.0)
+            self.h, self.c = stack_lstm_default_state(batch_size, num_hiddens, num_layers, bidirectional)
+        else:
+            # standard lstm
+            self.encoder = nn.LSTM(input_size=embed_size,
+                                   hidden_size=num_hiddens,
+                                   num_layers=num_layers,
+                                   has_bias=True,
+                                   bidirectional=bidirectional,
+                                   dropout=0.0)
+            self.h, self.c = lstm_default_state(batch_size, num_hiddens, num_layers, bidirectional)
 
         self.concat = P.Concat(1)
         if bidirectional:
@@ -508,23 +593,45 @@ parser.add_argument('--device_target', type=str, default="GPU", choices=['GPU', 
 args = parser.parse_args(['--device_target', 'CPU', '--preprocess', 'true'])
 
 context.set_context(mode=context.GRAPH_MODE, save_graphs=False, device_target=args.device_target)
+```
 
+调用`convert_to_mindrecord`函数执行数据集预处理。
+
+```python
 if args.preprocess == "true":
     print("============== Starting Data Pre-processing ==============")
     convert_to_mindrecord(cfg.embed_size, args.aclimdb_path, args.preprocess_path, args.glove_path)
     print("======================= Successful =======================")
-    
-#实例化SentimentNet，创建网络。
-embedding_table = np.loadtxt(os.path.join(args.preprocess_path, "weight.txt")).astype(np.float32)
-network = SentimentNet(vocab_size=embedding_table.shape[0],
-                       embed_size=cfg.embed_size,
-                       num_hiddens=cfg.num_hiddens,
-                       num_layers=cfg.num_layers,
-                       bidirectional=cfg.bidirectional,
-                       num_classes=cfg.num_classes,
-                       weight=Tensor(embedding_table),
-                       batch_size=cfg.batch_size)
 ```
+
+转换成功后会在`preprocess`目录下生成MindRecord文件，通常该操作在数据集不变的情况下，无需每次训练都执行，此时`preprocess`文件目录如下所示：
+
+```
+ $ tree preprocess
+ ├── aclImdb_test.mindrecord0
+ ├── aclImdb_test.mindrecord0.db
+ ├── aclImdb_test.mindrecord1
+ ├── aclImdb_test.mindrecord1.db
+ ├── aclImdb_test.mindrecord2
+ ├── aclImdb_test.mindrecord2.db
+ ├── aclImdb_test.mindrecord3
+ ├── aclImdb_test.mindrecord3.db
+ ├── aclImdb_train.mindrecord0
+ ├── aclImdb_train.mindrecord0.db
+ ├── aclImdb_train.mindrecord1
+ ├── aclImdb_train.mindrecord1.db
+ ├── aclImdb_train.mindrecord2
+ ├── aclImdb_train.mindrecord2.db
+ ├── aclImdb_train.mindrecord3
+ ├── aclImdb_train.mindrecord3.db
+ └── weight.txt
+```
+
+以上各文件中：
+
+- 名称包含`aclImdb_train.mindrecord`的为转换后的MindRecord格式的训练数据集。
+- 名称包含`aclImdb_test.mindrecord`的为转换后的MindRecord格式的测试数据集。
+- `weight.txt`为预处理后自动生成的weight参数信息文件。
 
 通过`create_dict_iterator`方法创建字典迭代器，读取已创建的数据集`ds_train`中的数据。
 
@@ -538,20 +645,34 @@ print(f"The first batch contains label below:\n{first_batch_label}\n")
 print(f"The feature of the first item in the first batch is below vector:\n{first_batch_first_feature}")
 ```
 
+实例化`SentimentNet`，创建网络。
+
+```python
+embedding_table = np.loadtxt(os.path.join(args.preprocess_path, "weight.txt")).astype(np.float32)
+network = SentimentNet(vocab_size=embedding_table.shape[0],
+                       embed_size=cfg.embed_size,
+                       num_hiddens=cfg.num_hiddens,
+                       num_layers=cfg.num_layers,
+                       bidirectional=cfg.bidirectional,
+                       num_classes=cfg.num_classes,
+                       weight=Tensor(embedding_table),
+                       batch_size=cfg.batch_size)
+```
+
 ### 定义优化器及损失函数
 
 ```python
-loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True)
+loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
 opt = nn.Momentum(network.trainable_params(), cfg.learning_rate, cfg.momentum)
-loss_cb = LossMonitor()
 ```
 
 ### 同步训练并验证模型
 
-加载训练数据集（`ds_train`）并配置好`CheckPoint`生成信息，然后使用`model.train`接口，进行模型训练，此步骤在GPU上训练用时约7分钟。CPU上需更久；根据输出可以看到loss值随着训练逐步降低，最后达到0.262左右。
+加载训练数据集（`ds_train`）并配置好`CheckPoint`生成信息，然后使用`model.train`接口，进行模型训练，此步骤在GPU上训练用时约7分钟。CPU上需更久；根据输出可以看到loss值随着训练逐步降低，最后达到0.225左右。
 
 ```python
 model = Model(network, loss, opt, {'acc': Accuracy()})
+loss_cb = LossMonitor()
 print("============== Starting Training ==============")
 config_ck = CheckpointConfig(save_checkpoint_steps=ds_train.get_dataset_size(),
                              keep_checkpoint_max=cfg.keep_checkpoint_max)
