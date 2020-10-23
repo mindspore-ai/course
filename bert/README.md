@@ -216,9 +216,9 @@ Bert实验数据预处理将数据中的每个字进行了标注，用标准好�
 
 ### 预训练模型准备
 
-下载[预训练模型](https://www.mindspore.cn/docs/zh-CN/master/network_list.html)中的预训练模型表格中BERT_Base模型（如下图所示）到目录：`bert/pre_model/[pretrain_checkpoint_file]`  
+下载[预训练模型](https://www.mindspore.cn/docs/zh-CN/master/network_list.html)中的预训练模型表格中BERT_Base模型（如下图所示）到目录：`bert/pre_model/[pretrain_checkpoint_file]` 
 
-![pretrain_model](images/model.png)
+![png](images/model.PNG)
 
 ### 脚本准备
 
@@ -305,7 +305,7 @@ BERT模型的MLM请参考`bert_model.py`中的`EmbeddingLookup`类和`EmbeddingP
 
 bert的输入部分是个线性序列，两个句子通过分隔符分割，最前面和最后增加两个标识符号。每个单词有三个embedding:位置信息embedding，这是因为NLP中单词顺序是很重要的特征，需要在这里对位置信息进行编码；单词embedding（token）；第三个是句子embedding，因为前面提到训练数据都是由两个句子构成的，那么每个句子有个句子整体的embedding项对应给每个单词。把单词对应的三个embedding叠加，就形成了Bert的输入。Embedding如下图所示：
 
-![Mask](images/bert_embedding.png)
+![png](images/bert_embedding.png)
 
 [1] 图片来源于https://arxiv.org/pdf/1810.04805.pdf
 
@@ -334,7 +334,7 @@ self-attention，思想和attention类似，但是self-attention是Transformer�
 The animal didn't cross the street because it was too tired
 这里的it到底代表的是animal还是street呢，对于我们来说能很简单的判断出来，但是对于机器来说，是很难判断的，self-attention就能够让机器把it和animal联系起来。
 
-![Self-Attention1](images/eg.png)
+![png](images/eg.PNG)
 
 self-attention详细的处理过程如下所示：（详细代码参考`bert_model.py`中的`BertAttention`类。）
 
@@ -365,7 +365,7 @@ Value = INPUT_{embedding} * P_3 \\
 OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{hidden_size}{num_attention_heads}}}) * Value + Value
 $$
 
-![Attention](images/attention.PNG)
+![png](images/attention.PNG)
 
 #### util.py代码梳理
 
