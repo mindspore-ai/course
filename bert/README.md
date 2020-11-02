@@ -1,4 +1,4 @@
-# 自然语言处理应用
+# 自然语言处理应用—BERT
 
 ## 实验介绍
 
@@ -108,6 +108,10 @@ F值越大，表示分类器的性能越好，文本分类的效果越理想。
 
 **注意：** 本实验采用预处理数据集，上边的链接是原始数据，不可以直接用来训练。
 
+从[这里](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/bert_data.zip)下载本实验所需要的数据集（包括TNEWS数据集和CLUENER数据集，可以直接使用）。
+
+**注意：** dev.json文件为原始文件，再测试时需要。label2id.json为标签编码文件，vocab.txt为词表，这两个文件为dev.json文件编码提供映射。
+
 #### TNEWS数据集
 
 今日头条中文新闻（短文本）分类（Short Text Classificaiton for News）数据集。该数据集来自今日头条的新闻版块，共提取了15个类别的新闻，包括旅游，教育，金融，军事等。数据量：训练集(53,360)，验证集(10,000)，测试集(10,000)。例子如下所示。
@@ -117,8 +121,6 @@ F值越大，表示分类器的性能越好，文本分类的效果越理想。
 ```
 
 每一条数据有三个属性，从前往后分别是分类ID，分类名称，新闻字符串。十五个类别分别为："news_story"、 "news_culture"、 "news_entertainment"、"news_sports"、"news_finance"、"news_house"、 "news_car"、 "news_edu"、 "news_tech"、 "news_military"、 "news_travel"、 "news_world"、 "news_stock"、 "news_agriculture"、 "news_game"。
-
-可以从[这里](https://gitee.com/mindspore/course/wikis/dataset?sort_id=2438798)下载实验所需要的预处理后TNEWS数据集。
 
 #### CLUENER数据集
 
@@ -199,10 +201,6 @@ Bert实验数据预处理将数据中的每个字进行了标注，用标准好�
 无crf模型：标注编号（0-40），进行命名实体识别`num_labels`=41
 有crf模型：标注编号（0-42），进行命名实体识别`num_labels`=43
 
-可以从[这里](https://gitee.com/mindspore/course/wikis/dataset?sort_id=2438798)下载实验所需要的预处理后CLUENER数据集（已经进行了上表中的标准，并转换成了rf_record格式，可以直接使用）。
-
-**注意：** dev.json文件为原始文件，再测试时需要。label2id.json为标签编码文件，vocab.txt为词表，这两个文件为dev.json文件编码提供映射。
-
 ### 输入文件说明
 
 输入文件说明：
@@ -216,7 +214,7 @@ Bert实验数据预处理将数据中的每个字进行了标注，用标准好�
 
 ### 预训练模型准备
 
-下载[预训练模型](https://www.mindspore.cn/docs/zh-CN/master/network_list.html)中的预训练模型表格中BERT_Base模型（如下图所示）到目录：`bert/pre_model/[pretrain_checkpoint_file]` 
+下载[预训练模型](https://share-course.obs.cn-north-4.myhuaweicloud.com/checkpoint/bert_base/bert_base.zip)中的预训练模型表格中BERT_Base模型（如下图所示）到目录：`bert/pre_model/[pretrain_checkpoint_file]` 
 
 ![png](images/model.PNG)
 
