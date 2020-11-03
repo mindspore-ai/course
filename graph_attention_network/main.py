@@ -31,7 +31,7 @@ from graph_to_mindrecord.writer import run
 from mindspore.train.serialization import load_checkpoint, save_checkpoint
 
 # os.environ['DEVICE_ID']='6'
-context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
+context.set_context(mode=context.GRAPH_MODE,device_target="Ascend")
 
 def train(args_opt):
     """Train GAT model."""

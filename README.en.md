@@ -6,6 +6,10 @@ Part of the content comes from the open source community, internet or third part
 
 Please go to [MindSpore Open Source Community](https://www.mindspore.cn/) for more videos and documentation tutorials.
 
+## Content
+
+It is recommended to learn LeNet5 and Checkpoint experiments first to understand how to conduct experiments through ModelArts training assignments, ModelArts Notebook or local environment, and the precautions for the three ways.
+
 ## License
 
 - [Apache License 2.0](LICENSE)

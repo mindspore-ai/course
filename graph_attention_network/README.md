@@ -1,22 +1,26 @@
-#  Graph Attention Networks
+#  Graph Attention Network
 
 ## 实验介绍
 
-图注意力网络（Graph Attention Networks）由PetarVeličković等人于2017年提出。通过利用屏蔽的自我关注层来解决基于现有图的方法的缺点，GAT在转导数据集（例如Cora）和归纳数据集（例如PPI）上都达到或匹配了最新技术。
+图神经网络（Graph Neural Network, GNN）把深度学习应用到图结构（Graph）中，其中的图卷积网络（Graph Convolutional Network，GCN）可以在Graph上进行卷积操作。但是GCN存在一些缺陷：依赖拉普拉斯矩阵，不能直接用于有向图；模型训练依赖于整个图结构，不能用于动态图；卷积的时候没办法为邻居节点分配不同的权重。
+[图注意力网络（Graph Attention Networks）](https://arxiv.org/pdf/1710.10903.pdf)由Petar Veličković等人于2018年提出。GAT采用了Attention机制，可以为不同节点分配不同权重，训练时依赖于成对的相邻节点，而不依赖具体的网络结构，可以用于inductive任务。
 
-本实验主要介绍在下载的Cora和Citeseer数据集上使用MindSpore进行图注意力网络的训练。
+[1] https://baijiahao.baidu.com/s?id=1671028964544884749
+
+本实验主要介绍在Cora和Citeseer数据集上使用MindSpore进行图注意力网络的训练和验证。
 
 ## 实验目的
 
 - 了解GAT相关知识。
-- 在MindSpore中使用Cora和Citeseer数据集训练GAT示例。
+- 在MindSpore中使用Cora和Citeseer数据集训练和验证GAT。
 - 了解MindSpore的model_zoo模块，以及如何使用model_zoo中的模型。
 
 ## 预备知识
 
 - 熟练使用Python，了解Shell及Linux操作系统基本知识。
-- 具备一定的深度学习理论知识，如卷积神经网络、图卷积网络、图注意力网络等。
-- 了解并熟悉MindSpore AI计算框架，MindSpore官网：[https://www.mindspore.cn](https://www.mindspore.cn/)
+- 具备一定的深度学习理论知识，如图卷积网络、图注意力网络、损失函数、优化器，训练策略等。
+- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[Notebook（开发工具）](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0032.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)等服务。华为云官网：https://www.huaweicloud.com
+- 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn
 
 ## 实验环境
 
@@ -27,11 +31,13 @@
 
 ### 数据集准备
 
-在[59.36.11.51](59.36.11.51)服务器上下载已经转换为MindRecord格式的Cora和Citeseer数据集文件。
+Cora和CiteSeer是图神经网络常用的数据集，数据集官网[LINQS Datasets](https://linqs.soe.ucsc.edu/data)。
 
-**Cora：**dataset/workspace/mindspore_dataset/cora/cora_mr/
+Cora数据集包含2708个科学出版物，分为七个类别。 引用网络由5429个链接组成。 数据集中的每个出版物都用一个0/1值的词向量描述，0/1指示词向量中是否出现字典中相应的词。 该词典包含1433个独特的单词。 数据集中的README文件提供了更多详细信息。
 
-**Citeseer：**dataset/workspace/mindspore_dataset/citeseer/citeseer_mr/
+CiteSeer数据集包含3312种科学出版物，分为六类。 引用网络由4732个链接组成。 数据集中的每个出版物都用一个0/1值的词向量描述，0/1指示词向量中是否出现字典中相应的词。 该词典包含3703个独特的单词。 数据集中的README文件提供了更多详细信息。
+
+从华为云OBS上下载已经转换为MindRecord格式的[Cora](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/cora_mr.zip)和[Citeseer](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/citeseer_mr.zip)数据集并解压。
 
 将数据集放置到data_mr文件夹下，该文件夹应包含以下文件：
 
@@ -65,7 +71,7 @@ gat
 
 ### 创建OBS桶
 
-本实验需要使用华为云OBS存储实验脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
+本实验需要使用华为云OBS存储实验脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法（下文给出了操作步骤）。
 
 > **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
@@ -81,7 +87,11 @@ gat
 
 ### 上传文件
 
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。上传文件后，查看页面底部的“任务管理”状态栏（正在运行、已完成、失败），确保文件均上传完成。若失败请：
+
+- 参考[上传对象大小限制/切换上传方式](https://support.huaweicloud.com/qs-obs/obs_qs_0008.html)，
+- 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
+- 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
 
 ## 实验步骤(ModelArts Notebook)
 
@@ -89,7 +99,7 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 
 ### 创建Notebook
 
-可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开本实验的Notebook脚本。
+可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开Notebook（下文给出了操作步骤）。
 
 打开[ModelArts控制台-开发环境-Notebook](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/notebook)，点击“创建”按钮进入Notebook配置页面，创建Notebook的参考配置：
 
@@ -117,6 +127,10 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
 > - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
 
+## 实验步骤
+
+使用ModelArts Notebook进行实验。若使用ModelArts训练作业（适合大规模并发使用），请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解训练作业的使用方法和注意事项。
+
 ### 导入模块
 
 导入MindSpore模块和辅助模块，设置MindSpore上下文，如执行模式、设备等。
@@ -135,7 +149,7 @@ from src.utils import LossAccuracyWrapper, TrainGAT
 from mindspore.train.serialization import load_checkpoint, _exec_save_checkpoint
 
 # os.environ['DEVICE_ID']='0'
-context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
+context.set_context(mode=context.GRAPH_MODE,device_target="Ascend")
 ```
 
 ### 参数配置
@@ -309,4 +323,3 @@ Test loss=1.5366285, test acc=0.84199995
 | 精度                         | 0.830933271           | 0.828649968       |
 | 训练耗时（200 epochs）       | 27.62298311 s         | 36.711862 s       |
 | 端到端训练耗时（200 epochs） | 39.074 s              | 50.894 s          |
-
