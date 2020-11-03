@@ -1,49 +1,47 @@
-#  使用MobileNetV2网络实现微调（Fine Tune）
+#  基于MobileNetV2网络实现Fine-tune
 
 ## 实验介绍
 
-本实验介绍使用MindSpore，在CPU环境下，mobileNetV2网络做微调训练与验证。
+本实验介绍使用MindSpore进行微调（Fine-tune）。在CPU环境下，使用在OpenImage数据集上预训练的MobileNetV2模型，在花卉数据集上微调与验证。
 
 ## 实验目的
 
-- 掌握如何使用MindSpore进行微调实验开发。
-- 理解微调方法的原理、方法。
-- 了解如何使用MindSpore进行MobileNetV2网络训练与验证。
+- 掌握如何使用MindSpore进行微调。
+- 理解微调的原理、方法。
+- 了解如何使用MindSpore进行MobileNetV2的训练与验证。
 
 ## 预备知识
 
 - 熟练使用Python，了解Shell及Linux操作系统基本知识。
+
 - 具备一定的深度学习理论知识，如卷积神经网络、损失函数、优化器，训练策略等。
+
+- 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn
 
 ## 实验环境
 
-- MindSpore 1.0.0-CPU
+- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- Windows/Ubuntu x64笔记本，或NVIDIA GPU服务器等。
 
 ## 实验准备
 
 ### 数据集准备
 
-准备ImageFolder格式管理的数据集，运行`train.py`时加入`--dataset_path [dataset_path]`参数。
+准备ImageFolder格式的花卉分类数据集。下载地址为：
 
-这里采用花分类数据集。下载地址为：
 - 训练数据集链接：https://professional.obs.cn-north-4.myhuaweicloud.com/flower_photos_train.zip
 - 测试数据集链接：https://professional.obs.cn-north-4.myhuaweicloud.com/flower_photos_test.zip
 
 ### 预训练模型准备  
 
-[下载预训练模型](https://download.mindspore.cn/model_zoo/official/lite/mobilenetv2_openimage_lite/)(mobilenetv2_cpu_gpu.ckpt)到以下目录： 
+下载预训练模型[mobilenetv2_cpu_gpu.ckpt](https://download.mindspore.cn/model_zoo/official/lite/mobilenetv2_openimage_lite/mobilenetv2_cpu_gpu.ckpt)到以下目录： 
 `./pretrain_checkpoint/[pretrain_checkpoint_file]`  
-
-```Python
-mkdir pretrain_checkpoint
-wget -P ./pretrain_checkpoint https://download.mindspore.cn/model_zoo/official/lite/mobilenetv2_openimage_lite/mobilenetv2_cpu_gpu.ckpt
-```
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。  
+1. 从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。  
 
-在Gitee中克隆[MindSpore开源项目仓库](https://gitee.com/mindspore/mindspore.git)，进入`./model_zoo/official/cv/mobilenetv2/`直接下载。  
+2. 从码云上克隆[MindSpore开源仓库](https://gitee.com/mindspore/mindspore.git)，拷贝`./model_zoo/official/cv/mobilenetv2/`目录。
 
 ```bash
 git clone https://gitee.com/mindspore/mindspore.git -b r1.0
@@ -51,7 +49,7 @@ mkdir mobilenetv2
 cp -r ./mindspore/model_zoo/official/cv/mobilenetv2  ./mobilenetv2/code
 ```
 
-### 文件结构
+3. 将脚本和数据集组织为如下形式：
 
 ```
 mobilenetv2
@@ -77,34 +75,30 @@ mobilenetv2
 
 ## 实验步骤
 
-### 微调
-
 MobileNetV2实验包含2种训练方式，分别为：
-- `train`: 不使用预训练模型。从头到尾训练MobileNetV2网络（参数freeze_layer为“none”，参数pretrain_ckpt为None）。网络定义参考src/MobileNetV2.py 中的MobileNetV2类。
-- `fine_tune`：微调，使用预训练模型（大数据集）训练网络，根据是否冻结一部分网络分为两种。 
-  - 不冻结MobileNetV2Backbone部分（参数freeze_layer为“none”）。网络包含MobileNetV2Backbone和MobileNetV2Head两部分，其中MobileNetV2Backbone网络参数是从一个已经训练好的ckpt模型中得到（参数pretrain_ckpt非空）。网络定义参考src/MobileNetV2.py 中的MobileNetV2Backbone、MobileNetV2Head类。
-  - 冻结MobileNetV2Backbone部分（参数freeze_layer为"backbone"）。只训练MobileNetV2Head网络，其中MobileNetV2Backbone网络参数是从一个已经训练好的ckpt模型中得到（参数pretrain_ckpt非空）。
+- `train`: 不使用预训练模型，从头到尾训练MobileNetV2网络（参数freeze_layer为“none”，参数pretrain_ckpt为None）。网络定义参考`src/MobileNetV2.py`中的MobileNetV2类。
+- `fine_tune`：微调，使用预训练模型，根据是否冻结一部分网络又分为两种方式。 
+    - 不冻结MobileNetV2Backbone部分（参数freeze_layer为“none”）。网络包含MobileNetV2Backbone和MobileNetV2Head两部分，其中MobileNetV2Backbone网络参数是从一个已经训练好的ckpt模型中得到（参数pretrain_ckpt非空）。网络定义参考`src/MobileNetV2.py`中的MobileNetV2Backbone、MobileNetV2Head类。
+    - 冻结MobileNetV2Backbone部分（参数freeze_layer为"backbone"）。只训练MobileNetV2Head网络，其中MobileNetV2Backbone网络参数是从一个已经训练好的ckpt模型中得到（参数pretrain_ckpt非空）。
 
 **注意：** CPU运行速度慢，所以仅支持`fine_tune`方式下的冻结MobileNetV2Backbone部分。即：参数freeze_layer为"backbone"，参数pretrain_ckpt非空。
 
-前面下载的模型mobilenetv2_cpu_gpu.ckpt是mobileNetV2网络在ImageNet数据集上面训练得到的。ImageNet数据集数据量大，不适合在CPU上运行。为了加快训练速度，突出微调的优势，使CPU上训练大网络成为可能。我们采用mobilenetv2_cpu_gpu.ckpt模型作为花卉分类模型的预训练模型，只训练MobileNetV2Head（两个全连接层）网络。具体训练流程为：
+前面下载的模型mobilenetv2_cpu_gpu.ckpt是mobileNetV2网络在OpenImage数据集上面训练得到的。OpenImage数据集数据量大，不适合CPU平台。为了加快训练速度，使CPU上训练大网络成为可能，本实验基于mobilenetv2_cpu_gpu.ckpt在花卉分类数据集上做预微调，只训练MobileNetV2Head部分。具体训练流程为：
 
-- 加载mobilenetv2_cpu_gpu.ckpt模型，并利用模型将数据集特征化，生成特征数据。
-- 定义MobileNetV2Head网络，以特征数据作为其输入，训练MobileNetV2Head网络。
+- 定义MobileNetV2Backbone网络，加载mobilenetv2_cpu_gpu.ckpt到Backbone中，并利用Backbone将数据集特征化，生成特征数据。
+- 定义MobileNetV2Head网络，以特征数据作为输入，训练MobileNetV2Head网络。
 
-**注意：** 定义MobileNetV2Head网络的输入维度和mobilenetv2_cpu_gpu.ckpt网络的输出维度保持一致。
+**注意：** MobileNetV2Head网络的输入维度和MobileNetV2Backbone网络的输出维度须保持一致。
 
-微调让CPU训练大型网络成为可能，并且实现了不同数据集的迁移学习。
+### MobileNetV2网络
 
-### mobileNetv2网络
+MobileNetV1是由Google在2017年发布的一个轻量级深度神经网络，其主要特点是采用深度可分离卷积（Depthwise Separable Convolution）替换了普通卷积。2018年提出的MobileNetV2在MobileNetV1的基础上引入了线性瓶颈 (Linear Bottleneck)和倒残差 (Inverted Residual)来提高网络的表征能力。
 
-mobileNetV1是由google在2017年发布的一个轻量级深度神经网络，其主要特点是采用深度可分离卷积（Depthwise Separable Convolution）替换了普通卷积，2018年提出的mobileNetV2在V1的基础上引入了线性瓶颈 (Linear Bottleneck)和倒残差 (Inverted Residual)来提高网络的表征能力。
-
-#### mobileNetV1的深度可分离卷积
+#### MobileNetV1的深度可分离卷积
 
 Depthwise Separable Convolution实质上是将标准卷积分成了两步：depthwise卷积和pointwise卷积，大大减少了普通卷积的计算量。
 
-- depthwise卷积：对每个输入通道单独使用一个卷积核处理，输入输出维度是相同的；
+- depthwise卷积：对每个输入通道单独使用一个卷积核处理，输入输出通道数是相同的；
 - pointwise卷积：1×1卷积，用于将depthwise卷积的输出组合起来；
 
 卷积类型|输入维度|输出通道数|卷积核|卷积核参数量|输出维度|计算量
@@ -114,29 +108,33 @@ depthwise卷积|$C_{in} * H * W$|$C_{in}$|$K * K$| $K * K * C_{in}$|$C_{in} * H 
 pointwise卷积|$C_{in} * H * W$|$C_{out}$|$1 * 1$|$1 * 1 * C_{in} * C_{out}$|$C_{out} * H * W$|$1 * 1 *  C_{in} * C_{out} *  H* W$
 深度可分离卷积|$C_{in} * H * W$|$C_{out}$|||$C_{out} * H * W$|$（K * K + C_{out}） * C_{in} * H * W$
 
-从表格可以看出：深度可分离卷积利用两个可分离的卷积（depthwise卷积和pointwise卷积）替换标准卷积，增加的深度，但却大大减少了计算量。
+从表格可以看出：深度可分离卷积利用两个可分离的卷积（depthwise卷积和pointwise卷积）替换标准卷积，增加了网络的深度，但却大大减少了计算量。
 
-#### mobileNetV2的改进
+#### MobileNetV2的改进
 
-MobileNet V1的结构较为简单，Depthwise Convolution确实降低了计算量，但是 Depthwise 部分的 kernel 训练容易废掉，最终再经过ReLU出现输出为0的情况。
+- 线性瓶颈（Linear Bottlenecks）
 
-Resnet及Densenet等一系列采用shortcut的网络的成功，表明了shortcut是个非常好的东西，于是MobileNet-V2就将这个好东西拿来用。
+  非正式地，对于一组真实图像的输入，我们说这组层激活值（layer activations）形成“感兴趣的流形（manifold of interest）”。 长期以来，人们一直将神经网络中感兴趣的流形嵌入到低维子空间中。 换句话说，当我们查看一个深卷积层的所有单个通道像素时，这些值中编码的信息实际上位于某种流形中，而这些流又可以嵌入到低维子空间中。
 
-拿来主义，最重要的就是要结合自身的特点，MobileNet的特点就是depth-wise separable convolution，但是直接把depth-wise separable convolution应用到 residual block中，会碰到如下问题：
+  - 如果感兴趣的流形在ReLU变换后仍保持非零体积，则它对应于线性变换。
+  - ReLU能够保留有关输入流形的完整信息，但前提是输入流形位于输入空间的低维子空间中。
 
-1. DWConv layer层提取得到的特征受限于输入的通道数，若是采用以往的residual block，先“压缩”，再卷积提特征，那么DWConv layer可提取得特征就太少了，因此一开始不“压缩”，MobileNetV2反其道而行，一开始先“扩张”。 通常residual block里面是 “压缩”→“卷积提特征”→“扩张”，MobileNetV2就变成了 “扩张”→“卷积提特征”→ “压缩”，因此称为Inverted residuals。
-2. 当采用“扩张”→“卷积提特征”→ “压缩”时，在“压缩”之后会碰到一个问题，那就是Relu会破坏特征。为什么这里的Relu会破坏特征呢？这得从Relu的性质说起，Relu对于负的输入，输出全为零；而本来特征就已经被“压缩”，再经过Relu的话，又要“损失”一部分特征，因此这里不采用Relu，实验结果表明这样做是正确的，这就称为Linear bottlenecks。
+  这两个见解为我们提供了优化现有神经体系结构的经验提示：假设感兴趣的流形是低维的，我们可以通过将线性瓶颈层插入到卷积块中来捕获这一点。 实验证据表明，使用线性层至关重要，因为它可以防止非线性破坏过多的信息。
 
-下图分别展示了有无shortcut连接的mobileNetV2对depth-wise separable convolution的改进。
+- 倒残差（Inverted residuals）
 
-- 当stride=1时，使用short cut连接，将输入和输出特征连接（下图左侧）；
-- 当stride=2时，无short cut连接（下图右侧）。
+  瓶颈块看起来类似于残差块，其中每个块包含一个输入，然后是多个瓶颈，然后是扩展。 但是，受直觉的启发，瓶颈实际上包含所有必要的信息，而扩展层仅充当张量的非线性转换的实现细节，我们直接在瓶颈之间使用快捷方式。
 
-![png](images/结构.png)
+  下图显示了带或不带shortcut的MobileNetV2模块。
 
-#### mobileNetV2网络结构（MobileNetV2Backbone）
+  - 如果stride = 1，请使用shortcut将输入瓶颈连接到输出瓶颈（在下图的左侧）。
+  - 如果跨度= 2，则没有shortcut的输入或输出功能（在下图的右侧）。
 
-mobileNetV2网络总结构如下表所示，请参照src/MobileNetV2.py
+![png](images/inverted_residual.png)
+
+#### MobileNetV2网络结构
+
+MobileNetV2网络总结构如下表所示，请参照`src/MobileNetV2.py`。
 
 输入|操作|t(扩张倍数expand_ratio)|c(输出通道数)|n(重复次数)|s(步长stride)
 :--:|:--:|:--:|:--:|:--:|:--:
@@ -152,7 +150,7 @@ $320 * 7 * 7$|conv2d 1*1|-|1280|1|1
 $1280 * 7 * 7$|avgpool 7*7|-|-|1|-
 $1 * 1 * k$|conv2d 1*1|-|k|-|-
 
-定义MobileNetV2Backbone网络（src/MobileNetV2.py）
+定义MobileNetV2Backbone网络（`src/MobileNetV2.py`）
 
 ```python
 class MobileNetV2Backbone(nn.Cell):
@@ -246,9 +244,9 @@ class MobileNetV2Backbone(nn.Cell):
 其中InvertedResidual是由三部分组成，如下表所示。
 
 输入|操作|输出|功能说明
-:--:|:--:|:--:
+:--:|:--:|:--:|----
 $c_{in}*h*w$|conv2d 1*1, Relu|$c_{in} t*h*w$|扩张
-$c_{in} t*h*w$|depthwise卷积  3*3 ,Relu|$c_{in} t* \frac{h}{s}*\frac{w}{s}$|depthwise卷积
+$c_{in} t*h*w$|depthwise conv2d  3*3 ,Relu|$c_{in} t* \frac{h}{s}*\frac{w}{s}$|depthwise卷积
 $c_{in} t* \frac{h}{s}*\frac{w}{s}$|conv2d 1*1, linear|$c* \frac{h}{s}*\frac{w}{s}$|depthwise卷积
 
 **注解： ** 其中t(扩张倍数expand_ratio)，c(输出通道数)，s(步长stride)
@@ -304,7 +302,7 @@ class InvertedResidual(nn.Cell):
         return x
 ```
 
-其中ConvBNReLU（src/MobileNetV2.py）集成了卷积、BN和ReLU。depthwise卷积和普通卷积都使用函数nn.Conv2d，区别在于groups参数，当groups等于输入通道数实现depthwise卷积，当groups等于1为普通卷积。
+其中ConvBNReLU（`src/MobileNetV2.py`）集成了卷积、BatchNorm和ReLU。depthwise卷积和普通卷积都使用函数nn.Conv2d，区别在于groups参数，当groups等于输入通道数实现depthwise卷积，当groups等于1为普通卷积。
 
 ```python
 class ConvBNReLU(nn.Cell):
@@ -347,7 +345,7 @@ class ConvBNReLU(nn.Cell):
 
 ### MobileNetV2Head网络
 
-定义MobileNetV2Head网络（src/MobileNetV2.py）
+定义MobileNetV2Head网络（`src/MobileNetV2.py`）
 
 ```python
 class MobileNetV2Head(nn.Cell):
@@ -413,7 +411,7 @@ class MobileNetV2Head(nn.Cell):
 
 ### 其他代码解读
 
-定义初始化网络函数（src/model.py）
+网络定义和初始化（`src/model.py`）。
 
 ```python
 def define_net(config, is_training):
@@ -426,7 +424,7 @@ def define_net(config, is_training):
     return backbone_net, head_net, net
 ```
 
-定义特征化函数extract_features(src/dataset.py)
+定义特征化函数`extract_features()`(`src/dataset.py`)。使用Backbone在全量花卉数据集上做一遍推理，得到特征图数据（Feature Maps）。
 
 ```python
 def extract_features(net, dataset_path, config):
@@ -455,7 +453,7 @@ def extract_features(net, dataset_path, config):
     return step_size
 ```
 
-初始化网络并特征化(train.py)
+初始化网络并特征化数据集(`train.py`)
 
 ```python
 # define network
@@ -466,7 +464,7 @@ if args_opt.pretrain_ckpt and args_opt.freeze_layer == "backbone":
     step_size = extract_features(backbone_net, args_opt.dataset_path, config)
 ```
 
-微调(train.py)
+微调(`train.py`)
 
 ```python
 if args_opt.pretrain_ckpt is None or args_opt.freeze_layer == "none":
@@ -546,19 +544,17 @@ config_cpu = ed({
 
 ### 微调训练  
 
-MobileNetV2做微调时，只需要运行`train.py`。目前运行`train.py`时仅支持单处理器。
-
-运行`train.py`时需要传入`dataset_path`、`platform`、`--run_distribute`、`freeze_layer`与`pretrain_ckpt`五个参数。
+MobileNetV2做微调时，只需要运行`train.py`。目前`train.py`时仅支持单卡模式。传入以下参数：
 
 - `--dataset_path`：训练数据集地址，无默认值，用户训练时必须输入。
 - `--platform`：处理器类型，默认为`Ascend`，可以设置为`CPU`或`GPU`。
 - `--freeze_layer`：冻结网络，选填"none"或"backbone" 。"none"代表不冻结网络，"backbone" 代表冻结网络"backbone" 部分。CPU只支持微调head网络，不支持微调整个网络。所以这里填"backbone"。
 - `--pretrain_ckpt`：微调时，需要传入pretrain_checkpoint文件路径以加载预训练好的模型参数权重。
-- `--run_distribute`：是否使用分布式运行。默认为`True`。CPU不支持分布式运行。
+- `--run_distribute`：是否使用分布式运行。默认为`True`，本实验中设置为`False`。
 
-**方式一：** args文件指定运行参数
+**方式一：** 通过args文件指定运行参数
 
-1. 打开src/args配置文件，更改train_parse_args函数为如下所示，以此来指定运行默认参数。
+1. 打开`src/args.py`配置文件，更改train_parse_args函数为如下所示，以此来指定运行默认参数。
 
 ```python
 def train_parse_args():
@@ -576,15 +572,15 @@ def train_parse_args():
     return train_args
 ```
 
-2. 打开命令框，cd到train.py文件目录。输入`python train.py`来训练网络。
+2. 打开命令行终端，`cd`进入`train.py`文件目录。输入`python train.py`来训练网络。
 
-**方式二** 命令行指定运行
+**方式二：** 命令行指定运行参数
 
 ```Shell
 python train.py --platform CPU --dataset_path ../data/flower_photos_train --freeze_layer backbone --pretrain_ckpt ../pretrain_checkpoint/mobilenetv2_cpu_gpu.ckpt --run_distribute False 
 ```
 
-运行Python文件时在交互式命令行中查看打印信息，输出结果如下：
+运行Python文件时在交互式命令行中查看打印信息，打印结果如下：
 
 ```
 train args: Namespace(dataset_path='../data/flower_photos_train', freeze_layer='backbone', is_training=True, platform='CPU', pretrain_ckpt='../pretrain_checkpoint/mobilenetv2_cpu_gpu.ckpt', run_distribute=True)
@@ -592,15 +588,7 @@ cfg: {'num_classes': 5, 'image_height': 224, 'image_width': 224, 'batch_size': 6
 Complete the batch 1/56
 Complete the batch 2/56
 Complete the batch 3/56
-Complete the batch 4/56
-Complete the batch 5/56
-Complete the batch 6/56
 ...
-Complete the batch 49/56
-Complete the batch 50/56
-Complete the batch 51/56
-Complete the batch 52/56
-Complete the batch 53/56
 Complete the batch 54/56
 Complete the batch 55/56
 Complete the batch 56/56
@@ -627,22 +615,20 @@ epoch[20/20], iter[56] cost: 7353.783, per step time: 131.318, avg loss: 0.640
 total cost 156.8277 s
 ```
 
-**注意：** 当改变batch_size、image_height、image_width参数时，需要删除 ../data/flower_photos_train_features 文件夹，重新生成。因为当特征文件夹（flower_photos_train_features）存在时，为了节约时间，运行时不再特征化（特征化与batch_size、image_height、image_width参数有关，不同的batch_size、image_height、image_width参数生成的特征文件不同）。
+**注意：** 特征化与batch_size、image_height、image_width参数有关，不同的参数生成的特征文件不同。当改变这几个参数时，需要删除`../data/flower_photos_train_features`文件夹，以便重新生成。因为当特征文件夹（flower_photos_train_features）存在时，为了节约时间，会特征化过程。
 
 ### 验证模型
 
-使用验证集测试模型性能，需要输入必要参数，`--platform`默认为“Ascend”，可自行设置为"CPU"或"GPU"。最终在交互式命令行中展示标准输出与错误输出。
-
-验证时，运行`eval.py`并且传入`dataset_path`、`platform`、`pretrain_ckpt`与`--run_distribute`四个参数。
+使用`eval.py`在验证集上验证模型性能，需要传入以下参数：
 
 - `--dataset_path`：测试数据集地址，无默认值，用户测试时必须输入。
 - `--platform`：处理器类型，默认为“Ascend”，可以设置为“CPU”或“GPU”。本实验设置为“CPU”
-- `--pretrain_ckpt`：pretrain_checkpoint文件路径以加载训练好的模型
-- `--run_distribute`：是否使用分布式运行。CPU不支持分布式运行，默认值为False。
+- `--pretrain_ckpt`：fine-tune后生成的Backbone+Head模型Checkpoint文件。
+- `--run_distribute`：是否使用分布式运行。默认值为False，本实验中无需修改。
 
-**方式一**: args文件指定运行参数
+**方式一： ** 通过args文件指定运行参数
 
-1. 打开src/args配置文件，更改eval_parse_args函数为如下所示，以此来指定运行默认参数。
+1. 打开`src/args.py`配置文件，更改`eval_parse_args`函数为如下所示，以此来指定运行默认参数。
 
 ```python
 def eval_parse_args():
@@ -658,15 +644,15 @@ def eval_parse_args():
     return eval_args
 ```
 
-2. 打开命令框，cd到eval.py文件目录。输入`python eval.py`来训练网络。
+2. 打开命令框，`cd`进入`eval.py`文件目录。输入`python eval.py`来训练网络。
 
-**方式二**: 命令行指定运行
+**方式二：** 通过命令行指定运行参数
 
 ```Shell
 python eval.py --platform CPU --dataset_path ../data/flower_photos_test  --pretrain_ckpt ./ckpt_0/mobilenetv2_{epoch_num}.ckpt  --run_distribute False
 ```
 
-运行Python文件时在交互式命令行中输出验证结果，结果如下：
+运行Python文件时在命令行中会打印验证结果：
 
 ```
 result:{'acc': 0.9038461538461539}
