@@ -81,13 +81,13 @@ if __name__ == "__main__":
         import moxing
 
         # WAY1: copy dataset from your own OBS bucket to container/cache.
-        # moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST')
+        moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
 
         # WAY2: copy dataset from other's OBS bucket, which has been set public read or public read&write.
         # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket;
-        moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                             server="obs.cn-north-4.myhuaweicloud.com")
-        moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+        # moxing.file.set_auth(ak='Other's Access Key', sk='Other's Secret Access Key',
+        #                      server="obs.cn-north-4.myhuaweicloud.com")
+        # moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
 
         data_path = 'MNIST'
     else:
