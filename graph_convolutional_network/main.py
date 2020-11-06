@@ -1,17 +1,37 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+
+"""
+GCN training script.
+"""
+
+import os
+# os.environ['DEVICE_ID']='7'
+
 import time
 import argparse
-import os
-from easydict import EasyDict as edict
-
 import numpy as np
+
 from mindspore import context
+from easydict import EasyDict as edict
 
 from src.gcn import GCN, LossAccuracyWrapper, TrainNetWrapper
 from src.config import ConfigGCN
 from src.dataset import get_adj_features_labels, get_mask
-from graph_to_mindrecord.writer import run
+# from graph_to_mindrecord.writer import run
 
-os.environ['DEVICE_ID']='6'
 context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
 
 def train(args_opt):
@@ -69,14 +89,14 @@ def train(args_opt):
 if __name__ == '__main__':
     #------------------------定义变量------------------------------
     parser = argparse.ArgumentParser(description='GCN')
-    parser.add_argument('--data_url', type=str, default='./data', help='Dataset directory')
-    parser.add_argument('--train_url', type=str, default=None, help='Train output url')
-    args, unknown = parser.parse_known_args()
+    parser.add_argument('--data_url', required=True, help='Location of data.')
+    parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
+    args_opt = parser.parse_args()
 
     import moxing as mox
-    mox.file.copy_parallel(args.data_url, dst_url='./data')  # 将OBS桶中数据拷贝到容器中
+    mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')  # 将OBS桶中数据拷贝到容器中
 
-    dataname = 'cora'
+    dataname = 'cora_mr'
     datadir_save = './data_mr'
     datadir = os.path.join(datadir_save, dataname)
     cfg = edict({
@@ -94,11 +114,11 @@ if __name__ == '__main__':
         'test_nodes_num':1000
     })
 
-    #转换数据格式
-    print("============== Graph To Mindrecord ==============")
-    run(cfg)
+    # 转换数据格式
+    # print("============== Graph To Mindrecord ==============")
+    # run(cfg)
     #训练
     print("============== Starting Training ==============")
     train(cfg)
 
-    mox.file.copy_parallel(src_url='data_mr', dst_url=cfg.MINDRECORD_PATH)  # src_url本地   将容器输出放入OBS桶中
+    #mox.file.copy_parallel(src_url='data_mr', dst_url=cfg.MINDRECORD_PATH)  # src_url本地   将容器输出放入OBS桶中
