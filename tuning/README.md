@@ -22,7 +22,7 @@
 
 ## 作业环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore；
 
 ## 作业准备
@@ -127,6 +127,7 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 import os
 # os.environ['DEVICE_ID'] = '0'
 import time
+import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -134,9 +135,9 @@ import numpy as np
 import mindspore as ms
 import mindspore.context as context
 import mindspore.dataset.transforms.c_transforms as C
-import mindspore.dataset.transforms.vision.c_transforms as CV
+import mindspore.dataset.vision.c_transforms as CV
 
-from mindspore.dataset.transforms.vision import Inter
+from mindspore.dataset.vision import Inter
 from mindspore import nn, Tensor
 from mindspore.ops import operations as P
 from mindspore.train import Model
@@ -151,12 +152,12 @@ context.set_context(mode=context.GRAPH_MODE, device_target='Ascend')
 对其中几张图片进行可视化，可以看到图片中的物体/动物，图片的大小为32x32。
 
 ```python
-DATA_DIR_TRAIN = "cifar10/train" # 训练集信息
-DATA_DIR_TEST = "cifar10/eval" # 测试集信息
-LABELS = "cifar10/batches.meta.txt" # 标签信息
+DATA_DIR_TRAIN = "cifar10/train" # train set
+DATA_DIR_TEST = "cifar10/eval" # test set
+LABELS = "cifar10/batches.meta.txt" # labels
 
 ds = ms.dataset.Cifar10Dataset(DATA_DIR_TRAIN)
-ds = ds.create_dict_iterator()
+ds = ds.create_dict_iterator(output_numpy=True)
 with open(LABELS, "r") as f:
     labels = [x.strip() for x in f.readlines()]
 
@@ -174,7 +175,7 @@ plt.show()
 在使用数据集训练网络前，首先需要对数据进行预处理，如下：
 
 ```python
-def create_dataset(training=True, num_epoch=1, batch_size=32, resize=(32, 32), rescale=1/255, shift=0, buffer_size=64):
+def create_dataset(training=True, batch_size=32, resize=(32, 32), rescale=1/255, shift=0, buffer_size=64):
     ds = ms.dataset.Cifar10Dataset(DATA_DIR_TRAIN if training else DATA_DIR_TEST)
     
     # define map operations
@@ -194,12 +195,11 @@ def create_dataset(training=True, num_epoch=1, batch_size=32, resize=(32, 32), r
     
     ds = ds.shuffle(buffer_size=buffer_size)
     ds = ds.batch(batch_size, drop_remainder=True)
-    ds = ds.repeat(num_epoch)
     
     return ds
 ```
 
-### 定义模型
+### 模型定义
 
 预置模型为LeNet5：
 
@@ -224,7 +224,7 @@ class MyNet(nn.Cell):
         output = self.relu(output)
         output = self.pool(output)
         output = self.flatten(output)
-        # print(output.shape) # 仅Pynative模式时可用，Graph模式时请注释掉
+        # print(output.shape) # `print` only works in PyNative mode. Please comment it in Graph mode.
         output = self.fc1(output)
         output = self.fc2(output)
         output = self.fc3(output)
@@ -242,7 +242,7 @@ x = Tensor(np.ones([1, 3, 32, 32]), ms.float32)
 y = MyNet()(x)
 ```
 
-> **注意：** 调试完毕后，需注释掉网络定义中`construct`里的打印语句：`print(output.shape)`，并将切换为Graph模式进行模型训练。
+> **注意：** 调试完毕后，需注释掉模型定义中`construct`里的打印语句`print(output.shape)`，并重新执行模型定义代码。然后切换为Graph模式，进行后续的模型训练。
 
 ```python
 context.set_context(mode=context.GRAPH_MODE)
@@ -286,7 +286,7 @@ def build_lr(total_steps, decay_type='cosine', lr_base=0.1, lr_init=0.0, warmup_
                 frac = 1.0 - float(i - warmup_steps) / (total_steps - warmup_steps)
                 lr = lr_base * (frac * frac)
             elif decay_type == 'exponential':
-                pass # 尝试实现
+                pass # Try to implement the code by yourself.
             elif decay_type == 'cosine':
                 lr = 0.5 * lr_base * (1 + np.cos(np.pi * i / total_steps))
             else:
@@ -322,21 +322,23 @@ plt.show()
 - cosine0.01_epoch50:{'acc': 0.6571514423076923, 'loss': 0.9970117075703083}
 
 ```python
-os.system('rm -f *.ckpt *.ir *.meta') # 清理旧的运行文件
+CKPT_DIR = 'ckpt/'
+if os.path.exists(CKPT_DIR):
+    shutil.rmtree(CKPT_DIR)
 
 def test_train(num_epoch=2, momentum=0.9, lr=0.01, decay_type='square', check_point_name="mynet"):
-    ds_train = create_dataset(num_epoch=num_epoch)
+    ds_train = create_dataset()
     ds_eval = create_dataset(training=False)
     steps_per_epoch = ds_train.get_dataset_size()
     
     net = MyNet()
-    loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
+    loss = nn.loss.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
     if decay_type:
         lr = build_lr(num_epoch*steps_per_epoch, decay_type=decay_type, lr_base=lr)
     opt = nn.Momentum(net.trainable_params(), lr, momentum, weight_decay=0.0)
     
     ckpt_cfg = CheckpointConfig(save_checkpoint_steps=steps_per_epoch, keep_checkpoint_max=5)
-    ckpt_cb = ModelCheckpoint(prefix=check_point_name, config=ckpt_cfg)
+    ckpt_cb = ModelCheckpoint(prefix=check_point_name, directory=CKPT_DIR, config=ckpt_cfg)
     loss_cb = LossMonitor(per_print_times=1)
     
     model = Model(net, loss, opt, metrics={'acc', 'loss'})
@@ -345,160 +347,33 @@ def test_train(num_epoch=2, momentum=0.9, lr=0.01, decay_type='square', check_po
     print('Metrics:', metrics)
 
 test_train(num_epoch=50, lr=0.01, decay_type='cosine')
-print('\n'.join(sorted([x for x in os.listdir('.') if x.startswith('mynet')])))
+print('\n'.join(sorted([x for x in os.listdir(CKPT_DIR) if x.startswith('mynet')])))
 ```
 
-    epoch: 1 step 1562, loss is 2.30061936378479
-    Epoch time: 25662.922, per step time: 16.430, avg loss: 2.301
-    ************************************************************
-    epoch: 2 step 1562, loss is 2.0450923442840576
-    Epoch time: 2720.177, per step time: 1.741, avg loss: 2.045
-    ************************************************************
-    epoch: 3 step 1562, loss is 1.6128461360931396
-    Epoch time: 2804.769, per step time: 1.796, avg loss: 1.613
-    ************************************************************
-    epoch: 4 step 1562, loss is 1.803504467010498
-    Epoch time: 2530.918, per step time: 1.620, avg loss: 1.804
-    ************************************************************
-    epoch: 5 step 1562, loss is 1.3489830493927002
-    Epoch time: 2505.864, per step time: 1.604, avg loss: 1.349
-    ************************************************************
-    epoch: 6 step 1562, loss is 1.4028651714324951
-    Epoch time: 2747.615, per step time: 1.759, avg loss: 1.403
-    ************************************************************
-    epoch: 7 step 1562, loss is 1.6755203008651733
-    Epoch time: 3018.966, per step time: 1.933, avg loss: 1.676
-    ************************************************************
-    epoch: 8 step 1562, loss is 1.4851553440093994
-    Epoch time: 3063.155, per step time: 1.961, avg loss: 1.485
-    ************************************************************
-    epoch: 9 step 1562, loss is 1.7957572937011719
-    Epoch time: 3094.841, per step time: 1.981, avg loss: 1.796
-    ************************************************************
-    epoch: 10 step 1562, loss is 1.791577696800232
-    Epoch time: 3118.241, per step time: 1.996, avg loss: 1.792
-    ************************************************************
-    epoch: 11 step 1562, loss is 1.6139452457427979
-    Epoch time: 3049.569, per step time: 1.952, avg loss: 1.614
-    ************************************************************
-    epoch: 12 step 1562, loss is 1.7888214588165283
-    Epoch time: 3032.404, per step time: 1.941, avg loss: 1.789
-    ************************************************************
-    epoch: 13 step 1562, loss is 1.1013481616973877
-    Epoch time: 2966.581, per step time: 1.899, avg loss: 1.101
-    ************************************************************
-    epoch: 14 step 1562, loss is 1.345918893814087
-    Epoch time: 2940.940, per step time: 1.883, avg loss: 1.346
-    ************************************************************
-    epoch: 15 step 1562, loss is 1.265627145767212
-    Epoch time: 2949.632, per step time: 1.888, avg loss: 1.266
-    ************************************************************
-    epoch: 16 step 1562, loss is 1.6836870908737183
-    Epoch time: 3009.068, per step time: 1.926, avg loss: 1.684
-    ************************************************************
-    epoch: 17 step 1562, loss is 1.279303789138794
-    Epoch time: 2967.261, per step time: 1.900, avg loss: 1.279
-    ************************************************************
-    epoch: 18 step 1562, loss is 1.566827416419983
-    Epoch time: 2988.967, per step time: 1.914, avg loss: 1.567
-    ************************************************************
-    epoch: 19 step 1562, loss is 1.4419476985931396
-    Epoch time: 3065.716, per step time: 1.963, avg loss: 1.442
-    ************************************************************
-    epoch: 20 step 1562, loss is 1.3531932830810547
-    Epoch time: 3155.043, per step time: 2.020, avg loss: 1.353
-    ************************************************************
-    epoch: 21 step 1562, loss is 1.3372687101364136
-    Epoch time: 3216.321, per step time: 2.059, avg loss: 1.337
-    ************************************************************
-    epoch: 22 step 1562, loss is 1.546985149383545
-    Epoch time: 3219.895, per step time: 2.061, avg loss: 1.547
-    ************************************************************
-    epoch: 23 step 1562, loss is 1.1595118045806885
-    Epoch time: 3160.147, per step time: 2.023, avg loss: 1.160
-    ************************************************************
-    epoch: 24 step 1562, loss is 1.5350230932235718
-    Epoch time: 2900.779, per step time: 1.857, avg loss: 1.535
-    ************************************************************
-    epoch: 25 step 1562, loss is 1.3363163471221924
-    Epoch time: 2874.148, per step time: 1.840, avg loss: 1.336
-    ************************************************************
-    epoch: 26 step 1562, loss is 1.150057077407837
-    Epoch time: 2917.421, per step time: 1.868, avg loss: 1.150
-    ************************************************************
-    epoch: 27 step 1562, loss is 1.3157460689544678
-    Epoch time: 2837.790, per step time: 1.817, avg loss: 1.316
-    ************************************************************
-    epoch: 28 step 1562, loss is 1.1547173261642456
-    Epoch time: 2862.923, per step time: 1.833, avg loss: 1.155
-    ************************************************************
-    epoch: 29 step 1562, loss is 1.2142109870910645
-    Epoch time: 2937.854, per step time: 1.881, avg loss: 1.214
-    ************************************************************
-    epoch: 30 step 1562, loss is 1.655000925064087
-    Epoch time: 3036.882, per step time: 1.944, avg loss: 1.655
-    ************************************************************
-    epoch: 31 step 1562, loss is 1.312251091003418
-    Epoch time: 2994.985, per step time: 1.917, avg loss: 1.312
-    ************************************************************
-    epoch: 32 step 1562, loss is 1.3069391250610352
-    Epoch time: 2930.526, per step time: 1.876, avg loss: 1.307
-    ************************************************************
-    epoch: 33 step 1562, loss is 0.9370332956314087
-    Epoch time: 2847.507, per step time: 1.823, avg loss: 0.937
-    ************************************************************
-    epoch: 34 step 1562, loss is 1.2588906288146973
-    Epoch time: 2994.717, per step time: 1.917, avg loss: 1.259
-    ************************************************************
-    epoch: 35 step 1562, loss is 1.1973369121551514
-    Epoch time: 2870.850, per step time: 1.838, avg loss: 1.197
-    ************************************************************
-    epoch: 36 step 1562, loss is 1.106740951538086
-    Epoch time: 2990.393, per step time: 1.914, avg loss: 1.107
-    ************************************************************
-    epoch: 37 step 1562, loss is 1.221482515335083
-    Epoch time: 2983.109, per step time: 1.910, avg loss: 1.221
-    ************************************************************
-    epoch: 38 step 1562, loss is 1.4530506134033203
-    Epoch time: 2888.643, per step time: 1.849, avg loss: 1.453
-    ************************************************************
-    epoch: 39 step 1562, loss is 1.417027235031128
-    Epoch time: 2885.899, per step time: 1.848, avg loss: 1.417
-    ************************************************************
-    epoch: 40 step 1562, loss is 1.0494483709335327
-    Epoch time: 2887.330, per step time: 1.848, avg loss: 1.049
-    ************************************************************
-    epoch: 41 step 1562, loss is 1.0735788345336914
-    Epoch time: 3042.776, per step time: 1.948, avg loss: 1.074
-    ************************************************************
-    epoch: 42 step 1562, loss is 0.9361321330070496
-    Epoch time: 3102.990, per step time: 1.987, avg loss: 0.936
-    ************************************************************
-    epoch: 43 step 1562, loss is 1.0883814096450806
-    Epoch time: 3015.605, per step time: 1.931, avg loss: 1.088
-    ************************************************************
-    epoch: 44 step 1562, loss is 0.995680570602417
-    Epoch time: 2915.859, per step time: 1.867, avg loss: 0.996
-    ************************************************************
-    epoch: 45 step 1562, loss is 1.2813096046447754
-    Epoch time: 2919.649, per step time: 1.869, avg loss: 1.281
-    ************************************************************
-    epoch: 46 step 1562, loss is 1.1225669384002686
-    Epoch time: 2871.781, per step time: 1.839, avg loss: 1.123
-    ************************************************************
-    epoch: 47 step 1562, loss is 0.8622953295707703
-    Epoch time: 3000.717, per step time: 1.921, avg loss: 0.862
-    ************************************************************
-    epoch: 48 step 1562, loss is 0.8399759531021118
-    Epoch time: 3120.739, per step time: 1.998, avg loss: 0.840
-    ************************************************************
-    epoch: 49 step 1562, loss is 1.4757791757583618
-    Epoch time: 3140.896, per step time: 2.011, avg loss: 1.476
-    ************************************************************
-    epoch: 50 step 1562, loss is 0.8605407476425171
-    Epoch time: 3078.442, per step time: 1.971, avg loss: 0.861
-    ************************************************************
-    Metrics: {'loss': 0.991741633377014, 'acc': 0.6541466346153846}
+    epoch: 1 step: 1562, loss is 2.2951498
+    epoch: 2 step: 1562, loss is 1.6339847
+    epoch: 3 step: 1562, loss is 1.575588
+    epoch: 4 step: 1562, loss is 1.7486116
+    epoch: 5 step: 1562, loss is 1.5427492
+    epoch: 6 step: 1562, loss is 1.3791978
+    epoch: 7 step: 1562, loss is 1.6345646
+    epoch: 8 step: 1562, loss is 1.4571137
+    epoch: 9 step: 1562, loss is 1.762414
+    epoch: 10 step: 1562, loss is 1.5855846
+    
+    ...
+    
+    epoch: 41 step: 1562, loss is 0.78345805
+    epoch: 42 step: 1562, loss is 0.72570205
+    epoch: 43 step: 1562, loss is 1.2801023
+    epoch: 44 step: 1562, loss is 1.1177703
+    epoch: 45 step: 1562, loss is 1.0924174
+    epoch: 46 step: 1562, loss is 0.8074777
+    epoch: 47 step: 1562, loss is 1.4620423
+    epoch: 48 step: 1562, loss is 0.9580066
+    epoch: 49 step: 1562, loss is 1.1473527
+    epoch: 50 step: 1562, loss is 1.0300221
+    Metrics: {'loss': 0.9821124107409747, 'acc': 0.6625600961538461}
     mynet-46_1562.ckpt
     mynet-47_1562.ckpt
     mynet-48_1562.ckpt
@@ -546,7 +421,7 @@ print('Latency(ms):', (end-start)/100 * 1000)
 
 | batch size | number of epochs | learning rate | decay type | optimizer | number of parameters(M) | latency(ms) | acc(%) |
 | -- | -- | -- | -- | -- | -- | -- | -- |
-| 32 | 50 | 0.01 | cosine | Momentum 0.9 | 0.061984 | 0.528 | 65.4 |
+| 32 | 50 | 0.01 | cosine | Momentum 0.9 | 0.061984 | 0.528 | 66.3 |
 
 在预置模型和训练策略的基础上，请：
 

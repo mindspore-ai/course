@@ -22,7 +22,7 @@ Logistic函数针对的是二分类问题，而Softmax解决的是多分类问�
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
@@ -101,6 +101,7 @@ import os
 # os.environ['DEVICE_ID'] = '7'
 import csv
 import numpy as np
+from pprint import pprint
 
 import mindspore as ms
 from mindspore import nn
@@ -116,13 +117,25 @@ context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 ```python
 with open('iris.data') as csv_file:
     data = list(csv.reader(csv_file, delimiter=','))
-print(data[0:5]); print(data[50:55]); print(data[100:105]) # 打印部分数据
+pprint(data[0:5]); pprint(data[50:55]); pprint(data[100:105]) # print some samples
 ```
 
-    [['5.1', '3.5', '1.4', '0.2', 'Iris-setosa'], ['4.9', '3.0', '1.4', '0.2', 'Iris-setosa'], ['4.7', '3.2', '1.3', '0.2', 'Iris-setosa'], ['4.6', '3.1', '1.5', '0.2', 'Iris-setosa'], ['5.0', '3.6', '1.4', '0.2', 'Iris-setosa']] 
-    [['7.0', '3.2', '4.7', '1.4', 'Iris-versicolor'], ['6.4', '3.2', '4.5', '1.5', 'Iris-versicolor'], ['6.9', '3.1', '4.9', '1.5', 'Iris-versicolor'], ['5.5', '2.3', '4.0', '1.3', 'Iris-versicolor'], ['6.5', '2.8', '4.6', '1.5', 'Iris-versicolor']] 
-    [['6.3', '3.3', '6.0', '2.5', 'Iris-virginica'], ['5.8', '2.7', '5.1', '1.9', 'Iris-virginica'], ['7.1', '3.0', '5.9', '2.1', 'Iris-virginica'], ['6.3', '2.9', '5.6', '1.8', 'Iris-virginica'], ['6.5', '3.0', '5.8', '2.2', 'Iris-virginica']]
-
+    [['5.1', '3.5', '1.4', '0.2', 'Iris-setosa'],
+     ['4.9', '3.0', '1.4', '0.2', 'Iris-setosa'],
+     ['4.7', '3.2', '1.3', '0.2', 'Iris-setosa'],
+     ['4.6', '3.1', '1.5', '0.2', 'Iris-setosa'],
+     ['5.0', '3.6', '1.4', '0.2', 'Iris-setosa']]
+    [['7.0', '3.2', '4.7', '1.4', 'Iris-versicolor'],
+     ['6.4', '3.2', '4.5', '1.5', 'Iris-versicolor'],
+     ['6.9', '3.1', '4.9', '1.5', 'Iris-versicolor'],
+     ['5.5', '2.3', '4.0', '1.3', 'Iris-versicolor'],
+     ['6.5', '2.8', '4.6', '1.5', 'Iris-versicolor']]
+    [['6.3', '3.3', '6.0', '2.5', 'Iris-virginica'],
+     ['5.8', '2.7', '5.1', '1.9', 'Iris-virginica'],
+     ['7.1', '3.0', '5.9', '2.1', 'Iris-virginica'],
+     ['6.3', '2.9', '5.6', '1.8', 'Iris-virginica'],
+     ['6.5', '3.0', '5.8', '2.2', 'Iris-virginica']]
+ 
 数据集的3类样本共150条，将样本的4个属性作为自变量$X$，将样本的3个类别映射为{0, 1, 2}，作为因变量$Y$。
 
 ```python
@@ -163,12 +176,10 @@ X_test, Y_test = X[test_idx], Y[test_idx]
 ```python
 XY_train = list(zip(X_train, Y_train))
 ds_train = dataset.GeneratorDataset(XY_train, ['x', 'y'])
-ds_train.set_dataset_size(120)
 ds_train = ds_train.shuffle(buffer_size=120).batch(32, drop_remainder=True)
 
 XY_test = list(zip(X_test, Y_test))
 ds_test = dataset.GeneratorDataset(XY_test, ['x', 'y'])
-ds_test.set_dataset_size(30)
 ds_test = ds_test.batch(30)
 ```
 
@@ -186,7 +197,7 @@ $$
 
 ```python
 net = nn.Dense(4, 3)
-loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
+loss = nn.loss.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
 opt = nn.optim.Momentum(net.trainable_params(), learning_rate=0.05, momentum=0.9)
 ```
 
@@ -199,44 +210,32 @@ metrics = model.eval(ds_test)
 print(metrics)
 ```
 
-    epoch: 1 step 3, loss is 0.9914441108703613
-    Epoch time: 15227.800, per step time: 5075.933, avg loss: 1.053
-    ************************************************************
-    epoch: 2 step 3, loss is 0.7714572548866272
-    Epoch time: 8.709, per step time: 2.903, avg loss: 0.872
-    ************************************************************
-    epoch: 3 step 3, loss is 0.6451367735862732
-    Epoch time: 6.033, per step time: 2.011, avg loss: 0.761
-    ************************************************************
-    epoch: 4 step 3, loss is 0.626476526260376
-    Epoch time: 5.793, per step time: 1.931, avg loss: 0.578
-    ************************************************************
-    epoch: 5 step 3, loss is 0.530356764793396
-    Epoch time: 5.858, per step time: 1.953, avg loss: 0.475
-    ************************************************************
-    
-    ......
-    
-    epoch: 20 step 3, loss is 0.17989404499530792
-    Epoch time: 5.808, per step time: 1.936, avg loss: 0.267
-    ************************************************************
-    epoch: 21 step 3, loss is 0.126459002494812
-    Epoch time: 5.734, per step time: 1.911, avg loss: 0.229
-    ************************************************************
-    epoch: 22 step 3, loss is 0.15500077605247498
-    Epoch time: 5.763, per step time: 1.921, avg loss: 0.194
-    ************************************************************
-    epoch: 23 step 3, loss is 0.1676429957151413
-    Epoch time: 5.737, per step time: 1.912, avg loss: 0.178
-    ************************************************************
-    epoch: 24 step 3, loss is 0.23107928037643433
-    Epoch time: 5.881, per step time: 1.960, avg loss: 0.165
-    ************************************************************
-    epoch: 25 step 3, loss is 0.19285285472869873
-    Epoch time: 5.709, per step time: 1.903, avg loss: 0.156
-    ************************************************************
-
-    {'acc': 0.9333333333333333, 'loss': 0.23569035530090332}
+    epoch: 1 step: 3, loss is 1.0359399
+    epoch: 2 step: 3, loss is 1.0467999
+    epoch: 3 step: 3, loss is 0.7531768
+    epoch: 4 step: 3, loss is 0.48917678
+    epoch: 5 step: 3, loss is 0.5157561
+    epoch: 6 step: 3, loss is 0.6030979
+    epoch: 7 step: 3, loss is 0.74226296
+    epoch: 8 step: 3, loss is 0.5172242
+    epoch: 9 step: 3, loss is 0.5850575
+    epoch: 10 step: 3, loss is 0.5275547
+    epoch: 11 step: 3, loss is 0.81789356
+    epoch: 12 step: 3, loss is 0.48474902
+    epoch: 13 step: 3, loss is 0.36841834
+    epoch: 14 step: 3, loss is 0.30692947
+    epoch: 15 step: 3, loss is 0.3739818
+    epoch: 16 step: 3, loss is 0.28519264
+    epoch: 17 step: 3, loss is 0.24835552
+    epoch: 18 step: 3, loss is 0.20413074
+    epoch: 19 step: 3, loss is 0.29615358
+    epoch: 20 step: 3, loss is 0.21207006
+    epoch: 21 step: 3, loss is 0.24251895
+    epoch: 22 step: 3, loss is 0.16571495
+    epoch: 23 step: 3, loss is 0.20547828
+    epoch: 24 step: 3, loss is 0.22648066
+    epoch: 25 step: 3, loss is 0.2847983
+    {'acc': 1.0, 'loss': 0.1306072622537613}
 
 ### 适配训练作业
 

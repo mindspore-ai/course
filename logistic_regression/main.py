@@ -13,8 +13,8 @@ from mindspore.ops import operations as P
 context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
 
-def create_dataset():
-    with open('iris.data') as csv_file:
+def create_dataset(data_path):
+    with open(data_path) as csv_file:
         data = list(csv.reader(csv_file, delimiter=','))
 
     label_map = {
@@ -39,7 +39,6 @@ def create_dataset():
     # train_data = list(zip(normalize(X_train), Y_train))
     XY_train = list(zip(X_train, Y_train))
     ds_train = dataset.GeneratorDataset(XY_train, ['x', 'y'])
-    ds_train.set_dataset_size(80)
     ds_train = ds_train.shuffle(buffer_size=80).batch(32, drop_remainder=True)
 
     return ds_train, X_test, Y_test
@@ -78,7 +77,11 @@ if __name__ == "__main__":
     parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
     args, unknown = parser.parse_known_args()
 
-    import moxing
-    moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url='iris.data')
+    if args.data_url.startswith('s3'):
+        data_path = 'iris.data'
+        import moxing
+        moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'iris.data'), dst_url=data_path)
+    else:
+        data_path = os.path.abspath(args.data_url)
 
-    logistic_regression(*create_dataset())
+    logistic_regression(*create_dataset(data_path))

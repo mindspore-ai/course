@@ -23,7 +23,7 @@ for epoch in range(20):
     loss = train_step(ms.Tensor(x, ms.float32), ms.Tensor(y, ms.float32))
     print('epoch: {0}, loss is {1}'.format(epoch, loss))
 
-wb = [x.default_input.asnumpy() for x in net.trainable_params()]
+wb = [x.data.asnumpy() for x in net.trainable_params()]
 w, b = np.squeeze(wb[0]), np.squeeze(wb[1])
 print('The true linear function is y = -5 * x + 0.1')
 # works in MindSpore0.3.0 or later.

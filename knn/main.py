@@ -14,10 +14,10 @@ from mindspore.ops import functional as F
 context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
 
 
-def create_dataset():
-    with open('wine.data') as csv_file:
+def create_dataset(data_path):
+    with open(data_path) as csv_file:
         data = list(csv.reader(csv_file, delimiter=','))
-    print(data[56:62]+data[130:133]) # 打印部分数据
+    print(data[56:62]+data[130:133]) # print some samples
 
     X = np.array([[float(x) for x in s[1:]] for s in data[:178]], np.float32)
     Y = np.array([s[0] for s in data[:178]], np.int32)
@@ -101,7 +101,11 @@ if __name__ == "__main__":
     parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
     args, unknown = parser.parse_known_args()
 
-    import moxing
-    moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'wine.data'), dst_url='wine.data')
+    if args.data_url.startswith('s3'):
+        data_path = 'wine.data'
+        import moxing
+        moxing.file.copy_parallel(src_url=os.path.join(args.data_url, 'wine.data'), dst_url=data_path)
+    else:
+        data_path = os.path.abspath(args.data_url)
 
-    test_knn(*create_dataset())
+    test_knn(*create_dataset(data_path))
