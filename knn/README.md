@@ -24,7 +24,7 @@ K近邻算法（K-Nearest-Neighbor, KNN）是一种用于分类和回归的非�
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
@@ -118,7 +118,7 @@ context.set_context(device_target="Ascend")
 ```python
 with open('wine.data') as csv_file:
     data = list(csv.reader(csv_file, delimiter=','))
-print(data[56:62]+data[130:133]) # 打印部分数据
+print(data[56:62]+data[130:133])  # print some samples
 ```
 
     [['1', '14.22', '1.7', '2.3', '16.3', '118', '3.2', '3', '.26', '2.03', '6.38', '.94', '3.31', '970'], ['1', '13.29', '1.97', '2.68', '16.8', '102', '3', '3.23', '.31', '1.66', '6', '1.07', '2.84', '1270'], ['1', '13.72', '1.43', '2.5', '16.7', '108', '3.4', '3.67', '.19', '2.04', '6.8', '.89', '2.87', '1285'], ['2', '12.37', '.94', '1.36', '10.6', '88', '1.98', '.57', '.28', '.42', '1.95', '1.05', '1.82', '520'], ['2', '12.33', '1.1', '2.28', '16', '101', '2.05', '1.09', '.63', '.41', '3.27', '1.25', '1.67', '680'], ['2', '12.64', '1.36', '2.02', '16.8', '100', '2.02', '1.41', '.53', '.62', '5.75', '.98', '1.59', '450'], ['3', '12.86', '1.35', '2.32', '18', '122', '1.51', '1.25', '.21', '.94', '4.1', '.76', '1.29', '630'], ['3', '12.88', '2.99', '2.4', '20', '104', '1.3', '1.22', '.24', '.83', '5.4', '.74', '1.42', '530'], ['3', '12.81', '2.31', '2.4', '24', '98', '1.15', '1.09', '.27', '.83', '5.7', '.66', '1.36', '560']]
@@ -205,38 +205,47 @@ print('Validation accuracy is %f' % (acc/len(Y_test)))
 ```
 
     label: 1, prediction: 1
+    label: 3, prediction: 3
+    label: 1, prediction: 1
+    label: 3, prediction: 3
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 1, prediction: 1
+    label: 3, prediction: 3
+    label: 1, prediction: 1
+    label: 1, prediction: 1
     label: 3, prediction: 2
     label: 3, prediction: 3
     label: 1, prediction: 1
+    label: 3, prediction: 2
     label: 1, prediction: 1
-    label: 1, prediction: 1
-    label: 3, prediction: 3
-    label: 1, prediction: 1
-    label: 1, prediction: 1
-    label: 3, prediction: 3
-    label: 3, prediction: 3
-    label: 3, prediction: 3
-    label: 1, prediction: 1
-    label: 1, prediction: 1
-    label: 1, prediction: 3
     label: 1, prediction: 1
     label: 1, prediction: 1
     label: 3, prediction: 2
+    label: 3, prediction: 2
+    label: 3, prediction: 1
+    label: 3, prediction: 2
+    label: 3, prediction: 2
+    label: 3, prediction: 2
+    label: 1, prediction: 1
+    label: 3, prediction: 2
+    label: 1, prediction: 1
     label: 3, prediction: 1
     label: 1, prediction: 1
     label: 3, prediction: 2
     label: 1, prediction: 1
     label: 1, prediction: 1
-    label: 3, prediction: 2
-    label: 3, prediction: 3
-    label: 3, prediction: 3
-    label: 1, prediction: 1
-    label: 1, prediction: 1
-    label: 1, prediction: 1
     label: 1, prediction: 1
     label: 1, prediction: 1
     label: 2, prediction: 2
     label: 2, prediction: 2
+    label: 2, prediction: 3
+    label: 2, prediction: 2
+    label: 2, prediction: 1
+    label: 2, prediction: 2
+    label: 2, prediction: 3
+    label: 2, prediction: 1
     label: 2, prediction: 2
     label: 2, prediction: 2
     label: 2, prediction: 2
@@ -244,17 +253,8 @@ print('Validation accuracy is %f' % (acc/len(Y_test)))
     label: 2, prediction: 2
     label: 2, prediction: 3
     label: 2, prediction: 2
-    label: 2, prediction: 3
     label: 2, prediction: 2
-    label: 2, prediction: 2
-    label: 2, prediction: 2
-    label: 2, prediction: 3
-    label: 2, prediction: 2
-    label: 2, prediction: 2
-    label: 2, prediction: 2
-    label: 2, prediction: 2
-    label: 2, prediction: 2
-    Validation accuracy is 0.800000
+    Validation accuracy is 0.660000
 
 ### 创建训练作业
 

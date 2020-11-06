@@ -11,7 +11,7 @@ import numpy as np
 import mindspore as ms
 import mindspore.context as context
 import mindspore.dataset.transforms.c_transforms as C
-import mindspore.dataset.transforms.vision.c_transforms as CV
+import mindspore.dataset.vision.c_transforms as CV
 
 from mindspore import nn, Tensor
 from mindspore.train import Model
@@ -23,15 +23,15 @@ import logging; logging.getLogger('matplotlib.font_manager').disabled = True
 context.set_context(mode=context.GRAPH_MODE, device_target='Ascend') # Ascend, CPU, GPU
 
 
-def create_dataset(data_dir, training=True, batch_size=32, resize=(32, 32), repeat=1,
+def create_dataset(data_dir, training=True, batch_size=32, resize=(32, 32),
                    rescale=1/(255*0.3081), shift=-0.1307/0.3081, buffer_size=64):
-    data_train = os.path.join(data_dir, 'train') # 训练集信息
-    data_test = os.path.join(data_dir, 'test') # 测试集信息
+    data_train = os.path.join(data_dir, 'train') # train set
+    data_test = os.path.join(data_dir, 'test') # test set
     ds = ms.dataset.MnistDataset(data_train if training else data_test)
 
     ds = ds.map(input_columns=["image"], operations=[CV.Resize(resize), CV.Rescale(rescale, shift), CV.HWC2CHW()])
     ds = ds.map(input_columns=["label"], operations=C.TypeCast(ms.int32))
-    ds = ds.shuffle(buffer_size=buffer_size).batch(batch_size, drop_remainder=True).repeat(repeat)
+    ds = ds.shuffle(buffer_size=buffer_size).batch(batch_size, drop_remainder=True)
 
     return ds
 
@@ -64,12 +64,12 @@ class LeNet5(nn.Cell):
 def train(data_dir, lr=0.01, momentum=0.9, num_epochs=2, ckpt_name="lenet"):
     dataset_sink = context.get_context('device_target') == 'Ascend'
     repeat = num_epochs if dataset_sink else 1
-    ds_train = create_dataset(data_dir, repeat=repeat)
+    ds_train = create_dataset(data_dir)
     ds_eval = create_dataset(data_dir, training=False)
     steps_per_epoch = ds_train.get_dataset_size()
 
     net = LeNet5()
-    loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
+    loss = nn.loss.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
     opt = nn.Momentum(net.trainable_params(), lr, momentum)
 
     ckpt_cfg = CheckpointConfig(save_checkpoint_steps=steps_per_epoch, keep_checkpoint_max=5)
@@ -87,12 +87,12 @@ CKPT_1 = 'ckpt/lenet-2_1875.ckpt'
 def resume_train(data_dir, lr=0.001, momentum=0.9, num_epochs=2, ckpt_name="lenet"):
     dataset_sink = context.get_context('device_target') == 'Ascend'
     repeat = num_epochs if dataset_sink else 1
-    ds_train = create_dataset(data_dir, repeat=repeat)
+    ds_train = create_dataset(data_dir)
     ds_eval = create_dataset(data_dir, training=False)
     steps_per_epoch = ds_train.get_dataset_size()
 
     net = LeNet5()
-    loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
+    loss = nn.loss.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
     opt = nn.Momentum(net.trainable_params(), lr, momentum)
 
     param_dict = load_checkpoint(CKPT_1)
@@ -113,7 +113,7 @@ def resume_train(data_dir, lr=0.001, momentum=0.9, num_epochs=2, ckpt_name="lene
 CKPT_2 = 'ckpt/lenet_1-2_1875.ckpt'
 
 def infer(data_dir):
-    ds = create_dataset(data_dir, training=False).create_dict_iterator()
+    ds = create_dataset(data_dir, training=False).create_dict_iterator(output_numpy=True)
     data = ds.get_next()
     images = data['image']
     labels = data['label']
@@ -134,7 +134,7 @@ def infer(data_dir):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_url', required=False, default='MNIST', help='Location of data.')
+    parser.add_argument('--data_url', required=False, default='MNIST/', help='Location of data.')
     parser.add_argument('--train_url', required=False, default=None, help='Location of training outputs.')
     args, unknown = parser.parse_known_args()
 
@@ -152,11 +152,11 @@ if __name__ == "__main__":
         # moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
         # COPY_OTHER = True
 
-        data_path = 'MNIST'
+        data_path = 'MNIST/'
     else:
         data_path = os.path.abspath(args.data_url)
 
-    # 请先删除旧的checkpoint目录`ckpt`
+    # Please remove stale checkpoint folder `ckpt`
     train(data_path)
     print('Checkpoints after first training:')
     print('\n'.join(sorted([x for x in os.listdir('ckpt') if x.startswith('lenet')])))

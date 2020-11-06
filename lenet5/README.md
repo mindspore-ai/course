@@ -19,7 +19,7 @@ LeNet5 + MNIST被誉为深度学习领域的“Hello world”。本实验主要�
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore；
 - Windows/Ubuntu x64笔记本，NVIDIA GPU服务器，或Atlas Ascend服务器等。
 
@@ -205,7 +205,7 @@ import os
 import mindspore as ms
 import mindspore.context as context
 import mindspore.dataset.transforms.c_transforms as C
-import mindspore.dataset.transforms.vision.c_transforms as CV
+import mindspore.dataset.vision.c_transforms as CV
 
 from mindspore import nn
 from mindspore.train import Model
@@ -221,8 +221,8 @@ context.set_context(mode=context.GRAPH_MODE, device_target='Ascend') # Ascend, C
 ```python
 def create_dataset(data_dir, training=True, batch_size=32, resize=(32, 32),
                    rescale=1/(255*0.3081), shift=-0.1307/0.3081, buffer_size=64):
-    data_train = os.path.join(data_dir, 'train') # 训练集信息
-    data_test = os.path.join(data_dir, 'test') # 测试集信息
+    data_train = os.path.join(data_dir, 'train') # train set
+    data_test = os.path.join(data_dir, 'test') # test set
     ds = ms.dataset.MnistDataset(data_train if training else data_test)
 
     ds = ds.map(input_columns=["image"], operations=[CV.Resize(resize), CV.Rescale(rescale, shift), CV.HWC2CHW()])
@@ -302,7 +302,7 @@ def train(data_dir, lr=0.01, momentum=0.9, num_epochs=3):
     ds_eval = create_dataset(data_dir, training=False)
 
     net = LeNet5()
-    loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
+    loss = nn.loss.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
     opt = nn.Momentum(net.trainable_params(), lr, momentum)
     loss_cb = LossMonitor(per_print_times=ds_train.get_dataset_size())
 
@@ -312,18 +312,12 @@ def train(data_dir, lr=0.01, momentum=0.9, num_epochs=3):
     metrics = model.eval(ds_eval, dataset_sink_mode=False)
     print('Metrics:', metrics)
 
-train('MNIST')
+train('MNIST/')
 ```
 
     epoch: 1 step 1875, loss is 0.23394052684307098
-    Epoch time: 23049.360, per step time: 12.293, avg loss: 2.049
-    ************************************************************
     epoch: 2 step 1875, loss is 0.4737345278263092
-    Epoch time: 26768.848, per step time: 14.277, avg loss: 0.155
-    ************************************************************
     epoch: 3 step 1875, loss is 0.07734094560146332
-    Epoch time: 25687.625, per step time: 13.700, avg loss: 0.094
-    ************************************************************
     Metrics: {'loss': 0.10531254443608654, 'acc': 0.9701522435897436}
 
 ## 实验步骤（本地CPU/GPU/Ascend）

@@ -7,7 +7,7 @@
 通过构建加入噪音的cosine模型，加入各种正则化技术形成对比：
 
 - 提前停止：当验证集的性能开始下降时停止训练。
-- L2正则化是简单地将L2正则项"λ" 〖||β||〗_2^2加在成本函数中。
+- L2正则化是简单地将L2正则项"λ"$||\theta||_2^2$加在成本函数中。
 - Dropout 是非常有用和成功的一种技术，会随机删除一些神经元，以在不同批量上训练不同的神经网络架构。
 - Batch normalization就是通过一定的标准化手段，调整每层神经网络任意神经元的均值和方差，来避免由于不同神经元均值和方差相差过大导致训练网络时出现协变量偏移的问题。
 
@@ -25,7 +25,7 @@
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore；
 - Windows/Ubuntu x64笔记本，NVIDIA GPU服务器，或Atlas Ascend服务器等。
 
@@ -97,26 +97,26 @@ from mindspore.common.initializer import Normal
 from IPython.display import clear_output
 %matplotlib inline
 
-# 设置MindSpore的执行模式和设备
+# set execution mode and device platform.
 context.set_context(mode=context.GRAPH_MODE, device_target='Ascend')
 ```
 
 设置超参和全局变量：
 
 ```python
-N_SAMPLES = 40 #样本数
-BATCH_SIZE = 40  #批量大小
-NOISE_RATE = 0.2  #噪声率
-INPUT_DIM = 1  #输入维度
-HIDDEN_DIM = 100  #隐藏层维度
-OUTPUT_DIM = 1   #输出维度
-N_LAYERS = 6 #隐藏层数目
-ITERATION = 1500   #最大输入迭代
-LEARNING_RATE = 0.003  #学习率
+N_SAMPLES = 40 # number of samples
+BATCH_SIZE = 40
+NOISE_RATE = 0.2
+INPUT_DIM = 1
+HIDDEN_DIM = 100 # number of units in one hidden layer
+OUTPUT_DIM = 1
+N_LAYERS = 6 # number of hidden layers
+ITERATION = 1500
+LEARNING_RATE = 0.003
 DROPOUT_RATE = 0.7
-WEIGHT_DECAY = 1e-4  #L2正则化惩罚数值
-MAX_COUNT = 20  #最早终止参数
-ACTIVATION = nn.LeakyReLU #激活函数
+WEIGHT_DECAY = 1e-4  # coefficient of L2 penalty
+MAX_COUNT = 20  # max count that loss does not decrease. Used for early stop.
+ACTIVATION = nn.LeakyReLU # activation function
 
 #固定结果
 def fix_seed(seed=1):
@@ -157,10 +157,10 @@ class CosineNet(nn.Cell):
         if batchnorm:
             layers.append(nn.BatchNorm2d(INPUT_DIM))
         
-        # 初始化隐含层
+        # initialize hidden layers
         for l_n in range(N_LAYERS):
             in_channels = HIDDEN_DIM if l_n > 0 else INPUT_DIM
-            # 这里使用1x1Conv代替全连接算子，可以与BatchNorm2d算子配合的更好
+            # Use 1x1Conv instead of Dense, which coordinate better with BatchNorm2d opetator;
             conv = nn.Conv2d(in_channels, HIDDEN_DIM, kernel_size=1, pad_mode='valid', has_bias=True, weight_init=Normal(0.01))
             layers.append(conv)
             if batchnorm:
@@ -170,14 +170,14 @@ class CosineNet(nn.Cell):
             layers.append(ACTIVATION())
         self.layers = nn.SequentialCell(layers)
         
-        # 初始化输出层
-        self.flatten = nn.Flatten() # 将(N,C,H,W)4维数据转为(N,C*H*W)2维
+        # initialize output layers
+        self.flatten = nn.Flatten() # convert 4-dim tensor (N,C,H,W) to 2-dim tensor(N,C*H*W)
         self.fc = nn.Dense(HIDDEN_DIM, OUTPUT_DIM, weight_init=Normal(0.1), bias_init='zeros')
         
     def construct(x):
-        # 构建隐含层
+        # construct hidden layers
         x = self.layers(x)
-        # 构建输出层
+        # construct output layers
         x = self.flatten(x)
         x = self.fc(x)
         return x
@@ -187,23 +187,23 @@ class CosineNet(nn.Cell):
 
 ```python
 def build_fn(batchnorm, dropout, l2):
-    # 实例化网络、Loss、optimizer
+    # initilize the net, Loss, optimizer
     net = CosineNet(batchnorm=batchnorm, dropout=dropout)
     loss = nn.loss.MSELoss()
     opt = nn.optim.Adam(net.trainable_params(), learning_rate=LEARNING_RATE, weight_decay=WEIGHT_DECAY if l2 else 0.0)
-    # 构建计算loss和训练用的模块
+    # Build a net with loss and optimizer.
     with_loss = nn.WithLossCell(net, loss)
     train_step = nn.TrainOneStepCell(with_loss, opt).set_train()
     return train_step, with_loss, net
 
-# 针对5种不同设置，创建不同的训练任务
+# Build 5 different training jobs.
 fc_train, fc_loss, fc_predict = build_fn(batchnorm=False, dropout=False, l2=False) # 默认任务
 dropout_train, dropout_loss, dropout_predict = build_fn(batchnorm=False, dropout=True, l2=False) # 实验dropout功能
 bn_train, bn_loss, bn_predict = build_fn(batchnorm=True, dropout=False, l2=False) # 实验batchnorm功能
 l2_train, l2_loss, l2_predict = build_fn(batchnorm=False, dropout=False, l2=True) # 实验l2 regularization功能
 early_stop_train, early_stop_loss, early_stop_predict = build_fn(batchnorm=False, dropout=False, l2=False) # 实验Early Stop功能
 
-# 辅助函数，用于设置网络是否为train状态，用于batchnorm，dropout等算子判断是否处于train状态。
+# Used for batchnorm, dropout and other operators to determine whether the net is in the train state or not.
 nets_train = [fc_train, dropout_train, bn_train, l2_train, early_stop_train]
 nets_loss = [fc_loss, dropout_loss, bn_loss, l2_loss, early_stop_loss]
 nets_predict = [fc_predict, dropout_predict, bn_predict, l2_predict, early_stop_predict]
@@ -216,52 +216,58 @@ def set_train(nets, mode=True):
 将数据转为4维，并转为MindSpore Tensor类型：
 
 ```python
-# 将喂给网络的数据由(N,C)2维转为将(N,C,H,W)4维
+# Convert the tensor shape from (N, C) to (N, C, H, W).
 data_xt, data_yt = ms.Tensor(data_x.reshape(data_x.shape + (1, 1)), ms.float32), ms.Tensor(data_y, ms.float32)
 test_xt, test_yt = ms.Tensor(test_x.reshape(test_x.shape + (1, 1)), ms.float32), ms.Tensor(test_y, ms.float32)
 validate_xt, validate_yt = ms.Tensor(validate_x.reshape(validate_x.shape + (1, 1)), ms.float32), ms.Tensor(validate_y, ms.float32)
 ```
 
-启动训练并通过plot观察各模型拟合效果：
+启动5个训练任务，并通过plot观察各模型拟合效果。因为同时启动5个任务，每个任务又有训练、计算loss、预测几个子任务，刚开始模型编译的时间较久。
 
 ```python
-# 设置提前终止(Early Stop)用到的一些指标
-early_stop = False # 为True时，终止相关的训练
-min_val_loss = 1 # 足够大的初始值，训练过程中用于记录最小的验证loss
-count = 0 # 训练迭代过程中，验证loss连续多少次大于min_val_loss
+# Define parameters of Early Stop.
+# If it is True, stop the training process.
+early_stop = False
+# Used to record min validation loss during training. Should be initialized with Big enough value.
+min_val_loss = 1
+# In the training iteration process, how many consecutive times are the validation loss greater than min_val_loss.
+count = 0
 
 for it in range(ITERATION):
-    # 每个迭代随机从训练集中选择一个batch的样本，当batch_size==N_SAMPLES时，仅作了shuffle
+    # In each iteration randomly selects a batch sample from the training set.
     mb_idx = sample_idx(N_SAMPLES, BATCH_SIZE)
     x_batch, y_batch = train_x[mb_idx, :], train_y[mb_idx, :]
     x_batch, y_batch = ms.Tensor(x_batch.reshape(x_batch.shape + (1, 1)), ms.float32), ms.Tensor(y_batch, ms.float32)
     
-    set_train(nets_train, True) # 将网络设置为train状态
+    # Set the nets to training state.
+    set_train(nets_train, True)
     fc_train(x_batch, y_batch)
     dropout_train(x_batch, y_batch)
     bn_train(x_batch, y_batch)
     l2_train(x_batch, y_batch)
-    # 为True时，终止相关的训练
+    # Skip the training for Early Stop model when early_step==True.
     if not early_stop:
         early_stop_train(x_batch, y_batch)
     
     if it % 20 == 0:
-        set_train(nets_loss+nets_predict, False) # 将网络设置为非train状态
-        # 计算各模型在测试集上的loss
+        # Set the nets to none training state.
+        set_train(nets_loss+nets_predict, False)
+        # Compute the test loss of all models.
         loss_fc = fc_loss(test_xt, test_yt)
         loss_dropout = dropout_loss(test_xt, test_yt)
         loss_bn = bn_loss(test_xt, test_yt)
         loss_l2 = l2_loss(test_xt, test_yt)
         loss_early_stop = early_stop_loss(test_xt, test_yt)
         
-        # 计算各模型在全量样本上的预测值，用于评估模型的拟合效果
+        # Compute the predict values on all samples. 
         all_fc = fc_predict(data_xt)
         all_dropout = dropout_predict(data_xt)
         all_bn = bn_predict(data_xt)
         all_l2 = l2_predict(data_xt)
         all_early_stop = early_stop_predict(data_xt)
         
-        # 对于Early Stop任务，当验证集loss连续MAX_COUNT次大于min_val_loss时，终止该任务的训练
+        # For the Early Stop model, when the validation loss is greater than min_val_loss MAX_COUNT consecutive times,
+        # stop the training process.
         if not early_stop:
             val_loss = early_stop_loss(validate_xt, validate_yt)
             if val_loss > min_val_loss:
@@ -274,7 +280,7 @@ for it in range(ITERATION):
                 early_stop = True
                 print('='*10, 'early stopped', '='*10)
         
-        # 画图
+        # Draw the figure.
         plt.figure(1, figsize=(15,10))
         plt.cla()
         plt.scatter(train_x, train_y, c='magenta', s=50, alpha=0.3, label='train samples')

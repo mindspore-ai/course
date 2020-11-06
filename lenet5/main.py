@@ -6,7 +6,7 @@ import os
 import mindspore as ms
 import mindspore.context as context
 import mindspore.dataset.transforms.c_transforms as C
-import mindspore.dataset.transforms.vision.c_transforms as CV
+import mindspore.dataset.vision.c_transforms as CV
 
 from mindspore import nn
 from mindspore.train import Model
@@ -17,8 +17,8 @@ context.set_context(mode=context.GRAPH_MODE, device_target='Ascend') # Ascend, C
 
 def create_dataset(data_dir, training=True, batch_size=32, resize=(32, 32),
                    rescale=1/(255*0.3081), shift=-0.1307/0.3081, buffer_size=64):
-    data_train = os.path.join(data_dir, 'train') # 训练集信息
-    data_test = os.path.join(data_dir, 'test') # 测试集信息
+    data_train = os.path.join(data_dir, 'train') # train set
+    data_test = os.path.join(data_dir, 'test') # test set
     ds = ms.dataset.MnistDataset(data_train if training else data_test)
 
     ds = ds.map(input_columns=["image"], operations=[CV.Resize(resize), CV.Rescale(rescale, shift), CV.HWC2CHW()])
@@ -59,7 +59,7 @@ def train(data_dir, lr=0.01, momentum=0.9, num_epochs=3):
     ds_eval = create_dataset(data_dir, training=False)
 
     net = LeNet5()
-    loss = nn.loss.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction='mean')
+    loss = nn.loss.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
     opt = nn.Momentum(net.trainable_params(), lr, momentum)
     loss_cb = LossMonitor(per_print_times=ds_train.get_dataset_size())
 
@@ -73,7 +73,7 @@ def train(data_dir, lr=0.01, momentum=0.9, num_epochs=3):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_url', required=False, default='MNIST', help='Location of data.')
+    parser.add_argument('--data_url', required=False, default='MNIST/', help='Location of data.')
     parser.add_argument('--train_url', required=False, default=None, help='Location of training outputs.')
     args, unknown = parser.parse_known_args()
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         #                      server="obs.cn-north-4.myhuaweicloud.com")
         # moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
 
-        data_path = 'MNIST'
+        data_path = 'MNIST/'
     else:
         data_path = os.path.abspath(args.data_url)
 

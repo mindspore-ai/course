@@ -24,7 +24,7 @@
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
@@ -174,7 +174,6 @@ X_test, Y_test = X[test_idx], Y[test_idx]
 ```python
 XY_train = list(zip(X_train, Y_train))
 ds_train = dataset.GeneratorDataset(XY_train, ['x', 'y'])
-ds_train.set_dataset_size(80)
 ds_train = ds_train.shuffle(buffer_size=80).batch(32, drop_remainder=True)
 ```
 
@@ -227,20 +226,10 @@ model.train(5, ds_train, callbacks=[LossMonitor(per_print_times=ds_train.get_dat
 ```
 
     epoch: 1 step 2, loss is 0.6358570456504822
-    Epoch time: 9946.221, per step time: 4973.111, avg loss: 0.666
-    ************************************************************
     epoch: 2 step 2, loss is 0.5617856979370117
-    Epoch time: 132.066, per step time: 66.033, avg loss: 0.595
-    ************************************************************
     epoch: 3 step 2, loss is 0.5153790712356567
-    Epoch time: 4.302, per step time: 2.151, avg loss: 0.540
-    ************************************************************
     epoch: 4 step 2, loss is 0.5422952771186829
-    Epoch time: 4.457, per step time: 2.229, avg loss: 0.512
-    ************************************************************
     epoch: 5 step 2, loss is 0.42156651616096497
-    Epoch time: 4.481, per step time: 2.241, avg loss: 0.439
-    ************************************************************
 
 然后计算模型在测试集上精度，测试集上的精度达到了1.0左右，即逻辑回归模型学会了区分2类鸢尾花。
 
