@@ -22,49 +22,55 @@ import mindspore.common.dtype as mstype
 from .bert_model import BertConfig
 
 cfg = edict({
-    'is_train':False,
-    'task': 'NER',                    # 'Classification','NER'
-    'num_labels': 41,                  # 15   41 
-    'schema_file': r'./data/clue_ner/schema.json',      #  r'./data/tnews/schema.json'   r'./data/clue_ner/schema.json'    None
-    'ckpt_prefix': 'bert-ner-crf',          # 'bert-classification' 'bert-ner'  'bert-ner-crf'  
-    
-    'data_file': r'./data/clue_ner/dev.json',    # r'./data/tnews/dev.tf_record'      r'./data/tnews/dev.json'
-                                     # r'./data/clue_ner/train.tf_record'    r'./data/clue_ner/dev.json'
+    'is_train': True,
+    'task': 'Classification',                    # 'Classification','NER'
+    'num_labels': 15,                  # 15   41
+    'schema_file': r'./data/tnews/schema.json',      #  r'./data/tnews/schema.json'   r'./data/clue_ner/schema.json'    None
+    'ckpt_prefix': 'bert-classification',          # 'bert-classification' 'bert-ner'  'bert-ner-crf'
+    'data_file': r'./data/tnews/train.tf_record',    # r'./data/tnews/train.tf_record' r'./data/tnews/dev.tf_record'      r'./data/tnews/dev.json'
+                                     # r'./data/clue_ner/train.tf_record'    r'./data/clue_ner/dev.tf_record'   r'./data/clue_ner/dev.json'
+    'use_crf': False,         # only NER task is used
+    'assessment_method': 'Accuracy',      # only Classification task is used   choices=["Mcc", "Spearman_correlation", "Accuracy", "F1"]
+
     'epoch_num': 5,
+    'batch_size': 16,
     'ckpt_dir': 'model_finetune',
-   
     'pre_training_ckpt': './ckpt/bert_base.ckpt',
-    'finetune_ckpt': './ckpt/bert-ner-crf-5_671.ckpt',    # bert-ner-crf-5_671.ckpt  bert-ner-5_671.ckpt   bert-classification-5_3335.ckpt
-    
-    'label2id_file': './data/clue_ner/label2id.json',        # './data/tnews/label2id.json'   './data/clue_ner/label2id.json'
+
+    'finetune_ckpt': './ckpt/bert-classification-5_3335.ckpt',    # bert-ner-crf-5_671.ckpt  bert-ner-5_671.ckpt   bert-classification-5_3335.ckpt
+    'label2id_file': './data/tnews/label2id.json',        # './data/tnews/label2id.json'   './data/clue_ner/label2id.json'
     'vocab_file': './data/vocab.txt',
-    'use_crf': True,         # only NER task is used
+    'eval_out_file': 'tnews_result.txt',      #tnews_result.txt   ner_result.txt   ner_crf_result.txt
     'optimizer': 'Lamb'
 })
 
-bert_optimizer_cfg = edict({
-    'AdamWeightDecayDynamicLR': edict({
-        'learning_rate': 2e-5,
-        'end_learning_rate': 1e-7,    
-        'power': 1.0,
+optimizer_cfg = edict({
+    'AdamWeightDecay': edict({
+        'learning_rate': 3e-5,
+        'end_learning_rate': 0.0,
+        'power': 5.0,
         'weight_decay': 1e-5,
+        'decay_filter': lambda x: 'layernorm' not in x.name.lower() and 'bias' not in x.name.lower(),
         'eps': 1e-6,
+        'warmup_steps': 10000,
     }),
     'Lamb': edict({
-        'start_learning_rate': 2e-5,
-        'end_learning_rate': 1e-7,     
+        'learning_rate': 2e-5,
+        'end_learning_rate': 0.0,
         'power': 1.0,
+        'warmup_steps': 10000,
         'weight_decay': 0.01,
-        'decay_filter': lambda x: False,
+        'decay_filter': lambda x: 'layernorm' not in x.name.lower() and 'bias' not in x.name.lower(),
+        'eps': 1e-6,
     }),
     'Momentum': edict({
         'learning_rate': 2e-5,
         'momentum': 0.9,
-    }), 
+    }),
 })
 
+
 bert_net_cfg = BertConfig(
-    batch_size=16 if cfg.is_train else 1,
     seq_length=128,
     vocab_size=21128,
     hidden_size=768,
@@ -78,54 +84,6 @@ bert_net_cfg = BertConfig(
     type_vocab_size=2,
     initializer_range=0.02,
     use_relative_positions=False,
-    input_mask_from_dataset=True,
-    token_type_ids_from_dataset=True,
     dtype=mstype.float32,
-    compute_type=mstype.float16,  
+    compute_type=mstype.float16
 )
-
-tag_to_index = {
-    "O": 0,
-    "S_address": 1,
-    "B_address": 2,
-    "M_address": 3,
-    "E_address": 4,
-    "S_book": 5,
-    "B_book": 6,
-    "M_book": 7,
-    "E_book": 8,
-    "S_company": 9,
-    "B_company": 10,
-    "M_company": 11,
-    "E_company": 12,
-    "S_game": 13,
-    "B_game": 14,
-    "M_game": 15,
-    "E_game": 16,
-    "S_government": 17,
-    "B_government": 18,
-    "M_government": 19,
-    "E_government": 20,
-    "S_movie": 21,
-    "B_movie": 22,
-    "M_movie": 23,
-    "E_movie": 24,
-    "S_name": 25,
-    "B_name": 26,
-    "M_name": 27,
-    "E_name": 28,
-    "S_organization": 29,
-    "B_organization": 30,
-    "M_organization": 31,
-    "E_organization": 32,
-    "S_position": 33,
-    "B_position": 34,
-    "M_position": 35,
-    "E_position": 36,
-    "S_scene": 37,
-    "B_scene": 38,
-    "M_scene": 39,
-    "E_scene": 40,
-    "<START>": 41,
-    "<STOP>": 42
-}

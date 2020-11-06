@@ -19,7 +19,7 @@
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
@@ -34,7 +34,7 @@ CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图�
 
 ### 脚本准备
 
-从[MindSpore tutorial仓库](https://gitee.com/mindspore/docs/tree/r0.5/tutorials/tutorial_code/sample_for_cloud)里下载相关脚本。将脚本和数据集组织为如下形式：
+从[MindSpore tutorial仓库](https://gitee.com/mindspore/docs/tree/r1.0/tutorials/tutorial_code/sample_for_cloud)里下载相关脚本。将脚本和数据集组织为如下形式：
 
 ```
 experiment_3
@@ -522,43 +522,20 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
 ```
 epoch 1 cost time = 156.34279108047485, train step num: 1562, one step time: 100.09141554447814 ms, train samples per second of cluster: 319.7
 epoch: 1 step 1562, loss is 1.5020508766174316
-Epoch time: 156343.661, per step time: 100.092, avg loss: 1.502
-************************************************************
 epoch 2 cost time = 27.33933186531067, train step num: 1562, one step time: 17.502773281248828 ms, train samples per second of cluster: 1828.3
 epoch: 2 step 1562, loss is 1.612194299697876
-Epoch time: 27339.779, per step time: 17.503, avg loss: 1.612
-************************************************************
 epoch 3 cost time = 27.33275270462036, train step num: 1562, one step time: 17.498561270563613 ms, train samples per second of cluster: 1828.7
 epoch: 3 step 1562, loss is 1.0880045890808105
-Epoch time: 27333.157, per step time: 17.499, avg loss: 1.088
-************************************************************
 ...
 ...
 ...
 epoch 50 cost time = 27.318379402160645, train step num: 1562, one step time: 17.48935941239478 ms, train samples per second of cluster: 1829.7
 epoch: 50 step 1562, loss is 0.028316421434283257
-Epoch time: 27318.783, per step time: 17.490, avg loss: 0.028
-************************************************************
 epoch 51 cost time = 27.317234992980957, train step num: 1562, one step time: 17.488626756069756 ms, train samples per second of cluster: 1829.8
 epoch: 51 step 1562, loss is 0.09725271165370941
-Epoch time: 27317.556, per step time: 17.489, avg loss: 0.097
-************************************************************
 ...
 ...
 ...
-************************************************************
-epoch 88 cost time = 27.33049988746643, train step num: 1562, one step time: 17.497119006060455 ms, train samples per second of cluster: 1828.9
-epoch: 88 step 1562, loss is 0.0008127370965667069
-Epoch time: 27330.821, per step time: 17.497, avg loss: 0.001
-************************************************************
-epoch 89 cost time = 27.33343005180359, train step num: 1562, one step time: 17.498994911525987 ms, train samples per second of cluster: 1828.7
-epoch: 89 step 1562, loss is 0.00029994442593306303
-Epoch time: 27333.826, per step time: 17.499, avg loss: 0.000
-************************************************************
-epoch 90 cost time = 27.328994035720825, train step num: 1562, one step time: 17.496154952446112 ms, train samples per second of cluster: 1829.0
-epoch: 90 step 1562, loss is 0.0002547435578890145
-Epoch time: 27329.307, per step time: 17.496, avg loss: 0.000
-************************************************************
 Start run evaluation.
 Evaluation result: {'acc': 0.9467147435897436}.
 ```

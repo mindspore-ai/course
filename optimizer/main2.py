@@ -68,49 +68,18 @@ print('测试数据y尺寸：', Y_test.shape)
 def gen_data(X_train, Y_train, epoch_size):
     XY_train = list(zip(X_train, Y_train))
     ds_train = dataset.GeneratorDataset(XY_train, ['x', 'y'])
-    ds_train.set_dataset_size(cfg.train_size)
     ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True)
     XY_test = list(zip(X_test, Y_test))
     ds_test = dataset.GeneratorDataset(XY_test, ['x', 'y'])
-    ds_test.set_dataset_size(cfg.test_size)
     ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.test_size, drop_remainder=True)
     return ds_train, ds_test
 
 
-# 继承并重写LossMonitor
-class SubLossMonitor(LossMonitor):
-    def epoch_end(self, run_context):
-        pass
-
-    def step_end(self, run_context):
-        cb_params = run_context.original_args()
-        step_loss = cb_params.net_outputs
-
-        if isinstance(step_loss, (tuple, list)) and isinstance(step_loss[0], Tensor):
-            step_loss = step_loss[0]
-        if isinstance(step_loss, Tensor):
-            step_loss = np.mean(step_loss.asnumpy())
-
-        self.losses.append(step_loss)
-        cur_step_in_epoch = int((cb_params.cur_step_num - 1) % cb_params.batch_num) + 1
-
-        if isinstance(step_loss, float) and (np.isnan(step_loss) or np.isinf(step_loss)):
-            raise ValueError("Epoch: [{:3d}/{:3d}], step: [{:5d}/{:5d}]. "
-                             "Invalid loss, terminating training.".format(
-                cb_params.cur_epoch_num - 1, cb_params.epoch_num,
-                cur_step_in_epoch, cb_params.batch_num))
-
-        if self._per_print_times != 0 and cb_params.cur_step_num % self._per_print_times == 0:
-            print("epoch: {} step {}, loss: {}, avg loss: {:5.3f}".format(cb_params.cur_epoch_num,
-                                                                          cur_step_in_epoch,
-                                                                          step_loss, np.mean(self.losses)), flush=True)
-
-
 # 训练
 def train(network, net_opt, ds_train, prefix, directory, print_times):
-    net_loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction="mean")
+    net_loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction="mean")
     model = Model(network, loss_fn=net_loss, optimizer=net_opt, metrics={"acc"})
-    loss_cb = SubLossMonitor(per_print_times=print_times)
+    loss_cb = LossMonitor(per_print_times=print_times)
     config_ck = CheckpointConfig(save_checkpoint_steps=cfg.save_checkpoint_steps,
                                  keep_checkpoint_max=cfg.keep_checkpoint_max)
     ckpoint_cb = ModelCheckpoint(prefix=prefix, directory=directory, config=config_ck)
@@ -122,7 +91,7 @@ def train(network, net_opt, ds_train, prefix, directory, print_times):
 # 评估预测
 def eval_predict(model, ds_test):
     # 使用测试集评估模型，打印总体准确率
-    metric = model.eval(ds_test)
+    metric = model.eval(ds_test, dataset_sink_mode=False)
     print(metric)
     # 预测
     test_ = ds_test.create_dict_iterator().get_next()

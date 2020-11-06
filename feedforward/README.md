@@ -19,7 +19,7 @@
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
@@ -59,7 +59,7 @@ feedforward
 
 ### 创建OBS桶
 
-本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法（下文给出了操作步骤）。
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
 
 > **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
@@ -75,11 +75,7 @@ feedforward
 
 ### 上传文件
 
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。上传文件后，查看页面底部的“任务管理”状态栏（正在运行、已完成、失败），确保文件均上传完成。若失败请：
-
-- 参考[上传对象大小限制/切换上传方式](https://support.huaweicloud.com/qs-obs/obs_qs_0008.html)，
-- 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
-- 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
 
 ## 实验步骤
 
@@ -248,13 +244,10 @@ plt.show()
 # 转换数据类型为Dataset
 XY_train = list(zip(train_x, train_y))
 ds_train = ds.GeneratorDataset(XY_train, ['x', 'y'])
-ds_train.set_dataset_size(cfg.train_size)
-ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True).repeat(
-    cfg.epoch_size)
+ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True)
 XY_test = list(zip(test_x, test_y))
 ds_test = ds.GeneratorDataset(XY_test, ['x', 'y'])
-ds_test.set_dataset_size(cfg.test_size)
-ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.batch_size, drop_remainder=True).repeat(cfg.epoch_size)
+ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.batch_size, drop_remainder=True)
 ```
 
 #### 定义前馈神经网络
@@ -296,7 +289,7 @@ batch size|number of epochs	| learning rate	|input shape|optimizer
 # 构建网络
 network = Forward_fashion(cfg.num_classes)
 # 定义模型的损失函数，优化器
-net_loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction="mean")
+net_loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction="mean")
 net_opt = nn.Adam(network.trainable_params(), cfg.lr)
 # 训练模型
 model = Model(network, loss_fn=net_loss, optimizer=net_opt, metrics={"acc"})
@@ -305,80 +298,40 @@ config_ck = CheckpointConfig(save_checkpoint_steps=cfg.save_checkpoint_steps,
                              keep_checkpoint_max=cfg.keep_checkpoint_max)
 ckpoint_cb = ModelCheckpoint(prefix=cfg.output_prefix, directory=cfg.output_directory, config=config_ck)
 print("============== Starting Training ==============")
-model.train(cfg.epoch_size, ds_train, callbacks=[ckpoint_cb, loss_cb], dataset_sink_mode=True)
+model.train(cfg.epoch_size, ds_train, callbacks=[ckpoint_cb, loss_cb], dataset_sink_mode=False)
 ```
 
     ============== Starting Training ==============
-    epoch: 1 step 1000, loss is 0.567767322063446
-    Epoch time: 11428.370, per step time: 11.428, avg loss: 0.568
-    ************************************************************
-    epoch: 2 step 1000, loss is 0.3970850706100464
-    Epoch time: 2018.074, per step time: 2.018, avg loss: 0.397
-    ************************************************************
-    epoch: 3 step 1000, loss is 0.31815576553344727
-    Epoch time: 1971.219, per step time: 1.971, avg loss: 0.318
-    ************************************************************
-    epoch: 4 step 1000, loss is 0.3128049373626709
-    Epoch time: 1974.937, per step time: 1.975, avg loss: 0.313
-    ************************************************************
-    epoch: 5 step 1000, loss is 0.3095005750656128
-    Epoch time: 2029.930, per step time: 2.030, avg loss: 0.310
-    ************************************************************
-    epoch: 6 step 1000, loss is 0.25628671050071716
-    Epoch time: 1934.886, per step time: 1.935, avg loss: 0.256
-    ************************************************************
-    epoch: 7 step 1000, loss is 0.24347715079784393
-    Epoch time: 1897.307, per step time: 1.897, avg loss: 0.243
-    ************************************************************
-    epoch: 8 step 1000, loss is 0.28936269879341125
-    Epoch time: 1921.264, per step time: 1.921, avg loss: 0.289
-    ************************************************************
-    epoch: 9 step 1000, loss is 0.4469510316848755
-    Epoch time: 1875.093, per step time: 1.875, avg loss: 0.447
-    ************************************************************
-    epoch: 10 step 1000, loss is 0.2915213108062744
-    Epoch time: 1876.605, per step time: 1.877, avg loss: 0.292
-    ************************************************************
-    epoch: 11 step 1000, loss is 0.24928903579711914
-    Epoch time: 1910.094, per step time: 1.910, avg loss: 0.249
-    ************************************************************
-    epoch: 12 step 1000, loss is 0.12853321433067322
-    Epoch time: 1974.167, per step time: 1.974, avg loss: 0.129
-    ************************************************************
-    epoch: 13 step 1000, loss is 0.14836660027503967
-    Epoch time: 1841.105, per step time: 1.841, avg loss: 0.148
-    ************************************************************
-    epoch: 14 step 1000, loss is 0.26581835746765137
-    Epoch time: 1694.728, per step time: 1.695, avg loss: 0.266
-    ************************************************************
-    epoch: 15 step 1000, loss is 0.2012856900691986
-    Epoch time: 1937.829, per step time: 1.938, avg loss: 0.201
-    ************************************************************
-    epoch: 16 step 1000, loss is 0.14978612959384918
-    Epoch time: 1793.748, per step time: 1.794, avg loss: 0.150
-    ************************************************************
-    epoch: 17 step 1000, loss is 0.3085048198699951
-    Epoch time: 1667.389, per step time: 1.667, avg loss: 0.309
-    ************************************************************
-    epoch: 18 step 1000, loss is 0.17254383862018585
-    Epoch time: 1558.955, per step time: 1.559, avg loss: 0.173
-    ************************************************************
-    epoch: 19 step 1000, loss is 0.10585948824882507
-    Epoch time: 1567.354, per step time: 1.567, avg loss: 0.106
-    ************************************************************
-    epoch: 20 step 1000, loss is 0.27113234996795654
-    Epoch time: 1589.239, per step time: 1.589, avg loss: 0.271
-    ************************************************************
+    epoch: 1 step: 1000, loss is 0.6812696
+    epoch: 2 step: 1000, loss is 0.39710096
+    epoch: 3 step: 1000, loss is 0.43427807
+    epoch: 4 step: 1000, loss is 0.3170758
+    epoch: 5 step: 1000, loss is 0.24550956
+    epoch: 6 step: 1000, loss is 0.4204946
+    epoch: 7 step: 1000, loss is 0.35653585
+    epoch: 8 step: 1000, loss is 0.31376493
+    epoch: 9 step: 1000, loss is 0.27455378
+    epoch: 10 step: 1000, loss is 0.18871705
+    epoch: 11 step: 1000, loss is 0.20512795
+    epoch: 12 step: 1000, loss is 0.2589024
+    epoch: 13 step: 1000, loss is 0.31454447
+    epoch: 14 step: 1000, loss is 0.24145015
+    epoch: 15 step: 1000, loss is 0.32082427
+    epoch: 16 step: 1000, loss is 0.27023837
+    epoch: 17 step: 1000, loss is 0.34484679
+    epoch: 18 step: 1000, loss is 0.41191268
+    epoch: 19 step: 1000, loss is 0.07990202
+    epoch: 20 step: 1000, loss is 0.26586318
 
 #### 评估测试
 
 ```python
 # 使用测试集评估模型，打印总体准确率
-metric = model.eval(ds_test)
+metric = model.eval(ds_test, dataset_sink_mode=False)
 print(metric)
 ```
 
-    {'acc': 0.8862449799196788}
+    {'acc': 0.888855421686747}
 
 #### 预测
 
@@ -396,21 +349,21 @@ for i in range(15):
     print('第' + str(i) + '个sample预测结果：', p_list.index(max(p_list)), '   真实结果：', test_['y'][i])
 ```
 
-    第0个sample预测结果： 7    真实结果： 7
-    第1个sample预测结果： 0    真实结果： 0
-    第2个sample预测结果： 2    真实结果： 2
+    第0个sample预测结果： 5    真实结果： 0
+    第1个sample预测结果： 3    真实结果： 6
+    第2个sample预测结果： 9    真实结果： 9
     第3个sample预测结果： 6    真实结果： 6
-    第4个sample预测结果： 0    真实结果： 0
-    第5个sample预测结果： 6    真实结果： 6
-    第6个sample预测结果： 5    真实结果： 5
-    第7个sample预测结果： 0    真实结果： 0
-    第8个sample预测结果： 5    真实结果： 5
-    第9个sample预测结果： 7    真实结果： 7
-    第10个sample预测结果： 8    真实结果： 8
-    第11个sample预测结果： 8    真实结果： 8
-    第12个sample预测结果： 6    真实结果： 6
-    第13个sample预测结果： 7    真实结果： 9
-    第14个sample预测结果： 0    真实结果： 6
+    第4个sample预测结果： 6    真实结果： 6
+    第5个sample预测结果： 7    真实结果： 7
+    第6个sample预测结果： 9    真实结果： 9
+    第7个sample预测结果： 9    真实结果： 9
+    第8个sample预测结果： 3    真实结果： 3
+    第9个sample预测结果： 0    真实结果： 0
+    第10个sample预测结果： 7    真实结果： 7
+    第11个sample预测结果： 1    真实结果： 1
+    第12个sample预测结果： 9    真实结果： 9
+    第13个sample预测结果： 6    真实结果： 0
+    第14个sample预测结果： 0    真实结果： 0
 
 #### 对预测结果可视化
 
@@ -459,10 +412,10 @@ class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
                'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 for i in range(num_images):
     plt.subplot(num_rows, 2 * num_cols, 2 * i + 1)
-    pred_np_ = predictions[i, :]  
-    plot_image(pred_np_, test_['y'][i], test_['x'][i, 0, ...])
+    pred_np_ = predictions[i, :]
+    plot_image(pred_np_, test_['y'][i].asnumpy(), test_['x'][i, 0, ...].asnumpy())
     plt.subplot(num_rows, 2 * num_cols, 2 * i + 2)
-    plot_value_array(pred_np_, test_['y'][i])
+    plot_value_array(pred_np_, test_['y'][i].asnumpy())
 plt.show()
 ```
 
@@ -498,7 +451,7 @@ moxing.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)
 
 ### 创建训练作业
 
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业（下文给出了操作步骤）。
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
 打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
 
