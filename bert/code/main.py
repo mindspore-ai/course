@@ -20,9 +20,7 @@ Bert finetune script.
 import os
 import argparse
 import numpy as np
-
-from src.utils import BertFinetuneCell, BertCLS, BertNER
-from src.config import cfg, bert_net_cfg, tag_to_index, bert_optimizer_cfg
+import json
 
 import mindspore.common.dtype as mstype
 from mindspore import context
@@ -31,26 +29,28 @@ from mindspore.common.tensor import Tensor
 import mindspore.dataset as de
 import mindspore.dataset.transforms.c_transforms as C
 from mindspore.nn.wrap.loss_scale import DynamicLossScaleUpdateCell
-from mindspore.nn.optim import AdamWeightDecayDynamicLR, Lamb, Momentum
+from mindspore.nn.optim import AdamWeightDecay, Lamb, Momentum
 from mindspore.train.model import Model
 from mindspore.train.callback import Callback
-from mindspore.train.callback import CheckpointConfig, ModelCheckpoint, LossMonitor
+from mindspore.train.callback import CheckpointConfig, ModelCheckpoint, TimeMonitor
 from mindspore.train.serialization import load_checkpoint, load_param_into_net
-from src.CRF import postprocess
+
 from src.cluener_evaluation import submit
+from src.utils import BertLearningRate, LossCallBack, Accuracy, F1, MCC, Spearman_Correlation
+from src.bert_for_finetune import BertFinetuneCell, BertCLS, BertNER
+from src.config import cfg, bert_net_cfg, optimizer_cfg
 
 
-def get_dataset(batch_size=1, repeat_count=1, distribute_file=''):
+def get_dataset(data_file, batch_size):
     '''
     get dataset
     '''
-    ds = de.TFRecordDataset([cfg.data_file], cfg.schema_file, columns_list=["input_ids", "input_mask","segment_ids", "label_ids"])
+    ds = de.TFRecordDataset([data_file], cfg.schema_file, columns_list=["input_ids", "input_mask","segment_ids", "label_ids"])
     type_cast_op = C.TypeCast(mstype.int32)
     ds = ds.map(input_columns="segment_ids", operations=type_cast_op)
     ds = ds.map(input_columns="input_mask", operations=type_cast_op)
     ds = ds.map(input_columns="input_ids", operations=type_cast_op)
     ds = ds.map(input_columns="label_ids", operations=type_cast_op)
-    ds = ds.repeat(repeat_count)
     
     # apply shuffle operation
     buffer_size = 960
@@ -59,105 +59,64 @@ def get_dataset(batch_size=1, repeat_count=1, distribute_file=''):
     # apply batch operations
     ds = ds.batch(batch_size, drop_remainder=True)
     return ds
-
-class Accuracy():
-    '''
-    calculate accuracy
-    '''
-    def __init__(self):
-        self.acc_num = 0
-        self.total_num = 0
-    def update(self, logits, labels):
-        labels = labels.asnumpy()
-        labels = np.reshape(labels, -1)
-        logits = logits.asnumpy()
-        logit_id = np.argmax(logits, axis=-1)
-        self.acc_num += np.sum(labels == logit_id)
-        self.total_num += len(labels)
-        #print("=========================accuracy is ", self.acc_num / self.total_num)
-
-class F1():
-    '''
-    calculate F1 score
-    '''
-    def __init__(self):
-        self.TP = 0
-        self.FP = 0
-        self.FN = 0
-    def update(self, logits, labels):
-        '''
-        update F1 score
-        '''
-        labels = labels.asnumpy()
-        labels = np.reshape(labels, -1)
-        if cfg.use_crf:
-            backpointers, best_tag_id = logits
-            best_path = postprocess(backpointers, best_tag_id)
-            logit_id = []
-            for ele in best_path:
-                logit_id.extend(ele)
-        else:
-            logits = logits.asnumpy()
-            logit_id = np.argmax(logits, axis=-1)
-            logit_id = np.reshape(logit_id, -1)
-        pos_eva = np.isin(logit_id, [i for i in range(1, cfg.num_labels)])
-        pos_label = np.isin(labels, [i for i in range(1, cfg.num_labels)])
-        self.TP += np.sum(pos_eva&pos_label)
-        self.FP += np.sum(pos_eva&(~pos_label))
-        self.FN += np.sum((~pos_eva)&pos_label)
         
-def test_train():
+def train():
     '''
     finetune function
     '''
-    target = args_opt.device_target
-    if target == "Ascend":
-        devid = int(os.getenv('DEVICE_ID'))
-        context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=devid)
-    elif target == "GPU":
-        context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
-        if bert_net_cfg.compute_type != mstype.float32:
-            logger.warning('GPU only support fp32 temporarily, run with fp32.')
-            bert_net_cfg.compute_type = mstype.float32
-    else:
-        raise Exception("Target error, GPU or Ascend is supported.")
-        
-    #BertCLSTrain for classification
-    #BertNERTrain for sequence labeling
+    # BertCLS train for classification
+    # BertNER train for sequence labeling
+
+
     if cfg.task == 'NER':
+        tag_to_index =None
         if cfg.use_crf:
-            netwithloss = BertNER(bert_net_cfg, True, num_labels=len(tag_to_index), use_crf=True,
-                                  tag_to_index=tag_to_index, dropout_prob=0.1)
+            tag_to_index = json.loads(open(cfg.label2id_file).read())
+            print(tag_to_index)
+            max_val = len(tag_to_index)
+            tag_to_index["<START>"] = max_val
+            tag_to_index["<STOP>"] = max_val + 1
+            number_labels = len(tag_to_index)
         else:
-            netwithloss = BertNER(bert_net_cfg, True, num_labels=cfg.num_labels, dropout_prob=0.1)
+            number_labels = cfg.num_labels
+
+        netwithloss = BertNER(bert_net_cfg, cfg.batch_size, True, num_labels=number_labels,
+                              use_crf=cfg.use_crf,
+                              tag_to_index=tag_to_index, dropout_prob=0.1)
     elif cfg.task == 'Classification':
-        netwithloss = BertCLS(bert_net_cfg, True, num_labels=cfg.num_labels, dropout_prob=0.1)
+        netwithloss = BertCLS(bert_net_cfg, True, num_labels=cfg.num_labels, dropout_prob=0.1,
+                              assessment_method=cfg.assessment_method)
     else:
         raise Exception("task error, NER or Classification is supported.")
-        
-    
-    dataset = get_dataset(bert_net_cfg.batch_size, cfg.epoch_num)
-        
+
+    dataset = get_dataset(data_file=cfg.data_file, batch_size=cfg.batch_size)
+    steps_per_epoch = dataset.get_dataset_size()
+    print('steps_per_epoch:',steps_per_epoch)
+
     # optimizer
     steps_per_epoch = dataset.get_dataset_size()
-    if cfg.optimizer == 'AdamWeightDecayDynamicLR':
-        optimizer = AdamWeightDecayDynamicLR(netwithloss.trainable_params(),
-                                             decay_steps=steps_per_epoch * cfg.epoch_num,
-                                             learning_rate=bert_optimizer_cfg.AdamWeightDecayDynamicLR.learning_rate,
-                                             end_learning_rate=bert_optimizer_cfg.AdamWeightDecayDynamicLR.end_learning_rate,
-                                             power=bert_optimizer_cfg.AdamWeightDecayDynamicLR.power,
-                                             warmup_steps=int(steps_per_epoch * cfg.epoch_num * 0.1),
-                                             weight_decay=bert_optimizer_cfg.AdamWeightDecayDynamicLR.weight_decay,
-                                             eps=bert_optimizer_cfg.AdamWeightDecayDynamicLR.eps)
+    if cfg.optimizer == 'AdamWeightDecay':
+        lr_schedule = BertLearningRate(learning_rate=optimizer_cfg.AdamWeightDecay.learning_rate,
+                                       end_learning_rate=optimizer_cfg.AdamWeightDecay.end_learning_rate,
+                                       warmup_steps=int(steps_per_epoch * cfg.epoch_num * 0.1),
+                                       decay_steps=steps_per_epoch * cfg.epoch_num,
+                                       power=optimizer_cfg.AdamWeightDecay.power)
+        params = netwithloss.trainable_params()
+        decay_params = list(filter(optimizer_cfg.AdamWeightDecay.decay_filter, params))
+        other_params = list(filter(lambda x: not optimizer_cfg.AdamWeightDecay.decay_filter(x), params))
+        group_params = [{'params': decay_params, 'weight_decay': optimizer_cfg.AdamWeightDecay.weight_decay},
+                        {'params': other_params, 'weight_decay': 0.0}]
+        optimizer = AdamWeightDecay(group_params, lr_schedule, eps=optimizer_cfg.AdamWeightDecay.eps)
     elif cfg.optimizer == 'Lamb':
-        optimizer = Lamb(netwithloss.trainable_params(), decay_steps=steps_per_epoch * cfg.epoch_num,
-                         start_learning_rate=bert_optimizer_cfg.Lamb.start_learning_rate,
-                         end_learning_rate=bert_optimizer_cfg.Lamb.end_learning_rate,
-                         power=bert_optimizer_cfg.Lamb.power, weight_decay=bert_optimizer_cfg.Lamb.weight_decay,
-                         warmup_steps=int(steps_per_epoch * cfg.epoch_num * 0.1), decay_filter=bert_optimizer_cfg.Lamb.decay_filter)
+        lr_schedule = BertLearningRate(learning_rate=optimizer_cfg.Lamb.learning_rate,
+                                       end_learning_rate=optimizer_cfg.Lamb.end_learning_rate,
+                                       warmup_steps=int(steps_per_epoch * cfg.epoch_num * 0.1),
+                                       decay_steps=steps_per_epoch * cfg.epoch_num,
+                                       power=optimizer_cfg.Lamb.power)
+        optimizer = Lamb(netwithloss.trainable_params(), learning_rate=lr_schedule)
     elif cfg.optimizer == 'Momentum':
-        optimizer = Momentum(netwithloss.trainable_params(), learning_rate=bert_optimizer_cfg.Momentum.learning_rate,
-                             momentum=bert_optimizer_cfg.Momentum.momentum)
+        optimizer = Momentum(netwithloss.trainable_params(), learning_rate=optimizer_cfg.Momentum.learning_rate,
+                             momentum=optimizer_cfg.Momentum.momentum)
     else:
         raise Exception("Optimizer not supported.")
         
@@ -170,45 +129,46 @@ def test_train():
     update_cell = DynamicLossScaleUpdateCell(loss_scale_value=2**32, scale_factor=2, scale_window=1000)
     netwithgrads = BertFinetuneCell(netwithloss, optimizer=optimizer, scale_update_cell=update_cell)
     model = Model(netwithgrads)
-    model.train(cfg.epoch_num, dataset, callbacks=[LossMonitor(), ckpoint_cb], dataset_sink_mode=True)
+    callbacks = [TimeMonitor(dataset.get_dataset_size()), LossCallBack(dataset.get_dataset_size()), ckpoint_cb]
+    model.train(cfg.epoch_num, dataset, callbacks=callbacks, dataset_sink_mode=True)
 
-def bert_predict(Evaluation):
-    '''
-    prediction function
-    '''
-    target = args_opt.device_target
-    if target == "Ascend":
-        context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
-    elif target == "GPU":
-        context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
-        if bert_net_cfg.compute_type != mstype.float32:
-            logger.warning('GPU only support fp32 temporarily, run with fp32.')
-            bert_net_cfg.compute_type = mstype.float32
-    else:
-        raise Exception("Target error, GPU or Ascend is supported.")
-    if cfg.data_file[-4:]=='json':
-        dataset=None
-    else:
-        dataset = get_dataset(bert_net_cfg.batch_size, 1)
-    if cfg.use_crf and cfg.task == "NER":
-        net_for_pretraining = Evaluation(bert_net_cfg, False, num_labels=len(tag_to_index), use_crf=True,
-                                         tag_to_index=tag_to_index, dropout_prob=0.0)
-    else:
-        net_for_pretraining = Evaluation(bert_net_cfg, False, cfg.num_labels)
-    net_for_pretraining.set_train(False)
-    param_dict = load_checkpoint(cfg.finetune_ckpt)
-    load_param_into_net(net_for_pretraining, param_dict)
-    model = Model(net_for_pretraining)
-    return model, dataset
 
-def test_eval():
+def eval():
     '''
     evaluation function
     '''
-    task_type = BertNER if cfg.task == "NER" else BertCLS
-    model, dataset = bert_predict(task_type)
+    if cfg.data_file[-4:] == 'json':
+        dataset = None
+    else:
+        dataset = get_dataset(cfg.data_file, 1)
+
+    if cfg.task == "NER":
+        if cfg.use_crf:
+            tag_to_index = json.loads(open(cfg.label2id_file).read())
+            max_val = len(tag_to_index)
+            tag_to_index["<START>"] = max_val
+            tag_to_index["<STOP>"] = max_val + 1
+            number_labels = len(tag_to_index)
+        else:
+            number_labels = cfg.num_labels
+            tag_to_index =None
+        netwithloss = BertNER(bert_net_cfg, 1, False, num_labels=number_labels,
+                                 use_crf=cfg.use_crf,
+                                 tag_to_index=tag_to_index)
+    elif cfg.task == 'Classification':
+        netwithloss = BertCLS(bert_net_cfg, False, cfg.num_labels, assessment_method=cfg.assessment_method)
+    else:
+        raise Exception("task error, NER or Classification is supported.")
+
+    netwithloss.set_train(False)
+    param_dict = load_checkpoint(cfg.finetune_ckpt)
+    load_param_into_net(netwithloss, param_dict)
+    model = Model(netwithloss)
+
     if cfg.data_file[-4:]=='json':
         submit(model, cfg.data_file, bert_net_cfg.seq_length)
+        import moxing as mox
+        mox.file.copy_parallel(src_url=cfg.eval_out_file, dst_url=os.path.join(args_opt.train_url, cfg.eval_out_file))
     else:
         callback = F1() if cfg.task == "NER" else Accuracy()
         columns_list = ["input_ids", "input_mask", "segment_ids", "label_ids"]
@@ -236,14 +196,26 @@ if __name__ == "__main__":
     parser.add_argument('--ckpt_url', required=True, default=None, help='Location of data.') 
     parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
     args_opt = parser.parse_args()
-    
+
+    target = args_opt.device_target
+
+    if target == "Ascend":
+        context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
+    elif target == "GPU":
+        context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
+        if bert_net_cfg.compute_type != mstype.float32:
+            logger.warning('GPU only support fp32 temporarily, run with fp32.')
+            bert_net_cfg.compute_type = mstype.float32
+    else:
+        raise Exception("Target error, GPU or Ascend is supported.")
+
     import moxing as mox
     mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data/')
     mox.file.copy_parallel(src_url=args_opt.ckpt_url, dst_url='./ckpt/')
     if cfg.is_train:
-        test_train()
+        train()
         mox.file.copy_parallel(src_url=cfg.ckpt_dir, dst_url=args_opt.train_url)
     else:
-        test_eval()
-        mox.file.copy_parallel(src_url='./log.txt', dst_url=os.path.join(args_opt.train_url, 'log.txt'))
+        eval()
+        
     

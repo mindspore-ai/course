@@ -151,18 +151,15 @@ print('一张图像的标签样式：', train_y[0])  # 一共10类，用0-9的�
 # 转换数据类型为Dataset
 XY_train = list(zip(train_x, train_y))
 ds_train = ds.GeneratorDataset(XY_train, ['x', 'y'])
-ds_train.set_dataset_size(cfg.train_size)
-ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True).repeat(
-    cfg.epoch_size)
+ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True)
 XY_test = list(zip(test_x, test_y))
 ds_test = ds.GeneratorDataset(XY_test, ['x', 'y'])
-ds_test.set_dataset_size(cfg.test_size)
-ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.batch_size, drop_remainder=True).repeat(cfg.epoch_size)
+ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.batch_size, drop_remainder=True)
 
 # 构建网络
 network = Forward_fashion(cfg.num_classes)
 # 定义模型的损失函数，优化器
-net_loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction="mean")
+net_loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction="mean")
 net_opt = nn.Adam(network.trainable_params(), cfg.lr)
 # 训练模型
 model = Model(network, loss_fn=net_loss, optimizer=net_opt, metrics={"acc"})
@@ -171,10 +168,10 @@ config_ck = CheckpointConfig(save_checkpoint_steps=cfg.save_checkpoint_steps,
                              keep_checkpoint_max=cfg.keep_checkpoint_max)
 ckpoint_cb = ModelCheckpoint(prefix=cfg.output_prefix, directory=cfg.output_directory, config=config_ck)
 print("============== Starting Training ==============")
-model.train(cfg.epoch_size, ds_train, callbacks=[ckpoint_cb, loss_cb], dataset_sink_mode=True)
+model.train(cfg.epoch_size, ds_train, callbacks=[ckpoint_cb, loss_cb], dataset_sink_mode=False)
 
 # 使用测试集评估模型，打印总体准确率
-metric = model.eval(ds_test)
+metric = model.eval(ds_test, dataset_sink_mode=False)
 print(metric)
 
 # 预测

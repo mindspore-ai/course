@@ -1,248 +1,16 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
-
-'''
-Functional Cells used in Bert finetune and evaluation.
-'''
+import os
+import math
+import numpy as np
 
 import mindspore.nn as nn
-from mindspore.common.initializer import TruncatedNormal
 from mindspore.ops import operations as P
-from mindspore.ops import functional as F
-from mindspore.ops import composite as C
 from mindspore.common.tensor import Tensor
-from mindspore.common.parameter import Parameter, ParameterTuple
 from mindspore.common import dtype as mstype
-from mindspore.nn.wrap.grad_reducer import DistributedGradReducer
-from mindspore.train.parallel_utils import ParallelMode
-from mindspore.communication.management import get_group_size
-from mindspore import context
-from .bert_model import BertModel
-from .CRF import CRF
+from mindspore.nn.learning_rate_schedule import LearningRateSchedule, PolynomialDecayLR, WarmUpLR
+from mindspore.train.callback import Callback
 
-GRADIENT_CLIP_TYPE = 1
-GRADIENT_CLIP_VALUE = 1.0
-grad_scale = C.MultitypeFuncGraph("grad_scale")
-reciprocal = P.Reciprocal()
-
-@grad_scale.register("Tensor", "Tensor")
-def tensor_grad_scale(scale, grad):
-    return grad * reciprocal(scale)
-
-clip_grad = C.MultitypeFuncGraph("clip_grad")
-
-
-# pylint: disable=consider-using-in
-@clip_grad.register("Number", "Number", "Tensor")
-def _clip_grad(clip_type, clip_value, grad):
-    """
-    Clip gradients.
-
-    Inputs:
-        clip_type (int): The way to clip, 0 for 'value', 1 for 'norm'.
-        clip_value (float): Specifies how much to clip.
-        grad (tuple[Tensor]): Gradients.
-
-    Outputs:
-        tuple[Tensor], clipped gradients.
-    """
-    if clip_type != 0 and clip_type != 1:
-        return grad
-    dt = F.dtype(grad)
-    if clip_type == 0:
-        new_grad = C.clip_by_value(grad, F.cast(F.tuple_to_array((-clip_value,)), dt),
-                                   F.cast(F.tuple_to_array((clip_value,)), dt))
-    else:
-        new_grad = nn.ClipByNorm()(grad, F.cast(F.tuple_to_array((clip_value,)), dt))
-    return new_grad
-
-_grad_overflow = C.MultitypeFuncGraph("_grad_overflow")
-grad_overflow = P.FloatStatus()
-
-@_grad_overflow.register("Tensor")
-def _tensor_grad_overflow(grad):
-    return grad_overflow(grad)
-
-class BertFinetuneCell(nn.Cell):
-    """
-    Especifically defined for finetuning where only four inputs tensor are needed.
-    """
-    def __init__(self, network, optimizer, scale_update_cell=None):
-
-        super(BertFinetuneCell, self).__init__(auto_prefix=False)
-        self.network = network
-        self.weights = ParameterTuple(network.trainable_params())
-        self.optimizer = optimizer
-        self.grad = C.GradOperation('grad',
-                                    get_by_list=True,
-                                    sens_param=True)
-        self.reducer_flag = False
-        self.allreduce = P.AllReduce()
-        self.parallel_mode = context.get_auto_parallel_context("parallel_mode")
-        if self.parallel_mode in [ParallelMode.DATA_PARALLEL, ParallelMode.HYBRID_PARALLEL]:
-            self.reducer_flag = True
-        self.grad_reducer = None
-        if self.reducer_flag:
-            mean = context.get_auto_parallel_context("mirror_mean")
-            degree = get_group_size()
-            self.grad_reducer = DistributedGradReducer(optimizer.parameters, mean, degree)
-        self.is_distributed = (self.parallel_mode != ParallelMode.STAND_ALONE)
-        self.cast = P.Cast()
-        self.gpu_target = False
-        if context.get_context("device_target") == "GPU":
-            self.gpu_target = True
-            self.float_status = P.FloatStatus()
-            self.addn = P.AddN()
-            self.reshape = P.Reshape()
-        else:
-            self.alloc_status = P.NPUAllocFloatStatus()
-            self.get_status = P.NPUGetFloatStatus()
-            self.clear_before_grad = P.NPUClearFloatStatus()
-        self.reduce_sum = P.ReduceSum(keep_dims=False)
-        self.depend_parameter_use = P.ControlDepend(depend_mode=1)
-        self.base = Tensor(1, mstype.float32)
-        self.less_equal = P.LessEqual()
-        self.hyper_map = C.HyperMap()
-        self.loss_scale = None
-        self.loss_scaling_manager = scale_update_cell
-        if scale_update_cell:
-            self.loss_scale = Parameter(Tensor(scale_update_cell.get_loss_scale(), dtype=mstype.float32),
-                                        name="loss_scale")
-
-    def construct(self,
-                  input_ids,
-                  input_mask,
-                  token_type_id,
-                  label_ids,
-                  sens=None):
-
-
-        weights = self.weights
-        init = False
-        loss = self.network(input_ids,
-                            input_mask,
-                            token_type_id,
-                            label_ids)
-        if sens is None:
-            scaling_sens = self.loss_scale
-        else:
-            scaling_sens = sens
-
-        if not self.gpu_target:
-            init = self.alloc_status()
-            clear_before_grad = self.clear_before_grad(init)
-            F.control_depend(loss, init)
-            self.depend_parameter_use(clear_before_grad, scaling_sens)
-        grads = self.grad(self.network, weights)(input_ids,
-                                                 input_mask,
-                                                 token_type_id,
-                                                 label_ids,
-                                                 self.cast(scaling_sens,
-                                                           mstype.float32))
-        grads = self.hyper_map(F.partial(grad_scale, scaling_sens), grads)
-        grads = self.hyper_map(F.partial(clip_grad, GRADIENT_CLIP_TYPE, GRADIENT_CLIP_VALUE), grads)
-        if self.reducer_flag:
-            grads = self.grad_reducer(grads)
-        if not self.gpu_target:
-            flag = self.get_status(init)
-            flag_sum = self.reduce_sum(init, (0,))
-            F.control_depend(grads, flag)
-            F.control_depend(flag, flag_sum)
-        else:
-            flag_sum = self.hyper_map(F.partial(_grad_overflow), grads)
-            flag_sum = self.addn(flag_sum)
-            flag_sum = self.reshape(flag_sum, (()))
-        if self.is_distributed:
-            flag_reduce = self.allreduce(flag_sum)
-            cond = self.less_equal(self.base, flag_reduce)
-        else:
-            cond = self.less_equal(self.base, flag_sum)
-        overflow = cond
-        if sens is None:
-            overflow = self.loss_scaling_manager(self.loss_scale, cond)
-        if overflow:
-            succ = False
-        else:
-            succ = self.optimizer(grads)
-        ret = (loss, cond)
-        return F.depend(ret, succ)
-
-
-class BertCLSModel(nn.Cell):
-    """
-    This class is responsible for classification task evaluation, i.e. XNLI(num_labels=3),
-    LCQMC(num_labels=2), Chnsenti(num_labels=2). The returned output represents the final
-    logits as the results of log_softmax is propotional to that of softmax.
-    """
-    def __init__(self, config, is_training, num_labels=2, dropout_prob=0.0, use_one_hot_embeddings=False):
-        super(BertCLSModel, self).__init__()
-        self.bert = BertModel(config, is_training, use_one_hot_embeddings)
-        self.cast = P.Cast()
-        self.weight_init = TruncatedNormal(config.initializer_range)
-        self.log_softmax = P.LogSoftmax(axis=-1)
-        self.dtype = config.dtype
-        self.num_labels = num_labels
-        self.dense_1 = nn.Dense(config.hidden_size, self.num_labels, weight_init=self.weight_init,
-                                has_bias=True).to_float(config.compute_type)
-        self.dropout = nn.Dropout(1 - dropout_prob)
-
-    def construct(self, input_ids, input_mask, token_type_id):
-        _, pooled_output, _ = \
-            self.bert(input_ids, token_type_id, input_mask)
-        cls = self.cast(pooled_output, self.dtype)
-        cls = self.dropout(cls)
-        logits = self.dense_1(cls)
-        logits = self.cast(logits, self.dtype)
-        log_probs = self.log_softmax(logits)
-        return log_probs
-
-
-class BertNERModel(nn.Cell):
-    """
-    This class is responsible for sequence labeling task evaluation, i.e. NER(num_labels=11).
-    The returned output represents the final logits as the results of log_softmax is propotional to that of softmax.
-    """
-    def __init__(self, config, is_training, num_labels=11, use_crf=False, dropout_prob=0.0,
-                 use_one_hot_embeddings=False):
-        super(BertNERModel, self).__init__()
-        self.bert = BertModel(config, is_training, use_one_hot_embeddings)
-        self.cast = P.Cast()
-        self.weight_init = TruncatedNormal(config.initializer_range)
-        self.log_softmax = P.LogSoftmax(axis=-1)
-        self.dtype = config.dtype
-        self.num_labels = num_labels
-        self.dense_1 = nn.Dense(config.hidden_size, self.num_labels, weight_init=self.weight_init,
-                                has_bias=True).to_float(config.compute_type)
-        self.dropout = nn.Dropout(1 - dropout_prob)
-        self.reshape = P.Reshape()
-        self.shape = (-1, config.hidden_size)
-        self.use_crf = use_crf
-        self.origin_shape = (config.batch_size, config.seq_length, self.num_labels)
-
-    def construct(self, input_ids, input_mask, token_type_id):
-        sequence_output, _, _ = \
-            self.bert(input_ids, token_type_id, input_mask)
-        seq = self.dropout(sequence_output)
-        seq = self.reshape(seq, self.shape)
-        logits = self.dense_1(seq)
-        logits = self.cast(logits, self.dtype)
-        if self.use_crf:
-            return_value = self.reshape(logits, self.origin_shape)
-        else:
-            return_value = self.log_softmax(logits)
-        return return_value
+from src.config import cfg
+from src.CRF import postprocess
 
 class CrossEntropyCalculation(nn.Cell):
     """
@@ -272,42 +40,169 @@ class CrossEntropyCalculation(nn.Cell):
             return_value = logits * 1.0
         return return_value
 
-class BertCLS(nn.Cell):
-    """
-    Train interface for classification finetuning task.
-    """
-    def __init__(self, config, is_training, num_labels=2, dropout_prob=0.0, use_one_hot_embeddings=False):
-        super(BertCLS, self).__init__()
-        self.bert = BertCLSModel(config, is_training, num_labels, dropout_prob, use_one_hot_embeddings)
-        self.loss = CrossEntropyCalculation(is_training)
-        self.num_labels = num_labels
-    def construct(self, input_ids, input_mask, token_type_id, label_ids):
-        log_probs = self.bert(input_ids, input_mask, token_type_id)
-        loss = self.loss(log_probs, label_ids, self.num_labels)
-        return loss
 
+class BertLearningRate(LearningRateSchedule):
+    """
+    Warmup-decay learning rate for Bert network.
+    """
+    def __init__(self, learning_rate, end_learning_rate, warmup_steps, decay_steps, power):
+        super(BertLearningRate, self).__init__()
+        self.warmup_flag = False
+        if warmup_steps > 0:
+            self.warmup_flag = True
+            self.warmup_lr = WarmUpLR(learning_rate, warmup_steps)
+        self.decay_lr = PolynomialDecayLR(learning_rate, end_learning_rate, decay_steps, power)
+        self.warmup_steps = Tensor(np.array([warmup_steps]).astype(np.float32))
 
-class BertNER(nn.Cell):
-    """
-    Train interface for sequence labeling finetuning task.
-    """
-    def __init__(self, config, is_training, num_labels=11, use_crf=False, tag_to_index=None, dropout_prob=0.0,
-                 use_one_hot_embeddings=False):
-        super(BertNER, self).__init__()
-        self.bert = BertNERModel(config, is_training, num_labels, use_crf, dropout_prob, use_one_hot_embeddings)
-        if use_crf:
-            if not tag_to_index:
-                raise Exception("The dict for tag-index mapping should be provided for CRF.")
-            self.loss = CRF(tag_to_index, config.batch_size, config.seq_length, is_training)
+        self.greater = P.Greater()
+        self.one = Tensor(np.array([1.0]).astype(np.float32))
+        self.cast = P.Cast()
+
+    def construct(self, global_step):
+        decay_lr = self.decay_lr(global_step)
+        if self.warmup_flag:
+            is_warmup = self.cast(self.greater(self.warmup_steps, global_step), mstype.float32)
+            warmup_lr = self.warmup_lr(global_step)
+            lr = (self.one - is_warmup) * decay_lr + is_warmup * warmup_lr
         else:
-            self.loss = CrossEntropyCalculation(is_training)
-        self.num_labels = num_labels
-        self.use_crf = use_crf
-    def construct(self, input_ids, input_mask, token_type_id, label_ids):
-        logits = self.bert(input_ids, input_mask, token_type_id)
-        if self.use_crf:
-            loss = self.loss(logits, label_ids)
-        else:
-            loss = self.loss(logits, label_ids, self.num_labels)
-        return loss
+            lr = decay_lr
+        return lr
 
+class LossCallBack(Callback):
+    """
+    Monitor the loss in training.
+    If the loss in NAN or INF terminating training.
+    Note:
+        if per_print_times is 0 do not print loss.
+    Args:
+        per_print_times (int): Print loss every times. Default: 1.
+    """
+    def __init__(self, dataset_size=-1):
+        super(LossCallBack, self).__init__()
+        self._dataset_size = dataset_size
+    def step_end(self, run_context):
+        """
+        Print loss after each step
+        """
+        cb_params = run_context.original_args()
+        if self._dataset_size > 0:
+            percent, epoch_num = math.modf(cb_params.cur_step_num / self._dataset_size)
+            if percent == 0:
+                percent = 1
+                epoch_num -= 1
+            print("epoch: {}, current epoch percent: {}, step: {}, outputs are {}"
+                  .format(int(epoch_num), "%.3f" % percent, cb_params.cur_step_num, str(cb_params.net_outputs)))
+        else:
+            print("epoch: {}, step: {}, outputs are {}".format(cb_params.cur_epoch_num, cb_params.cur_step_num,
+                                                               str(cb_params.net_outputs)))
+
+
+class Accuracy():
+    '''
+    calculate accuracy
+    '''
+    def __init__(self):
+        self.acc_num = 0
+        self.total_num = 0
+    def update(self, logits, labels):
+        labels = labels.asnumpy()
+        labels = np.reshape(labels, -1)
+        logits = logits.asnumpy()
+        logit_id = np.argmax(logits, axis=-1)
+        self.acc_num += np.sum(labels == logit_id)
+        self.total_num += len(labels)
+        #print("=========================accuracy is ", self.acc_num / self.total_num)
+
+class F1():
+    '''
+    calculate F1 score
+    '''
+    def __init__(self):
+        self.TP = 0
+        self.FP = 0
+        self.FN = 0
+    def update(self, logits, labels):
+        '''
+        update F1 score
+        '''
+        labels = labels.asnumpy()
+        labels = np.reshape(labels, -1)
+        if cfg.use_crf:
+            backpointers, best_tag_id = logits
+            best_path = postprocess(backpointers, best_tag_id)
+            logit_id = []
+            for ele in best_path:
+                logit_id.extend(ele)
+        else:
+            logits = logits.asnumpy()
+            logit_id = np.argmax(logits, axis=-1)
+            logit_id = np.reshape(logit_id, -1)
+        pos_eva = np.isin(logit_id, [i for i in range(1, cfg.num_labels)])
+        pos_label = np.isin(labels, [i for i in range(1, cfg.num_labels)])
+        self.TP += np.sum(pos_eva&pos_label)
+        self.FP += np.sum(pos_eva&(~pos_label))
+        self.FN += np.sum((~pos_eva)&pos_label)
+
+class MCC():
+    '''
+    Calculate Matthews Correlation Coefficient
+    '''
+    def __init__(self):
+        self.TP = 0
+        self.FP = 0
+        self.FN = 0
+        self.TN = 0
+    def update(self, logits, labels):
+        '''
+        MCC update
+        '''
+        labels = labels.asnumpy()
+        labels = np.reshape(labels, -1)
+        labels = labels.astype(np.bool)
+        logits = logits.asnumpy()
+        logit_id = np.argmax(logits, axis=-1)
+        logit_id = np.reshape(logit_id, -1)
+        logit_id = logit_id.astype(np.bool)
+        ornot = logit_id ^ labels
+
+        self.TP += (~ornot & labels).sum()
+        self.FP += (ornot & ~labels).sum()
+        self.FN += (ornot & labels).sum()
+        self.TN += (~ornot & ~labels).sum()
+
+    def cal(self):
+        mcc = (self.TP*self.TN - self.FP*self.FN)/math.sqrt((self.TP+self.FP)*(self.TP+self.FN) *
+                                                            (self.TN+self.FP)*(self.TN+self.FN))
+        return mcc
+
+class Spearman_Correlation():
+    '''
+    Calculate Spearman Correlation Coefficient
+    '''
+    def __init__(self):
+        self.label = []
+        self.logit = []
+
+    def update(self, logits, labels):
+        labels = labels.asnumpy()
+        labels = np.reshape(labels, -1)
+        logits = logits.asnumpy()
+        logits = np.reshape(logits, -1)
+        self.label.append(labels)
+        self.logit.append(logits)
+
+    def cal(self):
+        '''
+        Calculate Spearman Correlation
+        '''
+        label = np.concatenate(self.label)
+        logit = np.concatenate(self.logit)
+        sort_label = label.argsort()[::-1]
+        sort_logit = logit.argsort()[::-1]
+        n = len(label)
+        d_acc = 0
+        for i in range(n):
+            d = np.where(sort_label == i)[0] - np.where(sort_logit == i)[0]
+            d_acc += d**2
+        ps = 1 - 6*d_acc/n/(n**2-1)
+        return ps

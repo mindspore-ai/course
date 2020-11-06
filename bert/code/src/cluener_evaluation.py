@@ -110,7 +110,7 @@ def label_class(id_):
     return id2label[id_]
     
     
-f=open('./log.txt','w')
+f=open(cfg.eval_out_file,'w')
 def process(model, text, sequence_length):
     """
     process text.

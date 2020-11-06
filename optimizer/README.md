@@ -24,7 +24,7 @@
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
@@ -120,7 +120,7 @@ optimizer
 
 ### 创建OBS桶
 
-本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法（下文给出了操作步骤）。
+本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
 
 > **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
 
@@ -136,11 +136,7 @@ optimizer
 
 ### 上传文件
 
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。上传文件后，查看页面底部的“任务管理”状态栏（正在运行、已完成、失败），确保文件均上传完成。若失败请：
-
-- 参考[上传对象大小限制/切换上传方式](https://support.huaweicloud.com/qs-obs/obs_qs_0008.html)，
-- 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
-- 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。
 
 ## 实验步骤
 
@@ -495,44 +491,11 @@ print('测试数据y尺寸：', Y_test.shape)
 def gen_data(X_train, Y_train, epoch_size):
     XY_train = list(zip(X_train, Y_train))
     ds_train = dataset.GeneratorDataset(XY_train, ['x', 'y'])
-    ds_train.set_dataset_size(cfg.train_size)
     ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True)
     XY_test = list(zip(X_test, Y_test))
     ds_test = dataset.GeneratorDataset(XY_test, ['x', 'y'])
-    ds_test.set_dataset_size(cfg.test_size)
     ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.test_size, drop_remainder=True)
     return ds_train, ds_test
-```
-
-为了更好的观察loss变化，重写Lossmonitor。
-
-```python
-class SubLossMonitor(LossMonitor):
-    def epoch_end(self, run_context):
-        pass
-
-    def step_end(self, run_context):
-        cb_params = run_context.original_args()
-        step_loss = cb_params.net_outputs
-
-        if isinstance(step_loss, (tuple, list)) and isinstance(step_loss[0], Tensor):
-            step_loss = step_loss[0]
-        if isinstance(step_loss, Tensor):
-            step_loss = np.mean(step_loss.asnumpy())
-
-        self.losses.append(step_loss)
-        cur_step_in_epoch = int((cb_params.cur_step_num - 1) % cb_params.batch_num) + 1
-
-        if isinstance(step_loss, float) and (np.isnan(step_loss) or np.isinf(step_loss)):
-            raise ValueError("Epoch: [{:3d}/{:3d}], step: [{:5d}/{:5d}]. "
-                             "Invalid loss, terminating training.".format(
-                cb_params.cur_epoch_num - 1, cb_params.epoch_num,
-                cur_step_in_epoch, cb_params.batch_num))
-
-        if self._per_print_times != 0 and cb_params.cur_step_num % self._per_print_times == 0:
-            print("epoch: {} step {}, loss: {}, avg loss: {:5.3f}".format(cb_params.cur_epoch_num,
-                                                                          cur_step_in_epoch,
-                                                                          step_loss, np.mean(self.losses)), flush=True)
 ```
 
 #### 定义训练、测试、预测过程
@@ -542,7 +505,7 @@ class SubLossMonitor(LossMonitor):
 def train(network, net_opt, ds_train, prefix, directory, print_times):
     net_loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction="mean")
     model = Model(network, loss_fn=net_loss, optimizer=net_opt, metrics={"acc"})
-    loss_cb = SubLossMonitor(per_print_times=print_times)
+    loss_cb = LossMonitor(per_print_times=print_times)
     config_ck = CheckpointConfig(save_checkpoint_steps=cfg.save_checkpoint_steps,
                                  keep_checkpoint_max=cfg.keep_checkpoint_max)
     ckpoint_cb = ModelCheckpoint(prefix=prefix, directory=directory, config=config_ck)
@@ -555,7 +518,7 @@ def train(network, net_opt, ds_train, prefix, directory, print_times):
 # 评估预测
 def eval_predict(model, ds_test):
     # 使用测试集评估模型，打印总体准确率
-    metric = model.eval(ds_test)
+    metric = model.eval(ds_test, dataset_sink_mode=False)
     print(metric)
     # 预测
     test_ = ds_test.create_dict_iterator().get_next()
@@ -583,36 +546,37 @@ model = train(network, None, ds_train, "checkpoint_no_opt", cfg.out_dir_no_opt, 
 eval_predict(model, ds_test)
 ```
 
+    ------------------无优化器--------------------------
     ============== Starting Training ==============
-    epoch: 1 step 4, loss: 1.0889194011688232, avg loss: 1.085
-    epoch: 2 step 4, loss: 1.0786006450653076, avg loss: 1.085
-    epoch: 3 step 4, loss: 1.087601900100708, avg loss: 1.085
-    epoch: 4 step 4, loss: 1.0797476768493652, avg loss: 1.085
-    epoch: 5 step 4, loss: 1.0873146057128906, avg loss: 1.085
-    epoch: 6 step 4, loss: 1.0899147987365723, avg loss: 1.085
-    epoch: 7 step 4, loss: 1.0889571905136108, avg loss: 1.085
-    epoch: 8 step 4, loss: 1.0873101949691772, avg loss: 1.085
-    epoch: 9 step 4, loss: 1.0905265808105469, avg loss: 1.085
-    epoch: 10 step 4, loss: 1.0831623077392578, avg loss: 1.085
-    epoch: 11 step 4, loss: 1.0847382545471191, avg loss: 1.085
-    epoch: 12 step 4, loss: 1.079599142074585, avg loss: 1.085
-    epoch: 13 step 4, loss: 1.086871862411499, avg loss: 1.085
-    epoch: 14 step 4, loss: 1.0913140773773193, avg loss: 1.085
-    epoch: 15 step 4, loss: 1.0870290994644165, avg loss: 1.085
-    epoch: 16 step 4, loss: 1.0817103385925293, avg loss: 1.085
-    epoch: 17 step 4, loss: 1.0873748064041138, avg loss: 1.085
-    epoch: 18 step 4, loss: 1.0746941566467285, avg loss: 1.085
-    epoch: 19 step 4, loss: 1.0819764137268066, avg loss: 1.085
-    epoch: 20 step 4, loss: 1.0972342491149902, avg loss: 1.085
-    {'acc': 0.43333333333333335}
-    第0个sample预测结果： 2    真实结果： 2
-    第1个sample预测结果： 0    真实结果： 0
-    第2个sample预测结果： 0    真实结果： 0
+    epoch: 1 step: 4, loss is 1.099119
+    epoch: 2 step: 4, loss is 1.0986137
+    epoch: 3 step: 4, loss is 1.0915024
+    epoch: 4 step: 4, loss is 1.0733328
+    epoch: 5 step: 4, loss is 1.0819128
+    epoch: 6 step: 4, loss is 1.1016335
+    epoch: 7 step: 4, loss is 1.101129
+    epoch: 8 step: 4, loss is 1.0737724
+    epoch: 9 step: 4, loss is 1.0933018
+    epoch: 10 step: 4, loss is 1.0933993
+    epoch: 11 step: 4, loss is 1.063694
+    epoch: 12 step: 4, loss is 1.0799284
+    epoch: 13 step: 4, loss is 1.0820868
+    epoch: 14 step: 4, loss is 1.0834141
+    epoch: 15 step: 4, loss is 1.0789055
+    epoch: 16 step: 4, loss is 1.081816
+    epoch: 17 step: 4, loss is 1.0840713
+    epoch: 18 step: 4, loss is 1.0937498
+    epoch: 19 step: 4, loss is 1.0935693
+    epoch: 20 step: 4, loss is 1.0883517
+    {'acc': 0.36666666666666664}
+    第0个sample预测结果： 2    真实结果： 0
+    第1个sample预测结果： 2    真实结果： 0
+    第2个sample预测结果： 2    真实结果： 0
     第3个sample预测结果： 2    真实结果： 1
-    第4个sample预测结果： 2    真实结果： 1
-    第5个sample预测结果： 2    真实结果： 2
-    第6个sample预测结果： 2    真实结果： 1
-    第7个sample预测结果： 2    真实结果： 2
+    第4个sample预测结果： 2    真实结果： 0
+    第5个sample预测结果： 2    真实结果： 0
+    第6个sample预测结果： 2    真实结果： 0
+    第7个sample预测结果： 2    真实结果： 0
     第8个sample预测结果： 2    真实结果： 2
     第9个sample预测结果： 2    真实结果： 0
 
@@ -634,38 +598,39 @@ eval_predict(model, ds_test)
 ```
 
 ```
+-------------------SGD优化器-----------------------
 ============== Starting Training ==============
-epoch: 10 step 4, loss: 0.9191734194755554, avg loss: 0.885
-epoch: 20 step 4, loss: 0.7677731513977051, avg loss: 0.764
-epoch: 30 step 4, loss: 0.7029662132263184, avg loss: 0.678
-epoch: 40 step 4, loss: 0.6191470623016357, avg loss: 0.633
-epoch: 50 step 4, loss: 0.5822886228561401, avg loss: 0.588
-epoch: 60 step 4, loss: 0.5903770923614502, avg loss: 0.562
-epoch: 70 step 4, loss: 0.48483023047447205, avg loss: 0.533
-epoch: 80 step 4, loss: 0.5035678148269653, avg loss: 0.514
-epoch: 90 step 4, loss: 0.44619810581207275, avg loss: 0.502
-epoch: 100 step 4, loss: 0.5394692420959473, avg loss: 0.483
-epoch: 110 step 4, loss: 0.4881630837917328, avg loss: 0.472
-epoch: 120 step 4, loss: 0.48909181356430054, avg loss: 0.462
-epoch: 130 step 4, loss: 0.48934054374694824, avg loss: 0.449
-epoch: 140 step 4, loss: 0.44362297654151917, avg loss: 0.438
-epoch: 150 step 4, loss: 0.4909963607788086, avg loss: 0.430
-epoch: 160 step 4, loss: 0.38809025287628174, avg loss: 0.421
-epoch: 170 step 4, loss: 0.43030044436454773, avg loss: 0.417
-epoch: 180 step 4, loss: 0.40883880853652954, avg loss: 0.408
-epoch: 190 step 4, loss: 0.4194946885108948, avg loss: 0.399
-epoch: 200 step 4, loss: 0.41460859775543213, avg loss: 0.397
-{'acc': 0.9666666666666667}
-第0个sample预测结果： 0    真实结果： 0
-第1个sample预测结果： 0    真实结果： 0
+epoch: 10 step: 4, loss is 0.89510494
+epoch: 20 step: 4, loss is 0.75632095
+epoch: 30 step: 4, loss is 0.6508981
+epoch: 40 step: 4, loss is 0.66695356
+epoch: 50 step: 4, loss is 0.568665
+epoch: 60 step: 4, loss is 0.5630969
+epoch: 70 step: 4, loss is 0.52990615
+epoch: 80 step: 4, loss is 0.5494175
+epoch: 90 step: 4, loss is 0.5097493
+epoch: 100 step: 4, loss is 0.45089388
+epoch: 110 step: 4, loss is 0.4442442
+epoch: 120 step: 4, loss is 0.47102338
+epoch: 130 step: 4, loss is 0.4603176
+epoch: 140 step: 4, loss is 0.4400403
+epoch: 150 step: 4, loss is 0.42114452
+epoch: 160 step: 4, loss is 0.45897973
+epoch: 170 step: 4, loss is 0.37725255
+epoch: 180 step: 4, loss is 0.3870777
+epoch: 190 step: 4, loss is 0.40343386
+epoch: 200 step: 4, loss is 0.36648393
+{'acc': 0.9333333333333333}
+第0个sample预测结果： 2    真实结果： 0
+第1个sample预测结果： 2    真实结果： 2
 第2个sample预测结果： 0    真实结果： 0
-第3个sample预测结果： 0    真实结果： 0
-第4个sample预测结果： 1    真实结果： 1
-第5个sample预测结果： 1    真实结果： 1
-第6个sample预测结果： 2    真实结果： 2
-第7个sample预测结果： 2    真实结果： 2
-第8个sample预测结果： 2    真实结果： 2
-第9个sample预测结果： 2    真实结果： 2
+第3个sample预测结果： 2    真实结果： 2
+第4个sample预测结果： 1    真实结果： 2
+第5个sample预测结果： 2    真实结果： 1
+第6个sample预测结果： 0    真实结果： 0
+第7个sample预测结果： 1    真实结果： 0
+第8个sample预测结果： 2    真实结果： 1
+第9个sample预测结果： 1    真实结果： 1
 ```
 
 #### Momentum优化器模型训练、测试、预测
@@ -685,38 +650,39 @@ model = train(network, net_opt, ds_train, "checkpoint_momentum", cfg.out_dir_mom
 eval_predict(model, ds_test)
 ```
 
+    -------------------Momentum优化器-----------------------
     ============== Starting Training ==============
-    epoch: 1 step 4, loss: 1.0203474760055542, avg loss: 1.059
-    epoch: 2 step 4, loss: 0.9105612635612488, avg loss: 0.989
-    epoch: 3 step 4, loss: 0.808910608291626, avg loss: 0.863
-    epoch: 4 step 4, loss: 0.7031147480010986, avg loss: 0.775
-    epoch: 5 step 4, loss: 0.5979485511779785, avg loss: 0.680
-    epoch: 6 step 4, loss: 0.6117547750473022, avg loss: 0.612
-    epoch: 7 step 4, loss: 0.46994972229003906, avg loss: 0.569
-    epoch: 8 step 4, loss: 0.5184788703918457, avg loss: 0.553
-    epoch: 9 step 4, loss: 0.5600728988647461, avg loss: 0.514
-    epoch: 10 step 4, loss: 0.46992775797843933, avg loss: 0.489
-    epoch: 11 step 4, loss: 0.4271170496940613, avg loss: 0.474
-    epoch: 12 step 4, loss: 0.49392855167388916, avg loss: 0.466
-    epoch: 13 step 4, loss: 0.44602206349372864, avg loss: 0.442
-    epoch: 14 step 4, loss: 0.45520901679992676, avg loss: 0.439
-    epoch: 15 step 4, loss: 0.3911263346672058, avg loss: 0.421
-    epoch: 16 step 4, loss: 0.4466801881790161, avg loss: 0.415
-    epoch: 17 step 4, loss: 0.4483078718185425, avg loss: 0.421
-    epoch: 18 step 4, loss: 0.4541526734828949, avg loss: 0.405
-    epoch: 19 step 4, loss: 0.3124566078186035, avg loss: 0.397
-    epoch: 20 step 4, loss: 0.43211615085601807, avg loss: 0.388
-    {'acc': 1.0}
+    epoch: 1 step: 4, loss is 1.0604309
+    epoch: 2 step: 4, loss is 0.99521977
+    epoch: 3 step: 4, loss is 0.8313699
+    epoch: 4 step: 4, loss is 0.7094096
+    epoch: 5 step: 4, loss is 0.65089923
+    epoch: 6 step: 4, loss is 0.6310853
+    epoch: 7 step: 4, loss is 0.53370225
+    epoch: 8 step: 4, loss is 0.49405128
+    epoch: 9 step: 4, loss is 0.4837509
+    epoch: 10 step: 4, loss is 0.56862116
+    epoch: 11 step: 4, loss is 0.45315826
+    epoch: 12 step: 4, loss is 0.4296512
+    epoch: 13 step: 4, loss is 0.35478917
+    epoch: 14 step: 4, loss is 0.3776942
+    epoch: 15 step: 4, loss is 0.3904683
+    epoch: 16 step: 4, loss is 0.405444
+    epoch: 17 step: 4, loss is 0.35382038
+    epoch: 18 step: 4, loss is 0.4173923
+    epoch: 19 step: 4, loss is 0.3982181
+    epoch: 20 step: 4, loss is 0.36724958
+    {'acc': 0.9333333333333333}
     第0个sample预测结果： 2    真实结果： 2
     第1个sample预测结果： 2    真实结果： 2
-    第2个sample预测结果： 2    真实结果： 2
-    第3个sample预测结果： 1    真实结果： 1
-    第4个sample预测结果： 0    真实结果： 0
+    第2个sample预测结果： 0    真实结果： 0
+    第3个sample预测结果： 2    真实结果： 2
+    第4个sample预测结果： 2    真实结果： 1
     第5个sample预测结果： 0    真实结果： 0
     第6个sample预测结果： 1    真实结果： 1
     第7个sample预测结果： 0    真实结果： 0
     第8个sample预测结果： 0    真实结果： 0
-    第9个sample预测结果： 0    真实结果： 0
+    第9个sample预测结果： 1    真实结果： 1
 
 #### Adam优化器模型训练、测试、预测
 
@@ -736,33 +702,34 @@ eval_predict(model, ds_test)
 ```
 
 ```
+------------------Adam优化器--------------------------
 ============== Starting Training ==============
-epoch: 1 step 4, loss: 0.779292106628418, avg loss: 0.987
-epoch: 2 step 4, loss: 0.6459528207778931, avg loss: 0.649
-epoch: 3 step 4, loss: 0.4705578088760376, avg loss: 0.528
-epoch: 4 step 4, loss: 0.44921058416366577, avg loss: 0.463
-epoch: 5 step 4, loss: 0.39382368326187134, avg loss: 0.412
-epoch: 6 step 4, loss: 0.35060781240463257, avg loss: 0.369
-epoch: 7 step 4, loss: 0.26220306754112244, avg loss: 0.346
-epoch: 8 step 4, loss: 0.270007461309433, avg loss: 0.324
-epoch: 9 step 4, loss: 0.2567645311355591, avg loss: 0.301
-epoch: 10 step 4, loss: 0.38261109590530396, avg loss: 0.314
-epoch: 11 step 4, loss: 0.3241625130176544, avg loss: 0.282
-epoch: 12 step 4, loss: 0.2498287558555603, avg loss: 0.253
-epoch: 13 step 4, loss: 0.23713502287864685, avg loss: 0.259
-epoch: 14 step 4, loss: 0.2676781117916107, avg loss: 0.253
-epoch: 15 step 4, loss: 0.1873977780342102, avg loss: 0.234
+epoch: 1 step: 4, loss is 0.84714115
+epoch: 2 step: 4, loss is 0.57764554
+epoch: 3 step: 4, loss is 0.48923612
+epoch: 4 step: 4, loss is 0.5017803
+epoch: 5 step: 4, loss is 0.43567714
+epoch: 6 step: 4, loss is 0.47073197
+epoch: 7 step: 4, loss is 0.3545829
+epoch: 8 step: 4, loss is 0.30443013
+epoch: 9 step: 4, loss is 0.32454818
+epoch: 10 step: 4, loss is 0.4717226
+epoch: 11 step: 4, loss is 0.3707342
+epoch: 12 step: 4, loss is 0.27762926
+epoch: 13 step: 4, loss is 0.27208093
+epoch: 14 step: 4, loss is 0.21773852
+epoch: 15 step: 4, loss is 0.22632197
 {'acc': 1.0}
-第0个sample预测结果： 2    真实结果： 2
-第1个sample预测结果： 2    真实结果： 2
+第0个sample预测结果： 1    真实结果： 1
+第1个sample预测结果： 2    真实结果： 1
 第2个sample预测结果： 2    真实结果： 2
-第3个sample预测结果： 0    真实结果： 0
+第3个sample预测结果： 2    真实结果： 2
 第4个sample预测结果： 0    真实结果： 0
 第5个sample预测结果： 1    真实结果： 1
-第6个sample预测结果： 2    真实结果： 2
-第7个sample预测结果： 2    真实结果： 2
+第6个sample预测结果： 1    真实结果： 1
+第7个sample预测结果： 1    真实结果： 1
 第8个sample预测结果： 0    真实结果： 0
-第9个sample预测结果： 0    真实结果： 0
+第9个sample预测结果： 2    真实结果： 0
 ```
 
 **结果分析：** 从无优化器、SGD、momentum、adam优化器的loss上看：
@@ -802,7 +769,7 @@ mox.file.copy_parallel(src_url='model_iris', dst_url=args.train_url)
 
 ### 创建训练作业
 
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业（下文给出了操作步骤）。
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业。
 
 打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
 
