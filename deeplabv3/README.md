@@ -30,10 +30,9 @@ deeplabv3中提出 Atrous Spatial Pyramid Pooling(ASPP)模块, 挖掘不同尺�
 
 本实验指导的数据集可通过如下方式获取：
 * 方式一，针对本实验和[模型案例](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo)，为了节省下载和处理数据集的时间，我们提前准备好了数据集，从华为云OBS中下载[VOC2012数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/voc2012.zip)（已去除分割标注的颜色，仅保留了分割任务的数据）并解压。
-* 方式二，参考[checkpoint（模型的保存和加载）](../checkpoint)实验，拷贝他人共享的OBS桶中的数据集。
+* 方式二，参考[lenet5（手写数字识别）](../lenet5)或[checkpoint（模型的保存和加载）](../checkpoint)实验，拷贝他人共享的OBS桶中的数据集。
     ```
     import moxing
-    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB', server="obs.cn-north-4.myhuaweicloud.com")
     moxing.file.copy_parallel(src_url="s3://share-course/dataset/voc2012/", dst_url='voc2012/')
     ```
 * 方式三，从官网下载数据集并进行数据集预处理：

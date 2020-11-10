@@ -109,7 +109,7 @@ IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次�
 从[课程gitee仓库](https://gitee.com/mindspore/mindspore/tree/r1.0/model_zoo/official/nlp/lstm)上下载本实验相关脚本。将脚本和数据集组织为如下形式：
 
 ```
-experiment
+lstm
 ├── aclImdb
 │   ├── imdbEr.txt
 │   ├── imdb.vocab
@@ -724,4 +724,4 @@ Epoch time: 63056.078, per step time: 80.738, avg loss: 0.354
 
 ## 实验总结
 
-本章提供了一个基于华为ModelArts平台的情感分析实验。通过本次体验全面了解了如何使用MindSpore进行自然语言中处理情感分类问题，理解了如何通过定义和初始化基于LSTM的SentimentNet网络进行训练模型及验证正确率。
+本章提供了一个基于CPU/GPU环境的情感分析实验。通过本次体验全面了解了如何使用MindSpore进行自然语言中处理情感分类问题，理解了如何通过定义和初始化基于LSTM的SentimentNet网络进行训练模型及验证正确率。

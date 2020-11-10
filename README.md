@@ -8,7 +8,7 @@
 
 ## 内容
 
-建议先学习[手写数字识别](lenet5)和[模型保存和加载](checkpoint)实验，了解如何通过ModelArts训练作业、ModelArts Notebook、或本地环境进行实验，以及三者的注意事项。
+建议先学习[MindSpore入门](mindspore)了解MindSpore及其用法。再学习[手写数字识别](lenet5)和[模型保存和加载](checkpoint)，了解如何通过ModelArts训练作业、ModelArts Notebook、或本地环境进行实验，以及三者的注意事项。
 
 ### 深度学习
 
@@ -20,14 +20,14 @@
 ### 计算机视觉
 
 1. [FashionMNIST图像分类[MLP]](feedforward)
-2. [Cifar-10图像分类[ResNet50]](resnet50)
+2. [CIFAR-10图像分类[ResNet50]](resnet50)
 3. [花卉分类[MobileNetV2]](fine_tune)
 4. [语义分割[DeepLabV3]](deeplabv3)
 
 ### 自然语言处理
 
 1. [情感分类[LSTM][CPU/GPU]](lstm)
-2. [中英翻译[Transformer][即将上线]]()
+2. [中英翻译[Transformer]](transformer)
 3. [新闻分类、命名实体识别[BERT, CRF]](bert)
 
 ### 图神经网络
@@ -35,7 +35,7 @@
 1. [科学出版物分类[GCN]](graph_convolutional_network)
 2. [科学出版物分类[GAT]](graph_attention_network)
 
-### 机器学习实验
+### 机器学习
 
 1. [线性方程拟合[Linear Regression]](linear_regression)
 2. [鸢尾花二分类[Logistic Regression]](logistic_regression)

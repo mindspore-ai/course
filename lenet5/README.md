@@ -40,7 +40,7 @@ t10k-labels-idx1-ubyte.gz:   test set labels (4542 bytes)
 
 - 方式二，从华为云OBS中下载[MNIST数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/MNIST.zip)并解压。
 
-- 方式三（推荐），使用ModelArts训练作业/Notebook时，可以拷贝他人账户下OBS桶内的数据集，方法详见[适配训练作业](#适配训练作业)、[数据拷贝](#数据拷贝)。
+- 方式三（推荐），使用ModelArts训练作业/Notebook时，可以拷贝他人共享的OBS桶内的数据集，方法详见[适配训练作业](#适配训练作业)、[数据拷贝](#数据拷贝)。
 
 ### 脚本准备
 
@@ -104,9 +104,9 @@ parser.add_argument('--train_url', required=True, default=None, help='Location o
 args, unknown = parser.parse_known_args()
 ```
 
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。
 
-- 方式一，拷贝自己账户下OBS桶内的数据集。
+- 方式一，拷贝自己账户下OBS桶内的数据集至执行容器。
     
     ```python
     import moxing
@@ -114,13 +114,19 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
     moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
     ```
 
-- 方式二（推荐），拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
-    
+- 方式二（推荐），拷贝他人共享的OBS桶内的数据集至执行容器，前提是他人账户下的OBS桶已设为公共读/公共读写。若在创建桶时桶策略为私有，请参考[配置标准桶策略](https://support.huaweicloud.com/usermanual-obs/obs_03_0142.html)修改为公共读/公共读写。
+
     ```python
     import moxing
-    # 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                         server="obs.cn-north-4.myhuaweicloud.com")
+    moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+    ```
+
+- 方式三（不推荐），先关联他人私有账户，再拷贝他人账户下OBS桶内的数据集至执行容器，前提是已获得他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+
+    ```python
+    import moxing
+    # 设置他人账户的访问密钥, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+    moxing.file.set_auth(ak='Access Key', sk='Secret Access Key', server="obs.cn-north-4.myhuaweicloud.com")
     moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
     ```
 
@@ -144,7 +150,7 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
 1. 点击提交以开始训练；
 2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+4. 参考实验步骤（ModelArts Notebook），在日志中找到对应的打印信息，检查实验是否成功。
 
 ## 实验步骤（ModelArts Notebook）
 
@@ -184,15 +190,31 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 
 ### 数据拷贝
 
-（推荐、可选）若未上传数据集到自己的OBS桶中，可拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+若已通过“Sync OBS”功能将OBS桶中的数据集同步到Notebook执行容器中，则跳过数据拷贝环节。若大小或数量超过同步限制，可通过ModelArts自带的moxing框架，将数据集拷贝至执行容器中。
 
-```python
-import moxing
-# 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                     server="obs.cn-north-4.myhuaweicloud.com")
-moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
-```
+- 方式一，拷贝自己账户下OBS桶内的数据集至执行容器。
+
+    ```python
+    import moxing
+    # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
+    moxing.file.copy_parallel(src_url="s3://OBS/PATH/TO/MNIST/", dst_url='MNIST/')
+    ```
+
+- 方式二（推荐），拷贝他人共享的OBS桶内的数据集至执行容器，前提是他人账户下的OBS桶已设为公共读/公共读写。若在创建桶时桶策略为私有，请参考[配置标准桶策略](https://support.huaweicloud.com/usermanual-obs/obs_03_0142.html)修改为公共读/公共读写。
+
+    ```python
+    import moxing
+    moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+    ```
+
+- 方式三（不推荐），先关联他人私有账户，再拷贝他人账户下OBS桶内的数据集至执行容器，前提是已获得他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+
+    ```python
+    import moxing
+    # 设置他人账户的访问密钥, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+    moxing.file.set_auth(ak='Access Key', sk='Secret Access Key', server="obs.cn-north-4.myhuaweicloud.com")
+    moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
+    ```
 
 ### 导入模块
 
@@ -238,7 +260,7 @@ def create_dataset(data_dir, training=True, batch_size=32, resize=(32, 32),
 ```python
 import matplotlib.pyplot as plt
 ds = create_dataset('MNIST', training=False)
-data = ds.create_dict_iterator().get_next()
+data = ds.create_dict_iterator(output_numpy=True).get_next()
 images = data['image']
 labels = data['label']
 

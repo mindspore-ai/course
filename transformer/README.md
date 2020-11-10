@@ -24,25 +24,9 @@
 
 ## 实验准备
 
-### 创建OBS桶
-
-本实验需要使用华为云OBS存储脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法。
-
-> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
-
-打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
-
-- 区域：华北-北京四
-- 数据冗余存储策略：单AZ存储
-- 桶名称：如ms-course
-- 存储类别：标准存储
-- 桶策略：公共读
-- 归档数据直读：关闭
-- 企业项目、标签等配置：免
-
 ### 数据集准备
 
-从[这里](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/cmn.zip)下载英中翻译所需要的数据集。文件说明如下所示：
+从华为云OBS中下载[中英翻译数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/cmn.zip)并解压。文件说明如下所示：
 
 - ch_en_all.txt:  英中翻译原始预料，共23607条，每条都是一句英文对应一句中文。
 - ch_en_vocab.txt：翻译词表，包括中文词和英文词，以及句子分割词。
@@ -51,9 +35,7 @@
 
 从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
 
-### 上传文件
-
-点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中，组织为如下形式：
+将脚本和数据集组织为如下形式：
 
 ```
 transformer
@@ -62,14 +44,40 @@ transformer
 │   ├── ch_en_vocab.txt
 └── code
        ├── bleu.ipynb
-       ├── create_data.py
-       ├── eval.py
-       ├── train.py
+       ├── create_data.py
+       ├── eval.py
+       ├── train.py
        └── src
     	   └── 脚本等文件
 ```
 
+### 创建OBS桶
+
+使用ModelArts训练作业/Notebook时，需要使用华为云OBS存储实验脚本和数据集，可以参考[快速通过OBS控制台上传下载文件](https://support.huaweicloud.com/qs-obs/obs_qs_0001.html)了解使用OBS创建桶、上传文件、下载文件的使用方法（下文给出了操作步骤）。
+
+> **提示：** 华为云新用户使用OBS时通常需要创建和配置“访问密钥”，可以在使用OBS时根据提示完成创建和配置。也可以参考[获取访问密钥并完成ModelArts全局配置](https://support.huaweicloud.com/prepare-modelarts/modelarts_08_0002.html)获取并配置访问密钥。
+
+打开[OBS控制台](https://storage.huaweicloud.com/obs/?region=cn-north-4&locale=zh-cn#/obs/manager/buckets)，点击右上角的“创建桶”按钮进入桶配置页面，创建OBS桶的参考配置如下：
+
+- 区域：华北-北京四
+- 数据冗余存储策略：单AZ存储
+- 桶名称：全局唯一的字符串
+- 存储类别：标准存储
+- 桶策略：公共读
+- 归档数据直读：关闭
+- 企业项目、标签等配置：免
+
+### 上传文件
+
+点击新建的OBS桶名，再打开“对象”标签页，通过“上传对象”、“新建文件夹”等功能，将脚本和数据集上传到OBS桶中。上传文件后，查看页面底部的“任务管理”状态栏（正在运行、已完成、失败），确保文件均上传完成。若失败请：
+
+- 参考[上传对象大小限制/切换上传方式](https://support.huaweicloud.com/qs-obs/obs_qs_0008.html)，
+- 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
+- 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
+
 ## 实验步骤
+
+推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
 
 实验步骤如下所示：
 
@@ -266,23 +274,23 @@ mox.file.copy_parallel(src_url=cfg.pred_file, dst_url=os.path.join(out_url,cfg.p
 
 打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
 
->- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore；
->- 代码目录：选择上述新建的OBS桶中的transformer/code目录；
->- 启动文件：选择上述新建的OBS桶中的transformer/code目录下的`create_data.py`(预处理数据)，`train.py`（训练），`eval.py`（测试）；
->- 数据来源：数据存储位置->选择上述新建的OBS桶中的transformer目录下的data目录（预处理数据），data_pre目录(训练)，data_pre目录（测试）；
->- 训练输出位置：选择上述新建的OBS桶中的bert目录并在其中创建data_pre(预处理数据)，model目录（训练），eval_out目录（测试）；
->- 测试需要添加运行参数ckpt_url，设值为`s3://{user-obs}/transformer/model`。运行参数data_source，设值为`s3://{user-obs}/transformer/data`
->- 作业日志路径：同训练输出位置；
->- 规格：Ascend:1*Ascend 910；
->- 其他均为默认；
+- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore；
+- 代码目录：选择上述新建的OBS桶中的transformer/code目录；
+- 启动文件：选择上述新建的OBS桶中的transformer/code目录下的`create_data.py`(预处理数据)，`train.py`（训练），`eval.py`（测试）；
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的transformer目录下的data目录（预处理数据），data_pre目录(训练)，data_pre目录（测试）；
+- 训练输出位置：选择上述新建的OBS桶中的bert目录并在其中创建data_pre(预处理数据)，model目录（训练），eval_out目录（测试）；
+- 测试需要添加运行参数ckpt_url，设值为`s3://{user-obs}/transformer/model`。运行参数data_source，设值为`s3://{user-obs}/transformer/data`
+- 作业日志路径：同训练输出位置；
+- 规格：Ascend:1*Ascend 910；
+- 其他均为默认；
 
->**启动并查看训练过程：**
->
->1. 点击提交以开始训练；
->2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
->3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
->4. 参考上述代码梳理，在日志中找到对应的打印信息，检查实验是否成功；
->5. 在日志中无错误且训练作业显示运行成功，即运行成功；
+启动并查看训练过程：
+
+1. 点击提交以开始训练；
+2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
+3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
+4. 参考上述代码梳理，在日志中找到对应的打印信息，检查实验是否成功；
+5. 在日志中无错误且训练作业显示运行成功，即运行成功；
 
 ### 评测
 
@@ -391,7 +399,7 @@ I don ' t mind lending you the money provided you pay it back within a month .	�
 BLUE_mean:0.2540798544123031
 ```
 
-## 结论
+## 实验结论
 
 本实验主要介绍使用MindSpore实现Transformer网络，实现英中翻译任务。分析原理和结果可得：
 

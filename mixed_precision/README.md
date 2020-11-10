@@ -62,7 +62,7 @@ cifar10
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。本实验代码中的ResNet是从[MindSpore docs](https://gitee.com/mindspore/docs/blob/r0.5/tutorials/tutorial_code/resnet/resnet.py)获取的，无需再次下载；将脚本和数据集组织为如下形式：
+从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。本实验代码中的ResNet来源于[MindSpore docs](https://gitee.com/mindspore/docs/tree/r1.0/tutorials/tutorial_code/resnet)。将脚本和数据集组织为如下形式：
 
 ```
 mixed_precision
@@ -96,7 +96,7 @@ mixed_precision
 - 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
 - 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
 
-##  实验步骤（ModelArts训练作业）
+## 实验步骤（ModelArts训练作业）
 
 ModelArts提供了训练作业服务，训练作业资源池大，且具有作业排队等功能，适合大规模并发使用。使用训练作业时，如果有修改代码和调试的需求，有如下三个方案：
 
@@ -144,43 +144,11 @@ moxing.file.copy_parallel(src_url=args.data_url, dst_url='./datasets/')
 1. 点击提交以开始训练；
 2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+4. 参考实验步骤（ModelArts Notebook），在日志中找到对应的打印信息，检查实验是否成功。
 
-##  实验步骤（ModelArts Notebook)
+## 实验步骤（ModelArts Notebook）
 
-ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。
-
-### 创建Notebook
-
-可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开Notebook（下文给出了操作步骤）。
-
-打开[ModelArts控制台-开发环境-Notebook](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/notebook)，点击“创建”按钮进入Notebook配置页面，创建Notebook的参考配置：
-
-- 计费模式：按需计费
-- 名称：mixed_precision
-- 工作环境：Python3
-- 资源池：公共资源
-- 类型：Ascend
-- 规格：单卡1*Ascend 910
-- 存储位置：对象存储服务（OBS）->选择上述新建的OBS桶中的mixed_precision文件夹
-- 自动停止：打开->选择1小时后（后续可在Notebook中随时调整）
-
-> **注意：**
-> - 在Jupyter Notebook/JupyterLab文件列表里，展示的是关联的OBS桶里的文件，并不在当前Notebook工作环境（容器）中，Notebook中的代码无法直接访问这些文件。
-> - 打开Notebook前，选中文件列表里的所有文件/文件夹（实验脚本和数据集），并点击列表上方的“Sync OBS”按钮，使OBS桶中的所有文件同时同步到Notebook执行容器中，这样Notebook中的代码才能访问数据集。
->   - 使用Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
->   - 使用JupyterLab时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0336.html)。
->   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook容器中。
-> - Notebook/JupyterLab文件列表页面的“Upload/上传”功能，会将文件上传至OBS桶中，而不是Notebook执行容器中，仍需额外同步/拷贝。
-> - 在Notebook里通过代码/命令（如`wget, git`、python`urllib, requests`等）获取的文件，存在于Notebook执行容器中，但不会显示在文件列表里。
-> - 每个Notebook实例仅被分配了1个Device，如果在一个实例中打开多个Notebook页面（即多个进程），运行其中一个页面上的MindSpore代码时，请关闭其他页面的kernel，否则会出现Device被占用的错误。
-> - Notebook运行中一直处于计费状态，不使用时，在Notebook控制台页面点击实例右侧的“停止”，以停止计费。停止后，Notebook里的内容不会丢失（已同步至OBS）。下次需要使用时，点击实例右侧的“启动”即可。可参考[启动或停止Notebook实例](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0041.html)。
-
-打开Notebook后，选择MindSpore环境作为Kernel。
-
-> **提示：** 
-> - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
-> - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
+推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
 
 ### 导入模块
 
@@ -227,7 +195,7 @@ ds = de.Cifar10Dataset(train_path, num_parallel_workers=8, shuffle=True)
 print("the cifar dataset size is :", ds.get_dataset_size())
 dict1 = ds.create_dict_iterator()
 datas = dict1.get_next()
-image = datas["image"]
+image = datas["image"].asnumpy()
 print("the tensor of image is:", image.shape)
 plt.imshow(np.array(image))
 plt.show()
@@ -244,7 +212,6 @@ the tensor of image is: (32, 32, 3)
 
 ```python
 def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32, target="Ascend"):
-    
     ds = de.Cifar10Dataset(dataset_path, num_parallel_workers=8, shuffle=True)
     
     # define map operations
@@ -293,7 +260,7 @@ the tensor of image is: (32, 3, 224, 224)
 
 ![Data enhancement](./images/Data_enhancement.png)
 
-cifar10通过数据增强后的，变成了一共有1562个batch，张量为(32,3,224,224)的数据集。
+CIFAR-10通过数据增强后的，变成了一共有1562个batch，张量为(32,3,224,224)的数据集。
 
 ### 定义动态学习率
 
@@ -583,24 +550,6 @@ def resnet101(class_num=1001):
                   class_num)
 ```
 
-### 定义回调函数
-
-定义回调函数Time_per_Step来计算单步训练耗时
-
-`Time_per_Step`用于计算每步训练的时间消耗情况，方便对比混合精度训练和单精度训练的性能区别。
-
-```python
-class Time_per_Step(Callback):
-    def step_begin(self, run_context):
-        cb_params = run_context.original_args()
-        cb_params.init_time = time.time()
-        
-    def step_end(selfself, run_context):
-        cb_params = run_context.original_args()
-        one_step_time = (time.time() - cb_params.init_time) * 1000
-        print(one_step_time, "ms")
-```
-
 ### 运行训练
 
 **设置混合精度训练并执行训练**
@@ -619,7 +568,6 @@ class Time_per_Step(Callback):
 
 ```python
 """train ResNet-50"""
-
 parser = argparse.ArgumentParser(description='Image classification')
 parser.add_argument('--net', type=str, default="resnet50", help='Resnet Model, either resnet50 or resnet101')
 parser.add_argument('--dataset', type=str, default="cifar10", help='Dataset, either cifar10 or imagenet2012')
@@ -683,11 +631,10 @@ model = Model(net, loss_fn=loss, optimizer=opt, metrics={'acc'},amp_level=AMP_LE
               eval_indexes=[0, 1, 2], keep_batchnorm_fp32=False)
     
 # define callbacks
-steptime_cb = Time_per_Step()
 time_cb = TimeMonitor(data_size=step_size)
 loss_cb = LossMonitor()
 
-cb = [time_cb, loss_cb,steptime_cb]
+cb = [time_cb, loss_cb]
 save_checkpoint = 5
 if save_checkpoint:
     save_checkpoint_epochs = 5
@@ -704,56 +651,26 @@ model.train(epoch_size, dataset, callbacks=cb, dataset_sink_mode=True)
 
 ```python
 ============== Starting Training ==============
-epoch: 1 step 1562, loss is 1.2800476551055908
-64953.40394973755 ms
-Epoch time: 65047.685, per step time: 41.644
-Epoch time: 65048.395, per step time: 41.644, avg loss: 1.280
-************************************************************
-epoch: 2 step 1562, loss is 1.4610073566436768
-26713.122367858887 ms
-Epoch time: 26713.336, per step time: 17.102
-Epoch time: 26713.981, per step time: 17.102, avg loss: 1.461
-************************************************************
-epoch: 3 step 1562, loss is 0.9364482164382935
-26747.148990631104 ms
-Epoch time: 26747.987, per step time: 17.124
-Epoch time: 26748.411, per step time: 17.124, avg loss: 0.936
-************************************************************
-epoch: 4 step 1562, loss is 0.9902463555335999
-26747.275590896606 ms
-Epoch time: 26747.413, per step time: 17.124
-Epoch time: 26747.982, per step time: 17.124, avg loss: 0.990
-************************************************************
-epoch: 5 step 1562, loss is 0.5242041349411011
-26747.90596961975 ms
-Epoch time: 27690.477, per step time: 17.728
-Epoch time: 27691.277, per step time: 17.728, avg loss: 0.524
-************************************************************
-epoch: 6 step 1562, loss is 0.532647967338562
-26747.889041900635 ms
-Epoch time: 26748.031, per step time: 17.124
-Epoch time: 26748.601, per step time: 17.125, avg loss: 0.533
-************************************************************
-epoch: 7 step 1562, loss is 0.35971659421920776
-26748.33106994629 ms
-Epoch time: 26748.457, per step time: 17.124
-Epoch time: 26748.937, per step time: 17.125, avg loss: 0.360
-************************************************************
-epoch: 8 step 1562, loss is 0.5928510427474976
-26749.454259872437 ms
-Epoch time: 26749.592, per step time: 17.125
-Epoch time: 26750.138, per step time: 17.126, avg loss: 0.593
-************************************************************
-epoch: 9 step 1562, loss is 0.17644163966178894
-26747.663259506226 ms
-Epoch time: 26747.792, per step time: 17.124
-Epoch time: 26748.336, per step time: 17.124, avg loss: 0.176
-************************************************************
-epoch: 10 step 1562, loss is 0.3067123293876648
-26748.154878616333 ms
-Epoch time: 27696.565, per step time: 17.731
-Epoch time: 27697.372, per step time: 17.732, avg loss: 0.307
-************************************************************
+epoch: 1 step: 1562, loss is 1.4357529
+Epoch time: 54508.373, per step time: 34.897
+epoch: 2 step: 1562, loss is 1.3641081
+Epoch time: 26423.064, per step time: 16.916
+epoch: 3 step: 1562, loss is 1.1052465
+Epoch time: 26422.182, per step time: 16.916
+epoch: 4 step: 1562, loss is 0.9836057
+Epoch time: 26412.126, per step time: 16.909
+epoch: 5 step: 1562, loss is 0.41828048
+Epoch time: 27332.039, per step time: 17.498
+epoch: 6 step: 1562, loss is 0.6544961
+Epoch time: 26411.299, per step time: 16.909
+epoch: 7 step: 1562, loss is 0.46298394
+Epoch time: 26413.315, per step time: 16.910
+epoch: 8 step: 1562, loss is 0.665329
+Epoch time: 26413.724, per step time: 16.910
+epoch: 9 step: 1562, loss is 0.29323277
+Epoch time: 26413.980, per step time: 16.910
+epoch: 10 step: 1562, loss is 0.35443738
+Epoch time: 27252.938, per step time: 17.447
 ```
 
 ### 模型验证
@@ -774,7 +691,7 @@ Accuracy: {'acc': 0.8791073717948718}
 
 **对比不同网络下的混合精度训练和单精度训练的差别**
 
-由于篇幅原因，我们这里只展示了ResNet-50网络的混合精度训练情况。可以在主程序入口的Model中设置参数`amp_level = O0`进行单精度训练，训练完毕后，将结果进行对比，看看两者的情况，下面将我测试的情况做成表格如下。（训练时，笔者使用的GPU为Nvidia Tesla P40，不同的硬件对训练的效率影响较大，下述表格中的数据仅供参考）
+由于篇幅原因，我们这里只展示了ResNet-50网络的混合精度训练情况。可以在主程序入口设置参数`amp_level = O0`进行单精度训练，训练完毕后，将结果进行对比，看看两者的情况，下面将我测试的情况做成表格如下。（训练时，笔者使用的GPU为Nvidia Tesla P40，不同的硬件对训练的效率影响较大，下述表格中的数据仅供参考）
 
 | 网络      | 是否混合训练 | 单步训练时间 | epoch | Accuracy |
 | --------- | ------------ | ------------ | ----- | -------- |
