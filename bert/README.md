@@ -218,7 +218,7 @@ Bert实验数据预处理将数据中的每个字进行了标注，用标准好�
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。其中`tokenization.py`来源于[google-research/bert](https://github.com/google-research/bert/blob/master/tokenization.py)
+从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
 
 ### 上传文件
 

@@ -44,12 +44,12 @@
 
 从[这里](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/cmn.zip)下载英中翻译所需要的数据集。文件说明如下所示：
 
-- ch_en_all.txt:  英中翻译原始预料，共23607条，每条都是一句英文一句中文。
-- ch_en_vocab.txt：翻译词表，包括中文词和英文词，已经句子分割词。
+- ch_en_all.txt:  英中翻译原始预料，共23607条，每条都是一句英文对应一句中文。
+- ch_en_vocab.txt：翻译词表，包括中文词和英文词，以及句子分割词。
 
 ### 脚本准备
 
-从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。其中`tokenization.py`来源于[google-research/bert](https://github.com/google-research/bert/blob/master/tokenization.py)
+从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。
 
 ### 上传文件
 
