@@ -143,14 +143,10 @@ if __name__ == "__main__":
         import moxing
 
         # WAY1: copy dataset from your own OBS bucket to container/cache.
-        moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
+        # moxing.file.copy_parallel(src_url=args.data_url, dst_url='MNIST/')
 
         # WAY2: copy dataset from other's OBS bucket, which has been set public read or public read&write.
-        # set moxing/obs auth info, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket;
-        # moxing.file.set_auth(ak='Other's Access Key', sk='Other's Secret Access Key',
-        #                      server="obs.cn-north-4.myhuaweicloud.com")
-        # moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
-        # COPY_OTHER = True
+        moxing.file.copy_parallel(src_url="s3://share-course/dataset/MNIST/", dst_url='MNIST/')
 
         data_path = 'MNIST/'
     else:
@@ -168,10 +164,6 @@ if __name__ == "__main__":
     infer(data_path)
     if args.data_url.startswith('s3'):
         import moxing
-        # 将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
-        if COPY_OTHER:
-            raise Exception('='*10, 'Set your Access Key below and remove this line', '='*10)
-            moxing.file.set_auth(ak='Your own Access Key', sk='Your own Secret Access Key',
-                                 server="obs.cn-north-4.myhuaweicloud.com")
+        # Copy the ckpt directory to OBS, then there will be a ckpt directory in the ʻargs.train_url` directory in OBS.
         moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
         print('Copied checkpoints from ./ckpt to %s' % os.path.join(args.train_url, 'ckpt'))

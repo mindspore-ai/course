@@ -39,7 +39,7 @@ plt.imshow(np.array(image))
 plt.show()
 
 
-def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32, target="Ascend"):
+def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32):
     ds = de.Cifar10Dataset(dataset_path, num_parallel_workers=8, shuffle=True)
 
     # define map operations
@@ -70,7 +70,7 @@ def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32, target=
     return ds
 
 
-ds = create_dataset(train_path, do_train=True, repeat_num=10, batch_size=32, target="Ascend")
+ds = create_dataset(train_path, do_train=True, repeat_num=10, batch_size=32)
 print("the cifar dataset size is:", ds.get_dataset_size())
 dict1 = ds.create_dict_iterator()
 datas = dict1.get_next()
@@ -400,7 +400,7 @@ if __name__ == '__main__':
 
     # create dataset
     dataset = create_dataset(dataset_path=dataset_path, do_train=True, repeat_num=1,
-                             batch_size=batch_size, target="Ascend")
+                             batch_size=batch_size)
     step_size = dataset.get_dataset_size()
     # define net
     net = resnet50(class_num=10)

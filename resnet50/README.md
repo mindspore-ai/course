@@ -454,9 +454,7 @@ args, unknown = parser.parse_known_args()
 
 MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。
 
-**方式一**
-
-- 训练开始前，拷贝自己账户下OBS桶内的数据集至执行容器。
+- 训练开始前，拷贝自己账户下或他人共享的OBS桶内的数据集至执行容器。
 
     ```python
     import moxing as mox
@@ -471,29 +469,6 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
     # dst_url形如's3://OBS/PATH'，将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
     mox.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
     ```
-
-**方式二**
-
-- 拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
-
-    ```python
-    import moxing as mox
-    # 设置他人账户的ModelArts密钥, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-    mox.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                         server="obs.cn-north-4.myhuaweicloud.com")
-    mox.file.copy_parallel(src_url="s3://share-course/dataset/cifar10/", dst_url='cifar10/')
-    ```
-
-- 如需将训练输出（如模型Checkpoint）从执行容器拷贝至自己的OBS桶中，先通过`set_auth()`设置自己账户的密钥，然后再行拷贝。
-
-    ```python
-    import moxing as mox
-    mox.file.set_auth(ak='Your own Access Key', sk='Your own Secret Access Key',
-                         server="obs.cn-north-4.myhuaweicloud.com")
-    mox.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
-    ```
-
-    如果不设置自己账户的密钥，则只能将Checkpoint拷贝到他人账户下的OBS桶中。
 
 ### 创建训练作业
 

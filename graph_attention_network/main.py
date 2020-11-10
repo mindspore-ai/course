@@ -34,6 +34,7 @@ from mindspore.train.serialization import load_checkpoint, save_checkpoint
 
 context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
 
+
 def train(args_opt):
     """Train GAT model."""
 
@@ -129,14 +130,14 @@ def train(args_opt):
 
 
 if __name__ == '__main__':
-    #------------------------定义变量------------------------------
     parser = argparse.ArgumentParser(description='GCN')
     parser.add_argument('--data_url', required=True, help='Location of data.')
     parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
     args_opt = parser.parse_args()
 
     import moxing as mox
-    mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')  # 将OBS桶中数据拷贝到容器中
+    # Copy dataset from OBS bucket to container/cache.
+    mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
 
     dataname = 'cora_mr'
     datadir_save = './data_mr'
@@ -156,11 +157,8 @@ if __name__ == '__main__':
         'test_nodes_num':1000
     })
 
-    # 转换数据格式
-    # print("============== Graph To Mindrecord ==============")
+    # print("============== Convert dataset to MindRecord ==============")
     # run(cfg)
-    #训练
+
     print("============== Starting Training ==============")
     train(cfg)
-
-    # mox.file.copy_parallel(src_url='data_mr', dst_url=cfg.MINDRECORD_PATH)  # src_url本地   将容器输出放入OBS桶中

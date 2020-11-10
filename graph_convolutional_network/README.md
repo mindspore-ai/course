@@ -253,24 +253,12 @@ parser.add_argument('--train_url', required=True, default=None, help='Location o
 args_opt = parser.parse_args()
 ```
 
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
-
-- 方式一，拷贝自己账户下OBS桶内的数据集。
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。拷贝自己账户下或他人共享的OBS桶内的数据集至执行容器。
 
 ```python
 import moxing as mox
-mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
 # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
-```
-
-- 方式二（推荐），拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
-
-
-```python
-import moxing as mox
-# 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-mox.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM',sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB', server="obs.cn-north-4.myhuaweicloud.com")
-mox.file.copy_parallel(src_url="s3://share-course.obs.cn-north-4.myhuaweicloud.com/dataset", dst_url='./data_mr/')
+mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
 ```
 
 ### 创建训练作业
@@ -293,11 +281,33 @@ mox.file.copy_parallel(src_url="s3://share-course.obs.cn-north-4.myhuaweicloud.c
 1. 点击提交以开始训练；
 2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+4. 参考实验步骤（ModelArts Notebook），在日志中找到对应的打印信息，检查实验是否成功。
 
 ## 实验步骤（ModelArts Notebook）
 
 推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
+
+### 导入模块
+
+```python
+import os
+# os.environ['DEVICE_ID']='7'
+
+import time
+import argparse
+import numpy as np
+
+from mindspore import context
+from easydict import EasyDict as edict
+
+from src.gcn import GCN, LossAccuracyWrapper, TrainNetWrapper
+from src.config import ConfigGCN
+from src.dataset import get_adj_features_labels, get_mask
+# from graph_to_mindrecord.writer import run
+
+context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
+
+```
 
 ### 数据处理
 
@@ -471,34 +481,32 @@ class GCN(nn.Cell):
 
 训练结果将存储在脚本路径中，该路径的文件夹名称以“train”开头。可以在日志中找到类似以下结果。
 
-```shell
-Epoch: 0000 train_loss= 1.95401 train_acc= 0.12143 val_loss= 1.94917 val_acc= 0.31400 time= 36.95478
-Epoch: 0010 train_loss= 1.86495 train_acc= 0.85000 val_loss= 1.90644 val_acc= 0.50200 time= 0.00491
-Epoch: 0020 train_loss= 1.75353 train_acc= 0.88571 val_loss= 1.86284 val_acc= 0.53000 time= 0.00525
-Epoch: 0030 train_loss= 1.59934 train_acc= 0.87857 val_loss= 1.80850 val_acc= 0.55400 time= 0.00517
-Epoch: 0040 train_loss= 1.45166 train_acc= 0.91429 val_loss= 1.74404 val_acc= 0.59400 time= 0.00502
-Epoch: 0050 train_loss= 1.29577 train_acc= 0.94286 val_loss= 1.67278 val_acc= 0.67200 time= 0.00491
-Epoch: 0060 train_loss= 1.13297 train_acc= 0.97857 val_loss= 1.59820 val_acc= 0.72800 time= 0.00482
-Epoch: 0070 train_loss= 1.05231 train_acc= 0.95714 val_loss= 1.52455 val_acc= 0.74800 time= 0.00506
-Epoch: 0080 train_loss= 0.97807 train_acc= 0.97143 val_loss= 1.45385 val_acc= 0.76800 time= 0.00519
-Epoch: 0090 train_loss= 0.85581 train_acc= 0.97143 val_loss= 1.39556 val_acc= 0.77400 time= 0.00476
-Epoch: 0100 train_loss= 0.81426 train_acc= 0.98571 val_loss= 1.34453 val_acc= 0.78400 time= 0.00479
-Epoch: 0110 train_loss= 0.74759 train_acc= 0.97143 val_loss= 1.28945 val_acc= 0.78400 time= 0.00516
-Epoch: 0120 train_loss= 0.70512 train_acc= 0.99286 val_loss= 1.24538 val_acc= 0.78600 time= 0.00517
-Epoch: 0130 train_loss= 0.69883 train_acc= 0.98571 val_loss= 1.21186 val_acc= 0.78200 time= 0.00531
-Epoch: 0140 train_loss= 0.66174 train_acc= 0.98571 val_loss= 1.19131 val_acc= 0.78400 time= 0.00481
-Epoch: 0150 train_loss= 0.57727 train_acc= 0.98571 val_loss= 1.15812 val_acc= 0.78600 time= 0.00475
-Epoch: 0160 train_loss= 0.59659 train_acc= 0.98571 val_loss= 1.13203 val_acc= 0.77800 time= 0.00553
-Epoch: 0170 train_loss= 0.59405 train_acc= 0.97143 val_loss= 1.12650 val_acc= 0.78600 time= 0.00555
-Epoch: 0180 train_loss= 0.55484 train_acc= 1.00000 val_loss= 1.09338 val_acc= 0.78000 time= 0.00542
-Epoch: 0190 train_loss= 0.52347 train_acc= 0.99286 val_loss= 1.07537 val_acc= 0.78800 time= 0.00510
-Test set results: loss= 1.01702 accuracy= 0.81400 time= 6.51215
-```
+    Epoch: 0000 train_loss= 1.95401 train_acc= 0.12143 val_loss= 1.94917 val_acc= 0.31400 time= 36.95478
+    Epoch: 0010 train_loss= 1.86495 train_acc= 0.85000 val_loss= 1.90644 val_acc= 0.50200 time= 0.00491
+    Epoch: 0020 train_loss= 1.75353 train_acc= 0.88571 val_loss= 1.86284 val_acc= 0.53000 time= 0.00525
+    Epoch: 0030 train_loss= 1.59934 train_acc= 0.87857 val_loss= 1.80850 val_acc= 0.55400 time= 0.00517
+    Epoch: 0040 train_loss= 1.45166 train_acc= 0.91429 val_loss= 1.74404 val_acc= 0.59400 time= 0.00502
+    Epoch: 0050 train_loss= 1.29577 train_acc= 0.94286 val_loss= 1.67278 val_acc= 0.67200 time= 0.00491
+    Epoch: 0060 train_loss= 1.13297 train_acc= 0.97857 val_loss= 1.59820 val_acc= 0.72800 time= 0.00482
+    Epoch: 0070 train_loss= 1.05231 train_acc= 0.95714 val_loss= 1.52455 val_acc= 0.74800 time= 0.00506
+    Epoch: 0080 train_loss= 0.97807 train_acc= 0.97143 val_loss= 1.45385 val_acc= 0.76800 time= 0.00519
+    Epoch: 0090 train_loss= 0.85581 train_acc= 0.97143 val_loss= 1.39556 val_acc= 0.77400 time= 0.00476
+    Epoch: 0100 train_loss= 0.81426 train_acc= 0.98571 val_loss= 1.34453 val_acc= 0.78400 time= 0.00479
+    Epoch: 0110 train_loss= 0.74759 train_acc= 0.97143 val_loss= 1.28945 val_acc= 0.78400 time= 0.00516
+    Epoch: 0120 train_loss= 0.70512 train_acc= 0.99286 val_loss= 1.24538 val_acc= 0.78600 time= 0.00517
+    Epoch: 0130 train_loss= 0.69883 train_acc= 0.98571 val_loss= 1.21186 val_acc= 0.78200 time= 0.00531
+    Epoch: 0140 train_loss= 0.66174 train_acc= 0.98571 val_loss= 1.19131 val_acc= 0.78400 time= 0.00481
+    Epoch: 0150 train_loss= 0.57727 train_acc= 0.98571 val_loss= 1.15812 val_acc= 0.78600 time= 0.00475
+    Epoch: 0160 train_loss= 0.59659 train_acc= 0.98571 val_loss= 1.13203 val_acc= 0.77800 time= 0.00553
+    Epoch: 0170 train_loss= 0.59405 train_acc= 0.97143 val_loss= 1.12650 val_acc= 0.78600 time= 0.00555
+    Epoch: 0180 train_loss= 0.55484 train_acc= 1.00000 val_loss= 1.09338 val_acc= 0.78000 time= 0.00542
+    Epoch: 0190 train_loss= 0.52347 train_acc= 0.99286 val_loss= 1.07537 val_acc= 0.78800 time= 0.00510
+    Test set results: loss= 1.01702 accuracy= 0.81400 time= 6.51215
 
 运行main.py会在当前目录下生成一个关于Cora训练数据的动态图t-SNE_visualization_on_Cora.gif。
 
 ![](images/t-SNE_visualization_on_Cora.gif)
 
-## 实验总结
+## 实验结论
 
 本实验介绍在Cora和Citeseer数据集上使用MindSpore进行GCN实验，GCN能很好的处理和学习图结构数据。
