@@ -24,7 +24,7 @@
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
@@ -93,6 +93,62 @@ gat
 - 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
 - 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
 
+## 实验步骤(ModelArts训练作业)
+
+###  适配训练作业
+
+创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
+
+```python
+import argparse
+parser = argparse.ArgumentParser(description='GCN')
+parser.add_argument('--data_url', required=True, help='Location of data.')
+parser.add_argument('--train_url', required=True, help='Location of training outputs.')
+args_opt = parser.parse_args()
+```
+
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
+
+- 方式一，拷贝自己账户下OBS桶内的数据集。
+
+  ```python
+  import moxing as mox
+  mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
+  # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
+  ```
+
+- 方式二（推荐），拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+
+  ```python
+  import moxing as mox
+  # 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+  mox.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
+                       server="obs.cn-north-4.myhuaweicloud.com")
+  mox.file.copy_parallel(src_url="s3://share-course.obs.cn-north-4.myhuaweicloud.com/dataset", dst_url='./data_mr/')
+  ```
+
+###  创建训练作业
+
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业（下文给出了操作步骤）。
+
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
+
+- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
+- 代码目录：选择上述新建的OBS桶中的gat目录
+- 启动文件：选择上述新建的OBS桶中的gat目录下的`main.py`
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的gat目录下的data_mr目录
+- 训练输出位置：选择上述新建的OBS桶中的gat目录并在其中创建output目录
+- 作业日志路径：同训练输出位置
+- 规格：Ascend:1*Ascend 910
+- 其他均为默认
+
+启动并查看训练过程：
+
+1. 点击提交以开始训练；
+2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
+3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
+4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+
 ## 实验步骤(ModelArts Notebook)
 
 ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。
@@ -127,18 +183,15 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
 > - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
 
-## 实验步骤
-
-使用ModelArts Notebook进行实验。若使用ModelArts训练作业（适合大规模并发使用），请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解训练作业的使用方法和注意事项。
-
 ### 导入模块
 
 导入MindSpore模块和辅助模块，设置MindSpore上下文，如执行模式、设备等。
 
 ```python
 import os
-import numpy as np
+# os.environ['DEVICE_ID']='0'
 
+import numpy as np
 from easydict import EasyDict as edict
 from mindspore import context
 
@@ -148,7 +201,6 @@ from src.dataset import load_and_process
 from src.utils import LossAccuracyWrapper, TrainGAT
 from mindspore.train.serialization import load_checkpoint, _exec_save_checkpoint
 
-# os.environ['DEVICE_ID']='0'
 context.set_context(mode=context.GRAPH_MODE,device_target="Ascend")
 ```
 

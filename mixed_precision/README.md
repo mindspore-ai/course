@@ -35,7 +35,7 @@ MindSpore混合精度典型的计算流程如下图所示：
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
@@ -62,14 +62,14 @@ cifar10
 
 ### 脚本准备
 
-从[MindSpore docs](https://gitee.com/mindspore/docs/blob/r0.5/tutorials/tutorial_code/resnet/resnet.py)中下载ResNet代码；从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。将脚本和数据集组织为如下形式：
+从[课程gitee仓库](https://gitee.com/mindspore/course)上下载本实验相关脚本。本实验代码中的ResNet是从[MindSpore docs](https://gitee.com/mindspore/docs/blob/r0.5/tutorials/tutorial_code/resnet/resnet.py)获取的，无需再次下载；将脚本和数据集组织为如下形式：
 
 ```
 mixed_precision
 ├── datasets
 │   └──cifar10
 │── README.md
-└── mixed_precision.ipynb
+└── main.py
 ```
 
 ### 创建OBS桶
@@ -96,9 +96,63 @@ mixed_precision
 - 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
 - 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
 
+##  实验步骤（ModelArts训练作业）
+
+ModelArts提供了训练作业服务，训练作业资源池大，且具有作业排队等功能，适合大规模并发使用。使用训练作业时，如果有修改代码和调试的需求，有如下三个方案：
+
+1. 在本地修改代码后重新上传；
+2. 使用[PyCharm ToolKit](https://support.huaweicloud.com/tg-modelarts/modelarts_15_0001.html)配置一个本地Pycharm+ModelArts的开发环境，便于上传代码、提交训练作业和获取训练日志。
+3. 在ModelArts上创建Notebook，然后设置[Sync OBS功能](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)，可以在线修改代码并自动同步到OBS中。因为只用Notebook来编辑代码，所以创建CPU类型最低规格的Notebook就行。
+
+### 适配训练作业
+
+创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
+
+```python
+import argparse
+parser = argparse.ArgumentParser(description='Mixed Precision')
+parser.add_argument('--data_url', required=True, help='Location of data.')
+parser.add_argument('--train_url', required=True, help='Location of training outputs.')
+args_opt = parser.parse_known_args()
+```
+
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
+
+```python
+import moxing
+# src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
+moxing.file.copy_parallel(src_url=args.data_url, dst_url='./datasets/')
+```
+
+### 创建训练作业
+
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业（下文给出了操作步骤）。
+
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
+
+- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
+- 代码目录：选择上述新建的OBS桶中的mixed_precision目录
+- 启动文件：选择上述新建的OBS桶中的mixed_precision目录下的`main.py`
+- 数据来源：数据存储位置->选择新建的OBS桶中的mixed_precision目录下的datasets目录
+- 训练输出位置：选择上述新建的OBS桶中的mixed_precision目录并在其中创建output目录
+- 作业日志路径：同训练输出位置
+- 规格：Ascend:1*Ascend 910
+- 其他均为默认
+
+启动并查看训练过程：
+
+1. 点击提交以开始训练；
+2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
+3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
+4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+
+##  实验步骤（ModelArts Notebook)
+
+ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。
+
 ### 创建Notebook
 
-ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开Notebook（下文给出了操作步骤）。
+可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开Notebook（下文给出了操作步骤）。
 
 打开[ModelArts控制台-开发环境-Notebook](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/notebook)，点击“创建”按钮进入Notebook配置页面，创建Notebook的参考配置：
 
@@ -128,17 +182,46 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 > - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
 > - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
 
-## 实验步骤
+### 导入模块
 
-作业基于上述打开的Notebook进行，进行作业前请确保完成了上述准备工作。如果Notebook资源不足，请参考[lenet5实验](../lenet5)将本Notebook转为训练作业，再行实验。
+导入MindSpore模块和辅助模块，设置MindSpore上下文，如执行模式、设备等。
+
+```python
+import os
+import math
+import time
+import random
+import argparse
+import numpy as np
+import matplotlib.pyplot as plt
+
+import mindspore.nn as nn
+import mindspore.dataset.engine as de
+import mindspore.common.dtype as mstype
+import mindspore.common.initializer as weight_init
+import mindspore.dataset.transforms.c_transforms as C2
+import mindspore.dataset.vision.c_transforms as C
+
+from mindspore import context
+from mindspore.train.model import Model
+from mindspore.nn.loss.loss import _Loss
+from mindspore.ops import operations as P
+from mindspore.ops import functional as F
+from mindspore.common.tensor import Tensor
+from mindspore.train.callback import Callback
+from mindspore.nn.optim.momentum import Momentum
+from mindspore.nn.loss import SoftmaxCrossEntropyWithLogits
+from mindspore.train.serialization import load_checkpoint, load_param_into_net
+from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor, TimeMonitor
+
+context.set_context(mode=context.GRAPH_MODE,enable_auto_mixed_precision=False, device_target="Ascend")
+```
+
+### 数据增强
 
 先将CIFAR-10的原始数据集可视化：
 
 ```python
-import mindspore.dataset.engine as de
-import matplotlib.pyplot as plt
-import numpy as np
-
 train_path = "./datasets/cifar10/train"
 ds = de.Cifar10Dataset(train_path, num_parallel_workers=8, shuffle=True)
 print("the cifar dataset size is :", ds.get_dataset_size())
@@ -157,15 +240,9 @@ the tensor of image is: (32, 32, 3)
 
 可以看到CIFAR-10总共包含了50000张32×32的彩色图片。
 
-#### 数据增强
+### 定义数据增强函数
 
 ```python
-import os
-import mindspore.common.dtype as mstype
-import mindspore.dataset.engine as de
-import mindspore.dataset.transforms.vision.c_transforms as C
-import mindspore.dataset.transforms.c_transforms as C2
-
 def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32, target="Ascend"):
     
     ds = de.Cifar10Dataset(dataset_path, num_parallel_workers=8, shuffle=True)
@@ -184,7 +261,6 @@ def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32, target=
         C.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
         C.HWC2CHW()
     ]
-
     type_cast_op = C2.TypeCast(mstype.int32)
 
     ds = ds.map(input_columns="label", num_parallel_workers=8, operations=type_cast_op)
@@ -201,11 +277,11 @@ def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32, target=
 定义完成数据集增强函数后，我们来看一下，数据集增强后的效果是如何的：
 
 ```python
-ds = create_dataset(train_path, do_train=True, repeat_num=10, batch_size=32, target="Ascend")
+ds = create_dataset(train_path, do_train=True, repeat_num=1, batch_size=32, target="Ascend")
 print("the cifar dataset size is:", ds.get_dataset_size())
 dict1 = ds.create_dict_iterator()
 datas = dict1.get_next()
-image = datas["image"]
+image = datas["image"].asnumpy()
 single_pic = np.transpose(image[0], (1,2,0))
 print("the tensor of image is:", image.shape)
 plt.imshow(np.array(single_pic))
@@ -224,9 +300,6 @@ cifar10通过数据增强后的，变成了一共有1562个batch，张量为(32,
 定义动态学习率用于ResNet-50网络训练。
 
 ```python
-import math
-import numpy as np
-
 def get_lr(lr_init, lr_end, lr_max, warmup_epochs, total_epochs, steps_per_epoch, lr_decay_mode):
     lr_each_step = []
     total_steps = steps_per_epoch * total_epochs
@@ -301,23 +374,17 @@ def warmup_cosine_annealing_lr(lr, steps_per_epoch, warmup_epochs, max_epoch=120
 ### 定义损失函数
 
 ```python
-from mindspore.nn.loss.loss import _Loss
-from mindspore.ops import operations as P
-from mindspore.ops import functional as F
-from mindspore import Tensor
-import mindspore.nn as nn
-
 class CrossEntropy(_Loss):
     def __init__(self, smooth_factor=0., num_classes=1001):
         super(CrossEntropy, self).__init__()
-        self.onehot = P.OneHot()
+        self.onehot = ops.OneHot()
         self.on_value = Tensor(1.0 - smooth_factor, mstype.float32)
         self.off_value = Tensor(1.0 * smooth_factor / (num_classes - 1), mstype.float32)
         self.ce = nn.SoftmaxCrossEntropyWithLogits()
-        self.mean = P.ReduceMean(False)
+        self.mean = ops.ReduceMean(False)
 
     def construct(self, logit, label):
-        one_hot_label = self.onehot(label, F.shape(logit)[1], self.on_value, self.off_value)
+        one_hot_label = self.onehot(label, ops.shape(logit)[1], self.on_value, self.off_value)
         loss = self.ce(logit, one_hot_label)
         loss = self.mean(loss, 0)
         return loss
@@ -328,12 +395,10 @@ class CrossEntropy(_Loss):
 本实验使用MindSpore中的ResNet-50网络模型的源代码。
 
 ```python
-from mindspore.common.tensor import Tensor
-import mindspore.common.initializer as weight_init
-
 def _weight_variable(shape, factor=0.01):
     init_value = np.random.randn(*shape).astype(np.float32) * factor
     return Tensor(init_value)
+
 
 def _conv3x3(in_channel, out_channel, stride=1):
     weight_shape = (out_channel, in_channel, 3, 3)
@@ -341,11 +406,13 @@ def _conv3x3(in_channel, out_channel, stride=1):
     return nn.Conv2d(in_channel, out_channel,
                      kernel_size=3, stride=stride, padding=0, pad_mode='same', weight_init=weight)
 
+
 def _conv1x1(in_channel, out_channel, stride=1):
     weight_shape = (out_channel, in_channel, 1, 1)
     weight = _weight_variable(weight_shape)
     return nn.Conv2d(in_channel, out_channel,
                      kernel_size=1, stride=stride, padding=0, pad_mode='same', weight_init=weight)
+
 
 def _conv7x7(in_channel, out_channel, stride=1):
     weight_shape = (out_channel, in_channel, 7, 7)
@@ -353,18 +420,22 @@ def _conv7x7(in_channel, out_channel, stride=1):
     return nn.Conv2d(in_channel, out_channel,
                      kernel_size=7, stride=stride, padding=0, pad_mode='same', weight_init=weight)
 
+
 def _bn(channel):
     return nn.BatchNorm2d(channel, eps=1e-4, momentum=0.9,
                           gamma_init=1, beta_init=0, moving_mean_init=0, moving_var_init=1)
+
 
 def _bn_last(channel):
     return nn.BatchNorm2d(channel, eps=1e-4, momentum=0.9,
                           gamma_init=0, beta_init=0, moving_mean_init=0, moving_var_init=1)
 
+
 def _fc(in_channel, out_channel):
     weight_shape = (out_channel, in_channel)
     weight = _weight_variable(weight_shape)
     return nn.Dense(in_channel, out_channel, has_bias=True, weight_init=weight, bias_init=0)
+
 
 class ResidualBlock(nn.Cell):
     expansion = 4
@@ -396,7 +467,7 @@ class ResidualBlock(nn.Cell):
         if self.down_sample:
             self.down_sample_layer = nn.SequentialCell([_conv1x1(in_channel, out_channel, stride),
                                                         _bn(out_channel)])
-        self.add = P.TensorAdd()
+        self.add = ops.TensorAdd()
 
     def construct(self, x):
         identity = x
@@ -436,7 +507,7 @@ class ResNet(nn.Cell):
 
         self.conv1 = _conv7x7(3, 64, stride=2)
         self.bn1 = _bn(64)
-        self.relu = P.ReLU()
+        self.relu = ops.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, pad_mode="same")
 
         self.layer1 = self._make_layer(block,
@@ -460,11 +531,12 @@ class ResNet(nn.Cell):
                                        out_channel=out_channels[3],
                                        stride=strides[3])
 
-        self.mean = P.ReduceMean(keep_dims=True)
+        self.mean = ops.ReduceMean(keep_dims=True)
         self.flatten = nn.Flatten()
         self.end_point = _fc(out_channels[3], num_classes)
 
     def _make_layer(self, block, layer_num, in_channel, out_channel, stride):
+  
         layers = []
 
         resnet_block = block(in_channel, out_channel, stride=stride)
@@ -518,9 +590,6 @@ def resnet101(class_num=1001):
 `Time_per_Step`用于计算每步训练的时间消耗情况，方便对比混合精度训练和单精度训练的性能区别。
 
 ```python
-from mindspore.train.callback import Callback
-import time
-
 class Time_per_Step(Callback):
     def step_begin(self, run_context):
         cb_params = run_context.original_args()
@@ -550,17 +619,6 @@ class Time_per_Step(Callback):
 
 ```python
 """train ResNet-50"""
-import os
-import random
-import argparse
-from mindspore import context
-from mindspore.nn.optim.momentum import Momentum
-from mindspore.train.model import Model
-from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor, TimeMonitor
-from mindspore.nn.loss import SoftmaxCrossEntropyWithLogits
-from mindspore.train.loss_scale_manager import FixedLossScaleManager
-from mindspore.train.serialization import load_checkpoint, load_param_into_net
-
 
 parser = argparse.ArgumentParser(description='Image classification')
 parser.add_argument('--net', type=str, default="resnet50", help='Resnet Model, either resnet50 or resnet101')
@@ -575,7 +633,6 @@ np.random.seed(1)
 de.config.set_seed(1)
 AMP_LEVEL = "O3"
 
-context.set_context(mode=context.GRAPH_MODE,enable_auto_mixed_precision=False, device_target="Ascend")
 ckpt_save_dir= "./resnet_ckpt"
 batch_size = 32
 epoch_size = 10
@@ -583,7 +640,7 @@ dataset_path = "./datasets/cifar10/train"
 test_path = "./datasets/cifar10/test"
     
 # create dataset
-dataset = create_dataset(dataset_path=dataset_path, do_train=True, repeat_num=10,
+dataset = create_dataset(dataset_path=dataset_path, do_train=True, repeat_num=1,
                                  batch_size=batch_size, target="Ascend")
 step_size = dataset.get_dataset_size()
 # define net
@@ -596,13 +653,13 @@ if args_opt.pre_trained:
 else:
     for _, cell in net.cells_and_names():
         if isinstance(cell, nn.Conv2d):
-            cell.weight.default_input = weight_init.initializer(weight_init.XavierUniform(),
-                                                                cell.weight.default_input.shape,
-                                                                cell.weight.default_input.dtype).to_tensor()
+            cell.weight.set_data = weight_init.initializer(weight_init.XavierUniform(),
+                                                                cell.weight.data.shape,
+                                                                cell.weight.data.dtype).to_tensor()
         if isinstance(cell, nn.Dense):
-            cell.weight.default_input = weight_init.initializer(weight_init.TruncatedNormal(),
-                                                                cell.weight.default_input.shape,
-                                                                cell.weight.default_input.dtype).to_tensor()
+            cell.weight.set_data = weight_init.initializer(weight_init.TruncatedNormal(),
+                                                                cell.weight.data.shape,
+                                                                cell.weight.data.dtype).to_tensor()
 # init lr
 warmup_epochs = 5
 lr_init = 0.01
@@ -618,11 +675,11 @@ momentum = 0.9
 weight_decay = 1e-4
     
 # define loss, model
-loss = SoftmaxCrossEntropyWithLogits(sparse=True, is_grad=False, reduction='mean')
+loss = SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
 opt = Momentum(filter(lambda x: x.requires_grad, net.get_parameters()), lr, momentum)
 
 eval_net = nn.WithEvalCell(net, loss, AMP_LEVEL in ["O2", "O3"])
-model = Model(net, loss_fn=loss, optimizer=opt, metrics={'acc'}, amp_level=AMP_LEVEL, eval_network=eval_net, 
+model = Model(net, loss_fn=loss, optimizer=opt, metrics={'acc'},amp_level=AMP_LEVEL, eval_network=eval_net, 
               eval_indexes=[0, 1, 2], keep_batchnorm_fp32=False)
     
 # define callbacks
@@ -713,7 +770,7 @@ print("Accuracy:",acc)
 
 Accuracy: {'acc': 0.8791073717948718}
 
-### 实验结果
+## 实验结果
 
 **对比不同网络下的混合精度训练和单精度训练的差别**
 

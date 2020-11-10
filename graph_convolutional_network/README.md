@@ -144,7 +144,7 @@ U取图的度矩阵（如下图中的degree matrix）,H取图的邻接矩阵（�
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - 华为云ModelArts：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。ModelArts官网：https://www.huaweicloud.com/product/modelarts.html
 
 ## 实验准备
@@ -191,10 +191,10 @@ inductive模型的输入包含：
 
 ### 脚本准备
 
-从[MindSpore model_zoo](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/gcn)中下载GCN代码；从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。将脚本和数据集放到到experiment文件夹中，组织为如下形式：
+从[MindSpore model_zoo](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/gcn)中下载GCN代码；从[课程gitee仓库](https://gitee.com/mindspore/course)中下载本实验相关脚本。将脚本和数据集放到到gcn文件夹中，组织为如下形式：
 
 ```
-experiment
+gcn
 ├── data
 ├── graph_to_mindrecord 
 │   ├── citeseer
@@ -233,13 +233,73 @@ experiment
 - 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
 - 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
 
-## 实验步骤
+## 实验步骤（ModelArts训练作业）
+
+ModelArts提供了训练作业服务，训练作业资源池大，且具有作业排队等功能，适合大规模并发使用。使用训练作业时，如果有修改代码和调试的需求，有如下三个方案：
+
+1. 在本地修改代码后重新上传；
+2. 使用[PyCharm ToolKit](https://support.huaweicloud.com/tg-modelarts/modelarts_15_0001.html)配置一个本地Pycharm+ModelArts的开发环境，便于上传代码、提交训练作业和获取训练日志。
+3. 在ModelArts上创建Notebook，然后设置[Sync OBS功能](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)，可以在线修改代码并自动同步到OBS中。因为只用Notebook来编辑代码，所以创建CPU类型最低规格的Notebook就行。
+
+### 适配训练作业
+
+创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
+
+```python
+import argparse
+parser = argparse.ArgumentParser(description='GCN')
+parser.add_argument('--data_url', required=True, help='Location of data.')
+parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
+args_opt = parser.parse_args()
+```
+
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
+
+- 方式一，拷贝自己账户下OBS桶内的数据集。
+
+```python
+import moxing as mox
+mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
+# src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
+```
+
+- 方式二（推荐），拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
+
+
+```python
+import moxing as mox
+# 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
+mox.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM',sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB', server="obs.cn-north-4.myhuaweicloud.com")
+mox.file.copy_parallel(src_url="s3://share-course.obs.cn-north-4.myhuaweicloud.com/dataset", dst_url='./data_mr/')
+```
+
+### 创建训练作业
+
+可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业（下文给出了操作步骤）。
+
+打开[ModelArts控制台-训练管理-训练作业](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/trainingJobs)，点击“创建”按钮进入训练作业配置页面，创建训练作业的参考配置：
+
+- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
+- 代码目录：选择上述新建的OBS桶中的gcn目录
+- 启动文件：选择上述新建的OBS桶中的gcn目录下的`main.py`
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的gcn目录下的data_mr目录
+- 训练输出位置：选择上述新建的OBS桶中的gcn目录并在其中创建output目录
+- 作业日志路径：同训练输出位置
+- 规格：Ascend:1*Ascend 910
+- 其他均为默认
+
+启动并查看训练过程：
+
+1. 点击提交以开始训练；
+2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
+3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
+4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+
+## 实验步骤（ModelArts Notebook）
 
 推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
 
-### 代码梳理
-
-#### 数据处理
+### 数据处理
 
 `graph_to_mindrecord/writer.py`用于将Cora或Citeseer数据集转换为mindrecord格式，便于提高数据集读取和处理的性能。（可在`main.py`的cfg中设置`DATASET_NAME`为cora或者citeseer来切换不同的数据集）
 
@@ -256,7 +316,7 @@ mindrecord_dict_data = mr_api.yield_edges
 run_parallel_workers()
 ```
 
-#### 参数配置
+### 参数配置
 
 训练参数可以在`src/config.py`中设置。
 
@@ -269,7 +329,7 @@ run_parallel_workers()
 "early_stopping": 10,             # Tolerance for early stopping
 ```
 
-#### 模型定义
+### 模型定义
 
 图卷积网络及其依赖的图卷积算子定义在`gcn/src/gcn.py`中。
 
@@ -356,7 +416,7 @@ class GCN(nn.Cell):
         return output1
 ```
 
-#### 模型训练
+### 模型训练
 
 训练和验证的主要逻辑在`main.py`中。包括数据集、网络、训练函数和验证函数的初始化，以及训练逻辑的控制。
 
@@ -438,55 +498,6 @@ Test set results: loss= 1.01702 accuracy= 0.81400 time= 6.51215
 运行main.py会在当前目录下生成一个关于Cora训练数据的动态图t-SNE_visualization_on_Cora.gif。
 
 ![](images/t-SNE_visualization_on_Cora.gif)
-
-### 适配训练作业
-
-创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
-
-```python
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_url', required=True, default=None, help='Location of data.')
-parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
-args, unknown = parser.parse_known_args()
-```
-
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过MoXing提供的API与OBS交互。将OBS中存储的数据拷贝至执行容器：
-
-```python
-import moxing
-moxing.file.copy_parallel(src_url=args.data_url, dst_url='./data')
-```
-
-如需将训练输出（如模型Checkpoint）从执行容器拷贝至OBS，请参考：
-
-```python
-import moxing
-# dst_url形如's3://OBS/PATH'，将ckpt目录拷贝至OBS后，可在OBS的`args.train_url`目录下看到ckpt目录
-moxing.file.copy_parallel(src_url='ckpt', dst_url=os.path.join(args.train_url, 'ckpt'))
-```
-
-### 创建训练作业
-
-可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业（下文给出了操作步骤）。
-
-创建训练作业的参考配置：
-
-- 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
-- 代码目录：选择上述新建的OBS桶中的experiment目录
-- 启动文件：选择上述新建的OBS桶中的experiment目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的experiment目录下的data目录
-- 训练输出位置：选择上述新建的OBS桶中的experiment目录并在其中创建output目录
-- 作业日志路径：同训练输出位置
-- 规格：Ascend:1*Ascend 910
-- 其他均为默认
-
-启动并查看训练过程：
-
-1. 点击提交以开始训练；
-2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
-3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考上述代码梳理，在日志中找到对应的打印信息，检查实验是否成功。
 
 ## 实验总结
 
