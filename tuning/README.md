@@ -35,10 +35,10 @@ CIFAR-10是一个图片分类数据集，包含60000张32x32的彩色物体图�
 
 - 方式二，从华为云OBS中下载[CIFAR-10数据集](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/cifar10.zip)并解压。
 
-* 方式三，参考[checkpoint（模型的保存和加载）](../checkpoint)实验，拷贝他人共享的OBS桶中的数据集。
-    ```
+* 方式三，参考[lenet5（手写数字识别）](../lenet5)或[checkpoint（模型的保存和加载）](../checkpoint)实验，拷贝他人共享的OBS桶中的数据集。
+
+    ```python
     import moxing
-    moxing.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB', server="obs.cn-north-4.myhuaweicloud.com")
     moxing.file.copy_parallel(src_url="s3://share-course/dataset/cifar10/", dst_url='cifar10/')
     ```
 

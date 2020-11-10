@@ -93,7 +93,7 @@ gat
 - 参考[上传对象失败常见原因](https://support.huaweicloud.com/obs_faq/obs_faq_0134.html)。
 - 若无法解决请[新建工单](https://console.huaweicloud.com/ticket/?region=cn-north-4&locale=zh-cn#/ticketindex/createIndex)，产品类为“对象存储服务”，问题类型为“桶和对象相关”，会有技术人员协助解决。
 
-## 实验步骤(ModelArts训练作业)
+## 实验步骤（ModelArts训练作业）
 
 ###  适配训练作业
 
@@ -107,27 +107,15 @@ parser.add_argument('--train_url', required=True, help='Location of training out
 args_opt = parser.parse_args()
 ```
 
-MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。将OBS桶中的数据拷贝至执行容器中，供MindSpore使用：
+MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArts自带的moxing框架与OBS交互。拷贝自己账户下或他人共享的OBS桶内的数据集至执行容器。
 
-- 方式一，拷贝自己账户下OBS桶内的数据集。
+```python
+import moxing as mox
+# src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
+mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
+```
 
-  ```python
-  import moxing as mox
-  mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
-  # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
-  ```
-
-- 方式二（推荐），拷贝他人账户下OBS桶内的数据集，前提是他人账户下的OBS桶已设为公共读/公共读写，且需要他人账户的访问密钥、私有访问密钥、OBS桶-概览-基本信息-Endpoint。
-
-  ```python
-  import moxing as mox
-  # 设置moxing/obs认证信息, ak:Access Key Id, sk:Secret Access Key, server:endpoint of obs bucket
-  mox.file.set_auth(ak='VCT2GKI3GJOZBQYJG5WM', sk='t1y8M4Z6bHLSAEGK2bCeRYMjo2S2u0QBqToYbxzB',
-                       server="obs.cn-north-4.myhuaweicloud.com")
-  mox.file.copy_parallel(src_url="s3://share-course.obs.cn-north-4.myhuaweicloud.com/dataset", dst_url='./data_mr/')
-  ```
-
-###  创建训练作业
+### 创建训练作业
 
 可以参考[使用常用框架训练模型](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)来创建并启动训练作业（下文给出了操作步骤）。
 
@@ -147,41 +135,11 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
 1. 点击提交以开始训练；
 2. 在训练作业列表里可以看到刚创建的训练作业，在训练作业页面可以看到版本管理；
 3. 点击运行中的训练作业，在展开的窗口中可以查看作业配置信息，以及训练过程中的日志，日志会不断刷新，等训练作业完成后也可以下载日志到本地进行查看；
-4. 参考实验步骤（Notebook），在日志中找到对应的打印信息，检查实验是否成功。
+4. 参考实验步骤（ModelArts Notebook），在日志中找到对应的打印信息，检查实验是否成功。
 
-## 实验步骤(ModelArts Notebook)
+## 实验步骤（ModelArts Notebook）
 
-ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用Device资源不释放，不适合大规模并发使用（不使用时需停止实例，以释放资源）。
-
-### 创建Notebook
-
-可以参考[创建并打开Notebook](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0034.html)来创建并打开Notebook（下文给出了操作步骤）。
-
-打开[ModelArts控制台-开发环境-Notebook](https://console.huaweicloud.com/modelarts/?region=cn-north-4#/notebook)，点击“创建”按钮进入Notebook配置页面，创建Notebook的参考配置：
-
-- 计费模式：按需计费
-- 名称：gat
-- 工作环境：Python3
-- 资源池：公共资源
-- 类型：Ascend
-- 规格：单卡1*Ascend 910
-- 存储位置：对象存储服务（OBS）->选择上述新建的OBS桶中的gat文件夹
-- 自动停止：打开->选择1小时后（后续可在Notebook中随时调整）
-
-> **注意：**
->
-> - 在Jupyter Notebook/JupyterLab文件列表里，展示的是关联的OBS桶里的文件，并不在当前Notebook工作环境（容器）中，Notebook中的代码无法直接访问这些文件。
-> - 打开Notebook前，选中文件列表里的所有文件/文件夹（实验脚本和数据集），并点击列表上方的“Sync OBS”按钮，使OBS桶中的所有文件同时同步到Notebook执行容器中，这样Notebook中的代码才能访问数据集。
->   - 使用Jupyter Notebook时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)；
->   - 使用JupyterLab时，可参考[与OBS同步文件](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0336.html)。
->   - 同步文件的大小和数量超过限制时，请参考[MoXing常用操作示例](https://support.huaweicloud.com/moxing-devg-modelarts/modelarts_11_0005.html#section5)中的拷贝操作，将大文件（如数据集）拷贝到Notebook容器中。
-> - 打开Notebook后，选择MindSpore环境作为Kernel。
-> - Notebook运行中一直处于计费状态，不使用时，在Notebook控制台页面点击实例右侧的“停止”，以停止计费。停止后，Notebook里的内容不会丢失（已同步至OBS）。下次需要使用时，点击实例右侧的“启动”即可。可参考[启动或停止Notebook实例](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0041.html)。
-
-> **提示：** 
->
-> - 上述数据集和脚本的准备工作也可以在Notebook环境中完成，在Jupyter Notebook文件列表页面，点击右上角的"New"->"Terminal"，进入Notebook环境所在终端，进入`work`目录，可以使用常用的linux shell命令，如`wget, gzip, tar, mkdir, mv`等，完成数据集和脚本的下载和准备。
-> - 可将如下每段代码拷贝到Notebook代码框/Cell中，从上至下阅读提示并执行代码框进行体验。代码框执行过程中左侧呈现[\*]，代码框执行完毕后左侧呈现如[1]，[2]等。请等上一个代码框执行完毕后再执行下一个代码框。
+推荐使用ModelArts训练作业进行实验，适合大规模并发使用。若使用ModelArts Notebook，请参考[LeNet5](../lenet5)及[Checkpoint](../checkpoint)实验案例，了解Notebook的使用方法和注意事项。
 
 ### 导入模块
 
@@ -352,21 +310,19 @@ train(cfg)
 
 训练结果将打印如下结果：
 
-```python
-============== Starting Training ==============
-Epoch:0, train loss=1.98498 train acc=0.17143 | val loss=1.97946 val acc=0.27200
-Epoch:1, train loss=1.98345 train acc=0.15000 | val loss=1.97233 val acc=0.32600
-Epoch:2, train loss=1.96968 train acc=0.21429 | val loss=1.96747 val acc=0.37400
-Epoch:3, train loss=1.97061 train acc=0.20714 | val loss=1.96410 val acc=0.47600
-Epoch:4, train loss=1.96864 train acc=0.13571 | val loss=1.96066 val acc=0.59600
-...
-Epoch:195, train loss=1.45111 train_acc=0.56429 | val_loss=1.44325 val_acc=0.81200
-Epoch:196, train loss=1.52476 train_acc=0.52143 | val_loss=1.43871 val_acc=0.81200
-Epoch:197, train loss=1.35807 train_acc=0.62857 | val_loss=1.43364 val_acc=0.81400
-Epoch:198, train loss=1.47566 train_acc=0.51429 | val_loss=1.42948 val_acc=0.81000
-Epoch:199, train loss=1.56411 train_acc=0.55000 | val_loss=1.42632 val_acc=0.80600
-Test loss=1.5366285, test acc=0.84199995
-```
+    ============== Starting Training ==============
+    Epoch:0, train loss=1.98498 train acc=0.17143 | val loss=1.97946 val acc=0.27200
+    Epoch:1, train loss=1.98345 train acc=0.15000 | val loss=1.97233 val acc=0.32600
+    Epoch:2, train loss=1.96968 train acc=0.21429 | val loss=1.96747 val acc=0.37400
+    Epoch:3, train loss=1.97061 train acc=0.20714 | val loss=1.96410 val acc=0.47600
+    Epoch:4, train loss=1.96864 train acc=0.13571 | val loss=1.96066 val acc=0.59600
+    ...
+    Epoch:195, train loss=1.45111 train_acc=0.56429 | val_loss=1.44325 val_acc=0.81200
+    Epoch:196, train loss=1.52476 train_acc=0.52143 | val_loss=1.43871 val_acc=0.81200
+    Epoch:197, train loss=1.35807 train_acc=0.62857 | val_loss=1.43364 val_acc=0.81400
+    Epoch:198, train loss=1.47566 train_acc=0.51429 | val_loss=1.42948 val_acc=0.81000
+    Epoch:199, train loss=1.56411 train_acc=0.55000 | val_loss=1.42632 val_acc=0.80600
+    Test loss=1.5366285, test acc=0.84199995
 
 下表显示了Cora数据集上的结果：
 

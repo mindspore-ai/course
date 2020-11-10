@@ -109,7 +109,7 @@ IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次�
 从[课程gitee仓库](https://gitee.com/mindspore/mindspore/tree/r1.0/model_zoo/official/nlp/lstm)上下载本实验相关脚本。将脚本和数据集组织为如下形式：
 
 ```
-experiment
+lstm
 ├── aclImdb
 │   ├── imdbEr.txt
 │   ├── imdb.vocab

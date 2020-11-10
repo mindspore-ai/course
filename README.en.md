@@ -8,7 +8,11 @@ Please go to [MindSpore Open Source Community](https://www.mindspore.cn/) for mo
 
 ## Content
 
-It is recommended to learn LeNet5 and Checkpoint experiments first to understand how to conduct experiments through ModelArts training assignments, ModelArts Notebook or local environment, and the precautions for the three ways.
+It is recommended to start with [MindSpore Introduction](mindspore) to learn MindSpore and its usage. 
+Then learn how to conduct experiments with ModelArts Training Jobs, ModelArts Notebooks or local environments, 
+and the precautions for the three ways, through [LeNet5](lenet5) and [Checkpoint](checkpoint).
+
+1. [Handwritten Digit Recognition [LeNet5] [Ascend/CPU/GPU]](lenet5)
 
 ## License
 
