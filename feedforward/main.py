@@ -151,15 +151,18 @@ print('一张图像的标签样式：', train_y[0])  # 一共10类，用0-9的�
 # 转换数据类型为Dataset
 XY_train = list(zip(train_x, train_y))
 ds_train = ds.GeneratorDataset(XY_train, ['x', 'y'])
-ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True)
+ds_train.set_dataset_size(cfg.train_size)
+ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True).repeat(
+    cfg.epoch_size)
 XY_test = list(zip(test_x, test_y))
 ds_test = ds.GeneratorDataset(XY_test, ['x', 'y'])
-ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.batch_size, drop_remainder=True)
+ds_test.set_dataset_size(cfg.test_size)
+ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.batch_size, drop_remainder=True).repeat(cfg.epoch_size)
 
 # 构建网络
 network = Forward_fashion(cfg.num_classes)
 # 定义模型的损失函数，优化器
-net_loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction="mean")
+net_loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction="mean")
 net_opt = nn.Adam(network.trainable_params(), cfg.lr)
 # 训练模型
 model = Model(network, loss_fn=net_loss, optimizer=net_opt, metrics={"acc"})
@@ -168,22 +171,27 @@ config_ck = CheckpointConfig(save_checkpoint_steps=cfg.save_checkpoint_steps,
                              keep_checkpoint_max=cfg.keep_checkpoint_max)
 ckpoint_cb = ModelCheckpoint(prefix=cfg.output_prefix, directory=cfg.output_directory, config=config_ck)
 print("============== Starting Training ==============")
-model.train(cfg.epoch_size, ds_train, callbacks=[ckpoint_cb, loss_cb], dataset_sink_mode=False)
+model.train(cfg.epoch_size, ds_train, callbacks=[ckpoint_cb, loss_cb], dataset_sink_mode=True)
 
 # 使用测试集评估模型，打印总体准确率
-metric = model.eval(ds_test, dataset_sink_mode=False)
+metric = model.eval(ds_test)
 print(metric)
 
-# 预测
+# 测试
+class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
+               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+#从测试集中取出一组样本，输入模型进行预测
 test_ = ds_test.create_dict_iterator().get_next()
+#利用key值选出样本
 test = Tensor(test_['x'], mindspore.float32)
 predictions = model.predict(test)
 softmax = nn.Softmax()
 predictions = softmax(predictions)
 predictions = predictions.asnumpy()
+true_label = test_['y'].asnumpy()
 for i in range(15):
     p_np = predictions[i, :]
-    p_list = p_np.tolist()
-    print('第' + str(i) + '个sample预测结果：', p_list.index(max(p_list)), '   真实结果：', test_['y'][i])
+    pre_label = np.argmax(p_np)
+    print('第' + str(i) + '个sample预测结果：', class_names[pre_label], '   真实结果：', class_names[true_label[i]])
 
 moxing.file.copy_parallel(src_url='model_fashion', dst_url=args.train_url)
