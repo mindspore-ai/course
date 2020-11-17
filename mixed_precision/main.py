@@ -359,17 +359,6 @@ def resnet101(class_num=1001):
                   [1, 2, 2, 2],
                   class_num)
 
-
-class Time_per_Step(Callback):
-    def step_begin(self, run_context):
-        cb_params = run_context.original_args()
-        cb_params.init_time = time.time()
-
-    def step_end(selfself, run_context):
-        cb_params = run_context.original_args()
-        one_step_time = (time.time() - cb_params.init_time) * 1000
-        print(one_step_time, "ms")
-
 random.seed(1)
 np.random.seed(1)
 de.config.set_seed(1)
@@ -443,11 +432,10 @@ if __name__ == '__main__':
               eval_indexes=[0, 1, 2], keep_batchnorm_fp32=False)
 
     # define callbacks
-    steptime_cb = Time_per_Step()
     time_cb = TimeMonitor(data_size=step_size)
     loss_cb = LossMonitor()
 
-    cb = [time_cb, loss_cb, steptime_cb]
+    cb = [time_cb, loss_cb]
     save_checkpoint = 5
     if save_checkpoint:
         save_checkpoint_epochs = 5

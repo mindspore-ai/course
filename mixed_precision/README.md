@@ -195,7 +195,7 @@ ds = de.Cifar10Dataset(train_path, num_parallel_workers=8, shuffle=True)
 print("the cifar dataset size is :", ds.get_dataset_size())
 dict1 = ds.create_dict_iterator()
 datas = dict1.get_next()
-image = datas["image"]
+image = datas["image"].asnumpy()
 print("the tensor of image is:", image.shape)
 plt.imshow(np.array(image))
 plt.show()
@@ -212,7 +212,6 @@ the tensor of image is: (32, 32, 3)
 
 ```python
 def create_dataset(dataset_path, do_train, repeat_num=10, batch_size=32, target="Ascend"):
-    
     ds = de.Cifar10Dataset(dataset_path, num_parallel_workers=8, shuffle=True)
     
     # define map operations
@@ -551,24 +550,6 @@ def resnet101(class_num=1001):
                   class_num)
 ```
 
-### 定义回调函数
-
-定义回调函数Time_per_Step来计算单步训练耗时
-
-`Time_per_Step`用于计算每步训练的时间消耗情况，方便对比混合精度训练和单精度训练的性能区别。
-
-```python
-class Time_per_Step(Callback):
-    def step_begin(self, run_context):
-        cb_params = run_context.original_args()
-        cb_params.init_time = time.time()
-        
-    def step_end(selfself, run_context):
-        cb_params = run_context.original_args()
-        one_step_time = (time.time() - cb_params.init_time) * 1000
-        print(one_step_time, "ms")
-```
-
 ### 运行训练
 
 **设置混合精度训练并执行训练**
@@ -650,11 +631,10 @@ model = Model(net, loss_fn=loss, optimizer=opt, metrics={'acc'},amp_level=AMP_LE
               eval_indexes=[0, 1, 2], keep_batchnorm_fp32=False)
     
 # define callbacks
-steptime_cb = Time_per_Step()
 time_cb = TimeMonitor(data_size=step_size)
 loss_cb = LossMonitor()
 
-cb = [time_cb, loss_cb,steptime_cb]
+cb = [time_cb, loss_cb]
 save_checkpoint = 5
 if save_checkpoint:
     save_checkpoint_epochs = 5
@@ -669,37 +649,29 @@ print("============== Starting Training ==============")
 model.train(epoch_size, dataset, callbacks=cb, dataset_sink_mode=True)
 ```
 
-    ============== Starting Training ==============
-    epoch: 1 step 1562, loss is 1.2800476551055908
-    64953.40394973755 ms
-    Epoch time: 65047.685, per step time: 41.644
-    epoch: 2 step 1562, loss is 1.4610073566436768
-    26713.122367858887 ms
-    Epoch time: 26713.336, per step time: 17.102
-    epoch: 3 step 1562, loss is 0.9364482164382935
-    26747.148990631104 ms
-    Epoch time: 26747.987, per step time: 17.124
-    epoch: 4 step 1562, loss is 0.9902463555335999
-    26747.275590896606 ms
-    Epoch time: 26747.413, per step time: 17.124
-    epoch: 5 step 1562, loss is 0.5242041349411011
-    26747.90596961975 ms
-    Epoch time: 27690.477, per step time: 17.728
-    epoch: 6 step 1562, loss is 0.532647967338562
-    26747.889041900635 ms
-    Epoch time: 26748.031, per step time: 17.124
-    epoch: 7 step 1562, loss is 0.35971659421920776
-    26748.33106994629 ms
-    Epoch time: 26748.457, per step time: 17.124
-    epoch: 8 step 1562, loss is 0.5928510427474976
-    26749.454259872437 ms
-    Epoch time: 26749.592, per step time: 17.125
-    epoch: 9 step 1562, loss is 0.17644163966178894
-    26747.663259506226 ms
-    Epoch time: 26747.792, per step time: 17.124
-    epoch: 10 step 1562, loss is 0.3067123293876648
-    26748.154878616333 ms
-    Epoch time: 27696.565, per step time: 17.731
+```python
+============== Starting Training ==============
+epoch: 1 step: 1562, loss is 1.4357529
+Epoch time: 54508.373, per step time: 34.897
+epoch: 2 step: 1562, loss is 1.3641081
+Epoch time: 26423.064, per step time: 16.916
+epoch: 3 step: 1562, loss is 1.1052465
+Epoch time: 26422.182, per step time: 16.916
+epoch: 4 step: 1562, loss is 0.9836057
+Epoch time: 26412.126, per step time: 16.909
+epoch: 5 step: 1562, loss is 0.41828048
+Epoch time: 27332.039, per step time: 17.498
+epoch: 6 step: 1562, loss is 0.6544961
+Epoch time: 26411.299, per step time: 16.909
+epoch: 7 step: 1562, loss is 0.46298394
+Epoch time: 26413.315, per step time: 16.910
+epoch: 8 step: 1562, loss is 0.665329
+Epoch time: 26413.724, per step time: 16.910
+epoch: 9 step: 1562, loss is 0.29323277
+Epoch time: 26413.980, per step time: 16.910
+epoch: 10 step: 1562, loss is 0.35443738
+Epoch time: 27252.938, per step time: 17.447
+```
 
 ### 模型验证
 
@@ -719,7 +691,7 @@ Accuracy: {'acc': 0.8791073717948718}
 
 **对比不同网络下的混合精度训练和单精度训练的差别**
 
-由于篇幅原因，我们这里只展示了ResNet-50网络的混合精度训练情况。可以在主程序入口的Model中设置参数`amp_level = O0`进行单精度训练，训练完毕后，将结果进行对比，看看两者的情况，下面将我测试的情况做成表格如下。（训练时，笔者使用的GPU为Nvidia Tesla P40，不同的硬件对训练的效率影响较大，下述表格中的数据仅供参考）
+由于篇幅原因，我们这里只展示了ResNet-50网络的混合精度训练情况。可以在主程序入口设置参数`amp_level = O0`进行单精度训练，训练完毕后，将结果进行对比，看看两者的情况，下面将我测试的情况做成表格如下。（训练时，笔者使用的GPU为Nvidia Tesla P40，不同的硬件对训练的效率影响较大，下述表格中的数据仅供参考）
 
 | 网络      | 是否混合训练 | 单步训练时间 | epoch | Accuracy |
 | --------- | ------------ | ------------ | ----- | -------- |
