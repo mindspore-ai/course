@@ -340,68 +340,73 @@ print(metric)
 #### 预测
 
 ```python
-# 预测
+class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
+               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+#从测试集中取出一组样本，输入模型进行预测
 test_ = ds_test.create_dict_iterator().get_next()
+#利用key值选出样本
 test = Tensor(test_['x'], mindspore.float32)
 predictions = model.predict(test)
 softmax = nn.Softmax()
 predictions = softmax(predictions)
+
 predictions = predictions.asnumpy()
+true_label = test_['y'].asnumpy()
+true_image = test_['x'].asnumpy()
+
 for i in range(15):
     p_np = predictions[i, :]
-    p_list = p_np.tolist()
-    print('第' + str(i) + '个sample预测结果：', p_list.index(max(p_list)), '   真实结果：', test_['y'][i])
+    pre_label = np.argmax(p_np)
+    print('第' + str(i) + '个sample预测结果：', class_names[pre_label], '   真实结果：', class_names[true_label[i]])
 ```
 
-    第0个sample预测结果： 5    真实结果： 0
-    第1个sample预测结果： 3    真实结果： 6
-    第2个sample预测结果： 9    真实结果： 9
-    第3个sample预测结果： 6    真实结果： 6
-    第4个sample预测结果： 6    真实结果： 6
-    第5个sample预测结果： 7    真实结果： 7
-    第6个sample预测结果： 9    真实结果： 9
-    第7个sample预测结果： 9    真实结果： 9
-    第8个sample预测结果： 3    真实结果： 3
-    第9个sample预测结果： 0    真实结果： 0
-    第10个sample预测结果： 7    真实结果： 7
-    第11个sample预测结果： 1    真实结果： 1
-    第12个sample预测结果： 9    真实结果： 9
-    第13个sample预测结果： 6    真实结果： 0
-    第14个sample预测结果： 0    真实结果： 0
+    第0个sample预测结果： Trouser    真实结果： Trouser
+    第1个sample预测结果： Sneaker    真实结果： Sneaker
+    第2个sample预测结果： Sandal    真实结果： Sandal
+    第3个sample预测结果： Sneaker    真实结果： Sneaker
+    第4个sample预测结果： Bag    真实结果： Bag
+    第5个sample预测结果： Pullover    真实结果： Pullover
+    第6个sample预测结果： Sneaker    真实结果： Sneaker
+    第7个sample预测结果： Trouser    真实结果： Trouser
+    第8个sample预测结果： Ankle boot    真实结果： Ankle boot
+    第9个sample预测结果： Ankle boot    真实结果： Ankle boot
+    第10个sample预测结果： Dress    真实结果： Dress
+    第11个sample预测结果： Sandal    真实结果： Sandal
+    第12个sample预测结果： Shirt    真实结果： Shirt
+    第13个sample预测结果： Pullover    真实结果： Pullover
+    第14个sample预测结果： Ankle boot    真实结果： Ankle boot
 
 #### 对预测结果可视化
 
 ```python
 # -------------------定义可视化函数--------------------------------
 # 输入预测结果序列，真实标签序列，以及图片序列
-# 目标是根据预测值对错，让其标签显示为红色或者蓝色。对：标签为红色；错：标签为蓝色
-def plot_image(predictions_array, true_label, img):
+# 目标是根据预测值对错，让其标签显示为红色或者蓝色。对：标签为蓝色；错：标签为红色
+def plot_image(predicted_label, true_label, img):
     plt.grid(False)
     plt.xticks([])
     plt.yticks([])
     # 显示对应图片
     plt.imshow(img, cmap=plt.cm.binary)
     # 显示预测结果的颜色，如果对上了是蓝色，否则为红色
-    predicted_label = np.argmax(predictions_array)
     if predicted_label == true_label:
         color = 'blue'
     else:
         color = 'red'
     # 显示对应标签的格式，样式
-    plt.xlabel('{},{:2.0f}% ({})'.format(class_names[predicted_label],
-                                         100 * np.max(predictions_array),
-                                         class_names[true_label]), color=color)
+    plt.xlabel('{},({})'.format(class_names[predicted_label],
+                                    class_names[true_label]), color=color)
 ```
 
 ```python
 # 将预测的结果以柱状图形状显示蓝对红错
-def plot_value_array(predictions_array, true_label):
+def plot_value_array(predicted_label, true_label,predicted_array):
     plt.grid(False)
     plt.xticks([])
     plt.yticks([])
-    this_plot = plt.bar(range(10), predictions_array, color='#777777')
+    this_plot = plt.bar(range(10), predicted_array, color='#777777')
     plt.ylim([0, 1])
-    predicted_label = np.argmax(predictions_array)
     this_plot[predicted_label].set_color('red')
     this_plot[true_label].set_color('blue')
 ```
@@ -412,14 +417,15 @@ num_rows = 5
 num_cols = 3
 num_images = num_rows * num_cols
 plt.figure(figsize=(2 * 2 * num_cols, 2 * num_rows))
-class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
-               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
 for i in range(num_images):
     plt.subplot(num_rows, 2 * num_cols, 2 * i + 1)
     pred_np_ = predictions[i, :]
-    plot_image(pred_np_, test_['y'][i].asnumpy(), test_['x'][i, 0, ...].asnumpy())
+    predicted_label = np.argmax(pred_np_)
+    image_single = true_image[i, 0, ...]
+    plot_image(predicted_label, true_label[i], image_single)
     plt.subplot(num_rows, 2 * num_cols, 2 * i + 2)
-    plot_value_array(pred_np_, test_['y'][i].asnumpy())
+    plot_value_array(predicted_label, true_label[i], pred_np_)
 plt.show()
 ```
 
