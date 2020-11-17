@@ -347,11 +347,11 @@ self-attention详细的处理过程如下所示：（详细代码参考`bert_mod
 名称|维度
 :--:|:--:
 输入矩阵:embedding向量|[batch_size,seq_length,hidden_size] (16,128,768)
-矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (16,768,64)
+矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
 Query（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
 Key（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
 Value（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
-Source（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,128)
+Source（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
 输出矩阵(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64）
 输出矩阵(多头合并)|[batch_size,seq_length,hidden_size]  (16,128,768）
 
