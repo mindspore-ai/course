@@ -13,7 +13,7 @@
 ## 预备知识
 
 - 熟练使用Python，了解Shell及Linux操作系统基本知识。
-- 具备一定的深度学习和机器学习理论知识，如BLEU、Embedding、Encoder、Decoder、损失函数、优化器，训练策略、Checkpoint等。
+- 具备一定的深度学习和机器学习理论知识，如Embedding、Encoder、Decoder、损失函数、优化器，训练策略、Checkpoint等。
 - 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)等功能。华为云官网：https://www.huaweicloud.com
 - 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn/
 
@@ -86,12 +86,12 @@ transformer
 3. 修改eval_config.py配置文件，运行eval.py,生成预测结果。
 4. 将预测结果文件传递给bleu.ipynb并运行，得到评测结果。
 
-### 数据预处理
+### 数据预处理(create_data.py)
 
 create_data.py代码是对原始数据进行处理。主要处理有两个方面：
 
 1. 按照8：2的比例分割为训练数据和测试数据。
-2. 对照词表ch_en_vocab.txt将句子转换为token（词转换为数字id）。并保存为mindrecord格式。
+2. 对照词表ch_en_vocab.txt将句子转换为token（词转换为数字id）。并保存为mindrecord格式。（词的行号对应token的id）
 
 处理生成文件如下所示：
 
@@ -99,6 +99,40 @@ create_data.py代码是对原始数据进行处理。主要处理有两个方面
 - source_test.txt:测试数据集txt格式。包括中英对照。共4721条。
 - train.mindrecord：训练数据集mindrecord格式，本实验直接使用mindrecord格式数据训练
 - test.mindrecord：测试数据集mindrecord格式，本实验直接使用mindrecord格式数据训练
+
+mindrecord数据字段如下所示，以`Peace talks will begin next week.—和 平 会 谈 将 在 下 周 开 始 。`句子对为例。
+
+- `source_sos_ids`: 添加句子开头标记后英文句子编码。例子：`<s> Peace talks will begin next week .`
+
+`[1,7802,2301,131,1303,421,649,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
+
+- `source_sos_mask`：添加句子开头标记后英文句子mask编码。例子：`<s> Peace talks will begin next week .`
+
+`[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
+
+- `source_eos_ids`：添加句子结束标记后英文句子编码。例子：`Peace talks will begin next week . </s>`
+
+` [7802,2301,131,1303,421,649,3,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
+
+- `source_eos_mask`：添加句子结束标记后英文句子mask编码。例子：`Peace talks will begin next week . </s>`
+
+`[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
+
+- `target_sos_ids`：添加句子开头标记后中文句子编码。例子：`<s> 和 平 会 谈 将 在 下 周 开 始 。`
+
+`[1,126,916,42,558,395,20,84,323,102,362,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
+
+- `target_sos_mask`：添加句子开头标记后中文句子mask编码。例子：<s> 和 平 会 谈 将 在 下 周 开 始 。
+
+`[1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
+
+- `target_eos_ids`：添加句子结束标记后中文句子编码。例子：`<s> 和 平 会 谈 将 在 下 周 开 始 。`
+
+`[126,916,42,558,395,20,84,323,102,362,4,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
+
+- `target_eos_mask`：添加句子结束标记后中文句子mask编码。例子：和 平 会 谈 将 在 下 周 开 始 。 </s>
+
+` [1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
 
 ### 模型代码梳理
 
@@ -114,32 +148,177 @@ create_data.py代码是对原始数据进行处理。主要处理有两个方面
 - lr_schedule.py：学习率文件
 - weight_init.py：模型权重初始化文件
 
-#### transformer_model.py和beam_search.py代码梳理
+### 训练网络 (`transformer_model.py`)
 
-`transformer_model.py`中`BertModel`接收数据输入。
-
-训练网络梳理：
+训练网络代码梳理概况如下所示：
 
 ```
 Class TransformerModel
-- EmbeddingLookup
-- EmbeddingPostprocessor
-- CreateAttentionMaskFromInputMask
-- TransformerEncoder  Encoder编码
-- BeamSearchDecoder  
-- PredLogProbs
+- Class EmbeddingLookup                      # Embedding词向量编码
+- Class EmbeddingPostprocessor               # Embedding位置向量编码
+- Class CreateAttentionMaskFromInputMask      # 创建注意力机制mask
+- Class TransformerEncoder                   # Transformer编码
+    - Class EncoderCell（共循环6次EncoderCell（transformer_net_cfg.num_hidden_layers））      
+        - Class SelfAttention                 # 注意力机制
+            - Class LayerPreprocess
+                - nn.LayerNorm
+            - Class MultiheadAttention        # 多头注意力机制（头数参考transformer_net_cfg.num_attention_heads）
+            - Class LayerPostprocess           # 后处理（resnet连接）
+                - P.TensorAdd()
+        - Class FeedForward                   # 前馈模块
+            - Class LayerPreprocess           # 前处理（归一化）
+            - nn.Dense
+            - nn.Dense
+            - Class LayerPostprocess           # 后处理（resnet连接）
+    - Class LayerPreprocess                    # 前处理（归一化）
+
+- Class EmbeddingLookup(target_ids)                      # Embedding词向量编码
+- Class EmbeddingPostprocessor               # Embedding位置向量编码
+- Class CreateAttentionMaskFromInputMask      # 创建注意力机制mask
+- Class TransformerDecoder  
+    - Class DecoderCell（共循环6次EncoderCell（transformer_net_cfg.num_hidden_layers））    
+        - Class SelfAttention(is_encdec_att=False)
+        - - Class LayerPreprocess       # 前处理
+            - Class MultiheadAttention    # 多头注意力机制
+            - Class LayerPostprocess      #后处理
+        - Class SelfAttention(is_encdec_att=True)         # cross-attention
+            - 略
+        - Class FeedForward
+            - 略
+    - Class LayerPreprocess
+    
+- Class PredLogProbs                        # 获取log概率
 ```
 
-测试网络梳理：
+transformer网络如下图所示，其中左边为编码网路，右边 为解码网络。（本实验图中N=6）
+
+![png](images/tramsformer.png)
+
+每一个编码器在结构上都是一样的，但它们的权重参数是不同的。每一个编码器里面，可以分为 2 层（Self-Attention 层、前馈神经网络）。输入编码器的文本数据，首先会经过一个 Self Attention 层，这个层处理一个词的时候，不仅会使用这个词本身的信息，也会使用句子中其他词的信息（可以类比为：当我们翻译一个词的时候，不仅会只关注当前的词，也会关注这个词的上下文的其他词的信息）。接下来，Self Attention 层的输出会经过前馈神经网络。同理，解码器也具有这两层，但是这两层中间还插入了一个 Encoder-Decoder Attention 层，这个层能帮助解码器聚焦于输入句子的相关部分（类似于 seq2seq 模型 中的 Attention）。
+
+![png](images/encode-decode.png)
+
+#### Embedding(EmbeddingLookup、EmbeddingPostprocessor)
+
+Transformer的输入部分是个线性序列，每个词有两个embedding，如下所示。把单词对应的两个embedding叠加，就形成了Transformer的输入。
+
+- 单词embedding（token）；
+- 位置信息embedding，这是因为NLP中单词顺序是很重要的特征，需要在这里对位置信息进行编码；
+
+![png](images/embedding.PNG)
+
+Transformer模型并没有捕捉顺序序列的能力，也就是说无论句子的结构怎么打乱，Transformer都会得到类似的结果。换句话说，Transformer只是一个功能更强大的词袋模型而已。为了解决这个问题，论文中在编码词向量时引入了位置编码（Position Embedding）的特征。具体地说，位置编码会在词向量中加入了单词的位置信息，这样Transformer就能区分不同位置的单词了。
+
+Transformer网络作者设计了位置编码规则，编码规则如下所示：
+
+$$
+position\_encoding = [sin(\frac{pos}{10000^{\frac{2i}{depth}}}),cos(\frac{pos}{10000^{\frac{2i}{depth}}})]
+$$
+
+在上式中， pos表示单词的位置，i表示单词的维度。关于位置编码的实现可在`transformer_model.py`中的position\_encoding函数找到对应的代码。不同维度上sin 或cos的波长从$2\pi$到$10000*2\pi$都有；区分了奇偶数维度的函数形式。这使得每一维度上都包含了一定的位置信息，而各个位置字符的位置编码又各不相同。
+
+该位置编码方式有以下优点：
+
+1. 包含了词位置信息；
+2. 在一定范围内的编码差异不依赖于文本的长度，具有一定的不变性；
+3. 有值域的范围限制。
+
+#### Self-Attention（Class MultiheadAttention）
+
+self-attention，思想和attention类似，但是self-attention是Transformer用来将其他相关单词的“理解”转换成我们正常理解的单词的一种思路，能帮助当前节点不仅仅只关注当前的词，从而能获取到上下文的语义。我们看个例子：
+The animal didn't cross the street because it was too tired
+这里的it到底代表的是animal还是street呢，对于我们来说能很简单的判断出来，但是对于机器来说，是很难判断的，self-attention就能够让机器把it和animal联系起来。
+
+self-attention详细的处理过程如下所示：（详细代码参考`transformer_model.py`中的`MultiheadAttention`类。）
+
+1. 首先，self-attention会计算出三个新的向量：Query、Key、Value，这三个向量是用embedding向量与一个矩阵P相乘得到的结果，这个矩阵P是随机初始化的，其值在BP的过程中会一直进行更新。（矩阵P的维度=隐含层数/attention头数=512/8=64）
+2. 计算self-attention的分数值，该分数值决定了当我们在某个位置encode一个词时，对输入句子的其他部分的关注程度。这个分数值的计算方法是Query与Key做点乘，以下图为例，首先我们需要针对Thinking这个词，计算出其他词对于该词的一个分数值，首先是针对于自己本身即q1·k1，然后是针对于第二个词即q1·k2。
+3. 接下来，把点成的结果除以一个常数，本实验除以8，这个值一般是采用上文提到的矩阵P的第一个维度的开方即64的开方8，当然也可以选择其他的值，然后把得到的结果做一个softmax的计算。得到的结果即是每个词对于当前位置的词的相关性大小，当然，当前位置的词与自身的相关性会很大。
+4. 下一步就是把Value和softmax得到的值进行相乘，并相加，得到的结果即是self-attetion在当前节点的值。
+
+**注意：** 上面所有的计算过程都是分成多头来计算的。本例中的self-attention输入输出如下表所示。
+
+名称|维度
+:--:|:--:
+输入矩阵:embedding向量|[batch_size,seq_length,hidden_size] (32,40,512)
+矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)(64=512/8)
+Query（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
+Key（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
+Value（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
+Source（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
+输出矩阵(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64）
+输出矩阵(多头合并)|[batch_size,seq_length,hidden_size]  (16,40,64）
+
+计算公式如下所示：
+
+$$
+Query = INPUT_{embedding} * P_1 \\
+Key = INPUT_{embedding} * P_2 \\
+Value = INPUT_{embedding} * P_3 \\
+OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{hidden\_size}{num\_attention\_heads}}}) * Value + Value
+$$
+
+![png](images/attention.PNG)
+
+### 测试网络梳理：(`transformer_model.py`和`beam_search.py`)
+
 ```
 Class TransformerModel
-- EmbeddingLookup
-- EmbeddingPostprocessor
-- CreateAttentionMaskFromInputMask
-- TransformerEncoder  Encoder编码
-- TileBeam
-- BeamSearchDecoder
+- Class EmbeddingLookup(source_ids)                      # Embedding词向量编码
+- Class EmbeddingPostprocessor               # Embedding位置向量编码
+- Class CreateAttentionMaskFromInputMask      # 创建注意力机制mask
+- Class TransformerEncoder                   # Transformer编码
+    - Class EncoderCell（共循环6次EncoderCell（transformer_net_cfg.num_hidden_layers））      
+        - Class SelfAttention                 # 注意力机制
+            - Class LayerPreprocess
+            - nn.LayerNorm
+            - Class MultiheadAttention        # 多头注意力机制（头数参考transformer_net_cfg.num_attention_heads）
+            - Class LayerPostprocess           # 后处理（resnet连接）
+            - P.TensorAdd()
+        - Class FeedForward                   # 前馈模块
+            - Class LayerPreprocess           # 前处理（归一化）
+            - nn.Dense
+            - nn.Dense
+            - Class LayerPostprocess           # 后处理（resnet连接）
+    - Class LayerPreprocess                    # 前处理（归一化）
+    
+- Class TileBeamen(ecoder_output)
+- Class TileBeamen(enc_attention_mask)
+- Class BeamSearchDecoder(beam_encoder_output, beam_enc_attention_mask)
 ```
+
+#### beam search（`beam_search.py`）
+
+在机器翻译中，beam search算法在测试的时候用的，因为在训练过程中，每一个decoder的输出是有与之对应的正确答案做参照，也就不需要beam search去加大输出的准确率。
+
+Transformer解码部分,使用Beam Search。每个时刻它会保存b（beam size）个概率最大的选择作为当前的最佳选择，然后解码下一时刻时，继续选择和之前保存的b个选择组合起来后的概率最大的b个选择，依次循环迭代下去，直到编码结束。
+
+如下从英文到中文的翻译：
+英文：`He got angry .`
+中文：`他 生 气 了 。`
+
+- 英语的词汇表是a={He, got, angry, .}（全部转化为小写），长度为6。
+- 中文的词汇表是b={他, 生, 气, 了, 。}，长度为5。
+
+那么首先使用Transformer中的编码器对英文序列（记这个英文序列为X）进行编码，得到语义向量C。
+
+得到语义向量C后，进入解码阶段，依次翻译成目标语言。在正式解码之前，有一个参数需要设置，那就是beam search中的beam size，这个参数就相当于top-k中的k，选择前k个最有可能的结果。在本例中，我们选择beam size=4。
+
+1. 在给定语义向量C的情况下，求解码器的第一个输出$y_1$，首先选择中文词汇表中最有可能k个单词，也就是依次选择条件概率$P(b_i∣C) $前4(beam size)大对应的单词，比如这里概率最大的前四个单词依次是：[他，了，。，生]。
+
+2. 接着生成第二个输出$y_2$，我们已经得到编码阶段的语义向量C，还有第一个输出$y_1$。此时有个问题，$y_1$有四个，怎么作为这一时刻的输入呢（解码阶段需要将前一时刻的输出作为当前时刻的输入），答案就是都试下，具体做法是：
+   
+    假设`他`为第一时刻的输出，将其作为第二时刻的输入，得到在已知(C,我) 的条件下，各个单词作为该时刻输出的条件概率 $P (b_i∣C ,他)$，前两个词翻译为{我，b_i}的概率为$P(I|C) P(y_2|C ,I) $。同理可以假设`了`、`。`、`生`作为第一时刻的输出，得到前两个词翻译为{了，b_i}、{。，b_i}、{生，b_i}的概率。从这些概率中选择概率值top4的那四种组合。
+    
+3. 接下来要做的重复这个过程，逐步生成单词，直到遇到结束标识符停止。最后得到概率最大的那个生成序列。其概率为：
+
+$$P(Y|C)=P(y_1|C)P(y_2|C,y_1),...,P(y_6|C,y_1,y_2,y_3,...,y_{max\_position\_embeddings})$$
+
+其中`max_position_embeddings`参考train_config.py或eval_config.py中`transformer_net_cfg.max_position_embeddings`
+
+以上就是Beam search算法的思想，当beam size=1时，就变成了贪心算法。Beam search算法例子过程如下图所示。其中橙色和绿色代表top-4路径。灰色代表淘汰路径，绿色代表最优路径。（以下例子max_position_embeddings为4）。
+
+![png](images/search.png)
 
 ### 参数设定
 
@@ -182,7 +361,6 @@ cfg = edict({
     'save_checkpoint_path': './checkpoint',    #Save checkpoint file path,default is ./checkpoint/
     'save_checkpoint_name':'transformer-32_40',
     'checkpoint_path':'',     #Checkpoint file path
-    
     
     #-------------------------------device confige----------------------
     'enable_data_sink':False,   #Enable data sink, default is False.
@@ -300,7 +478,7 @@ mox.file.copy_parallel(src_url=cfg.pred_file, dst_url=os.path.join(out_url,cfg.p
 
 打开bleu.ipynb文件。如下所示
 
-```
+```python
 ! pip install nltk   #安装nltk工具包
 
 # --------------评测------------------

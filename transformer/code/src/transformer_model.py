@@ -883,111 +883,6 @@ class PredLogProbs(nn.Cell):
         log_probs = self.log_softmax(logits)
         return log_probs
 
-
-class TransformerDecoderStep(nn.Cell):
-    """
-    Multi-layer transformer decoder step.
-
-    Args:
-        batch_size (int): Batch size of input dataset.
-        hidden_size (int): Size of the encoder layers.
-        max_decode_length (int): Max decode length.
-        enc_seq_length (int): Length of source sentences.
-        num_hidden_layers (int): Number of hidden layers in encoder cells.
-        num_attention_heads (int): Number of attention heads in encoder cells. Default: 16.
-        intermediate_size (int): Size of intermediate layer in encoder cells. Default: 4096.
-        attention_probs_dropout_prob (float): The dropout probability for
-                                      SelfAttention. Default: 0.1.
-        use_one_hot_embeddings (bool): Specifies whether to use one hot encoding form. Default: False.
-        initializer_range (float): Initialization value of TruncatedNormal. Default: 0.02.
-        hidden_dropout_prob (float): The dropout probability for hidden outputs. Default: 0.1.
-        hidden_act (str): Activation function used in the encoder cells. Default: "gelu".
-        compute_type (:class:`mindspore.dtype`): Compute type. Default: mstype.float32.
-        embedding_lookup (:class:`EmbeddingLookup`): Embedding lookup module.
-        embedding_processor (:class:`EmbeddingPostprocessor`) Embedding postprocessor module.
-        projection (:class:`PredLogProbs`): PredLogProbs module
-    """
-    def __init__(self,
-                 batch_size,
-                 hidden_size,
-                 max_decode_length,
-                 num_hidden_layers,
-                 num_attention_heads=16,
-                 intermediate_size=4096,
-                 attention_probs_dropout_prob=0.3,
-                 use_one_hot_embeddings=False,
-                 initializer_range=0.02,
-                 hidden_dropout_prob=0.3,
-                 hidden_act="relu",
-                 compute_type=mstype.float32,
-                 embedding_lookup=None,
-                 embedding_processor=None,
-                 projection=None):
-        super(TransformerDecoderStep, self).__init__(auto_prefix=False)
-        self.num_hidden_layers = num_hidden_layers
-
-        self.tfm_embedding_lookup = embedding_lookup
-        self.tfm_embedding_processor = embedding_processor
-        self.projection = projection
-
-        self.tfm_decoder = TransformerDecoder(
-            batch_size=batch_size,
-            hidden_size=hidden_size,
-            num_attention_heads=num_attention_heads,
-            num_hidden_layers=num_hidden_layers,
-            intermediate_size=intermediate_size,
-            attention_probs_dropout_prob=attention_probs_dropout_prob,
-            use_one_hot_embeddings=use_one_hot_embeddings,
-            initializer_range=initializer_range,
-            hidden_dropout_prob=hidden_dropout_prob,
-            hidden_act=hidden_act,
-            compute_type=compute_type)
-
-        self.ones_like = P.OnesLike()
-        self.shape = P.Shape()
-
-        self._create_attention_mask_from_input_mask = CreateAttentionMaskFromInputMask()
-        self.expand = P.ExpandDims()
-        self.multiply = P.Mul()
-
-        ones = np.ones(shape=(max_decode_length, max_decode_length))
-        self.future_mask = Tensor(np.tril(ones), dtype=mstype.float32)
-
-        self.cast_compute_type = CastWrapper(dst_type=compute_type)
-
-    def construct(self, input_ids, enc_states, enc_attention_mask, seq_length):
-        """
-        Multi-layer transformer decoder step.
-        input_ids: [batch_size * beam_width]
-        """
-        # process embedding
-        input_embedding, embedding_tables = self.tfm_embedding_lookup(input_ids)
-        input_embedding = self.tfm_embedding_processor(input_embedding)
-        input_embedding = self.cast_compute_type(input_embedding)
-
-        input_shape = self.shape(input_ids)
-        input_len = input_shape[1]
-        future_mask = self.future_mask[0:input_len:1, 0:input_len:1]
-
-        input_mask = self.ones_like(input_ids)
-        input_mask = self._create_attention_mask_from_input_mask(input_mask)
-        input_mask = self.multiply(input_mask, self.expand(future_mask, 0))
-        input_mask = self.cast_compute_type(input_mask)
-
-        enc_attention_mask = enc_attention_mask[::, 0:input_len:1, ::]
-
-        # call TransformerDecoder
-        decoder_output = self.tfm_decoder(input_embedding, input_mask, enc_states, enc_attention_mask, -1, seq_length)
-
-        # take the last step
-        decoder_output = decoder_output[::, input_len-1:input_len:1, ::]
-
-        # projection and log_prob
-        log_probs = self.projection(decoder_output, embedding_tables, 1)
-
-        return log_probs
-
-
 @constexpr
 def convert_np_to_tensor_encoder(seq_length):
     ones = np.ones(shape=(seq_length, seq_length))
@@ -1078,22 +973,6 @@ class TransformerModel(nn.Cell):
                 width=self.hidden_size,
                 compute_type=config.compute_type,
                 dtype=config.dtype)
-            self.tfm_decoder = TransformerDecoderStep(
-                batch_size=self.batch_size * config.beam_width,
-                hidden_size=self.hidden_size,
-                max_decode_length=config.max_decode_length,
-                num_hidden_layers=config.num_hidden_layers,
-                num_attention_heads=config.num_attention_heads,
-                intermediate_size=config.intermediate_size,
-                attention_probs_dropout_prob=config.attention_probs_dropout_prob,
-                use_one_hot_embeddings=False,
-                initializer_range=config.initializer_range,
-                hidden_dropout_prob=config.hidden_dropout_prob,
-                hidden_act=config.hidden_act,
-                compute_type=config.compute_type,
-                embedding_lookup=self.tfm_embedding_lookup,
-                embedding_processor=self.tfm_embedding_postprocessor_for_decoder,
-                projection=self.projection)
             self.tfm_decoder = BeamSearchDecoder(
                 batch_size=config.batch_size,
                 seq_length=config.seq_length,
