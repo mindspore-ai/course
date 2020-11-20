@@ -2,13 +2,13 @@
 
 ## 实验介绍
 
+本实验主要介绍使用MindSpore在CPU/GPU环境下训练LSTM模型，本实验使用基于LSTM构建的SentimentNet网络进行自然语言处理，并参考MindSpore开源仓库中的[nlp_to_mindrecord](https://gitee.com/mindspore/mindspore/tree/r1.0/model_zoo/utils/nlp_to_mindrecord)模型案例。
+
 ### LSTM介绍
 
-本实验主要介绍使用MindSpore在CPU/GPU环境下训练LSTM模型，本实验使用基于LSTM构建的SentimentNet网络进行自然语言处理，并参考MindSpore开源仓库中的[nlp_to_mindrecord](https://gitee.com/mindspore/mindspore/tree/r0.5/example/nlp_to_mindrecord/)模型案例。
+长期短期记忆网络——通常被称为“LSTM”——是一种特殊的RNN，能学习长期依赖性。主要是为了解决长序列训练过程中的梯度消失和梯度爆炸问题，适合于处理和预测时间序列中间隔和延迟非常长的重要事件。它最早由Hochreiter＆Schmidhuber于1997年提出，后经众多专家学者提炼和推广，现在因性能出色已经被广泛使用。
 
-长期短期记忆网络——通常被称为“LSTM”——是一种特殊的RNN，能学习长期依赖性。主要是为了解决长序列训练过程中的梯度消失和梯度爆炸问题，适合于处理和预测时间序列中间隔和延迟非常长的重要事件。它最早由Hochreiter＆Sch[mi](http://www.hqpcb.com/zhuoluye9)dhuber于1997年提出，后经众多专家学者提炼和推广，现在因性能出色已经被广泛使用。
-
-LSTM的设计目的非常明确：避免长期依赖性问题。对LSTM来说，长时间“记住”信息是一种默认的行为，而不是难以学习的东西。
+LSTM的设计目的非常明确：解决长期依赖性问题。对LSTM来说，长时间“记住”信息是一种默认的行为，而不是难以学习的东西。
 
 RNN是一个包含大量重复神经网络模块的链式形式，在标准RNN里，这些重复的神经网络结构往往也非常简单，比如只包含单个tanh层：
 
@@ -24,11 +24,9 @@ LSTM也有与之相似的链式结构，但不同的是它的重复模块结构�
 
 在示意图中，从某个节点的输出到其他节点的输入，每条线都传递一个完整的向量。粉色圆圈表示pointwise操作，如节点求和，而黄色框则表示用于学习的神经网络层。合并的两条线表示连接，分开的两条线表示信息被复制成两个副本，并将传递到不同的位置。
 
-**LSTMs背后的核心理念：**
+### LSTMs背后的核心理念
 
-LSTMs的关键是cell的状态，即贯穿示意图顶部的水平线。
-
-cell状态有点像传送带，它只用一些次要的线性交互就能贯穿整个链式结构，这其实也就是信息记忆的地方，因此信息能很容易地以不变的形式从中流过。
+LSTMs的关键是cell的状态，即贯穿示意图顶部的水平线。cell状态有点像传送带，它只用一些次要的线性交互就能贯穿整个链式结构，这其实也就是信息记忆的地方，因此信息能很容易地以不变的形式从中流过。
 
 ![LSTM4](./images/LSTM4.png)
 
@@ -37,16 +35,17 @@ cell状态有点像传送带，它只用一些次要的线性交互就能贯穿�
 ![LSTM5](./images/LSTM5.png)
 
 sigmoid层输出0到1之间的数字，点乘操作决定多少信息可以传送过去，当为0时，不传送；当为1时，全部传送。
-
 像这样的控制门，LSTM共有3个，以此保护和控制cell状态。
 
-**深入了解LSTM**
+### 深入了解LSTM
 
 我们先来看看cell该删除哪些信息，做这个决定的是包含sigmoid层的遗忘门。对于输入xt和ht-1，遗忘门会输出一个值域为[0, 1]的数字，放进细胞状态Ct−1中。当为0时，全部删除；当为1时，全部保留。
 
 以之前预测下一个词的语言模型为例，对于“天空中漂浮着云朵，”这个句子，LSTM的cell状态会记住句子主语“云朵”的词性，这之后才能判断正确的代词。等下次再遇到新主语时，cell会“忘记”“云朵”的词性。
 
-![LSTM6](./images/LSTM6.png)我们再来看看cell该如何增加新信息。这可以分为两步，首先，LSTM会用一个包含sigmoid层的输入门决定哪些信息该保留，其次，它会用一个tanh层为这些信息生成一个向量C~t，用来更新细胞状态。
+![LSTM6](./images/LSTM6.png)
+
+我们再来看看cell该如何增加新信息。这可以分为两步，首先，LSTM会用一个包含sigmoid层的输入门决定哪些信息该保留，其次，它会用一个tanh层为这些信息生成一个向量C~t，用来更新细胞状态。
 
 在语言模型例子中，如果句子变成了“天空中漂浮着云朵，草地上奔跑着骏马”。那LSTM就会用“骏马”的词性代替正在被遗忘的“云朵”的词性。
 
@@ -59,13 +58,6 @@ sigmoid层输出0到1之间的数字，点乘操作决定多少信息可以传�
 最后就是决定LSTM输出内容的输出门。它的信息基于cell状态，但还要经过一定过滤。我们先用sigmoid层决定将要输出的cell内容，再用tanh层把cell状态值推到-1和1之间，并将其乘以sigmoid层的输出，以此做到只输出想要输出的部分。
 
 ![LSTM9](./images/LSTM9.png)
-
-### 数据集介绍
-
-IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次实验用到的数据集是这个网站中的一些用户评论。IMDB数据集共包含50000项影评文字，训练数据和测试数据各25000项，每一项影评文字都被标记为正面评价或负面评价，所以本实验可以看做一个二分类问题。IMDB数据集官网：[Large Movie Review Dataset](http://ai.stanford.edu/~amaas/data/sentiment/)。
-
-- 方式一，从斯坦福大学官网下载[aclImdb_v1.tar.gz](http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz)并解压。
-- 方式二，从华为云OBS中下载[aclImdb_v1.tar.gz](https://obs-deeplearning.obs.cn-north-1.myhuaweicloud.com/obs-80d2/aclImdb_v1.tar.gz)并解压。
 
 ## 实验目的
 
@@ -88,7 +80,18 @@ IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次�
 
 ### 数据集准备
 
-采用[IMDB影评数据集](http://ai.stanford.edu/~amaas/data/sentiment/)作为实验数据。同时，我们要下载[GloVe](http://nlp.stanford.edu/data/glove.6B.zip)文件，并在文件glove.6B.200d.txt开头处添加新的一行400000	200，意思是总共读取400000个单词，每个单词用200维度的词向量表示。
+IMDB是一个与国内豆瓣比较类似的与电影相关的网站，而本次实验用到的数据集是这个网站中的一些用户评论。IMDB数据集共包含50000项影评文字，训练数据和测试数据各25000项，每一项影评文字都被标记为正面评价或负面评价，所以本实验可以看做一个二分类问题。IMDB数据集官网：[Large Movie Review Dataset](http://ai.stanford.edu/~amaas/data/sentiment/)。
+
+- 方式一，从斯坦福大学官网下载[aclImdb_v1.tar.gz](http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz)并解压。
+- 方式二，从华为云OBS中下载[aclImdb_v1.tar.gz](https://obs-deeplearning.obs.cn-north-1.myhuaweicloud.com/obs-80d2/aclImdb_v1.tar.gz)并解压。
+
+同时，我们要下载[GloVe](http://nlp.stanford.edu/data/glove.6B.zip)文件，并在文件glove.6B.200d.txt开头处添加新的一行`400000 200`，意思是总共读取400000个单词，每个单词用200维度的词向量表示。
+修改glove.6B.200.txt如下（你可能需要Sublime Text）:
+
+```
+400000 200
+the -0.071549 0.093459 0.023738 -0.090339 0.056123 0.32547…
+```
 
 ### 确定评价标准
 
@@ -130,10 +133,10 @@ lstm
 2. 加载数据集，进行数据处理。
 3. 定义网络。
 4. 定义优化器和损失函数。
-5. 使用网络训练数据，生成模型。
+5. 在数据集上训练网络，生成模型。
 6. 得到模型之后，使用验证数据集，查看模型精度情况。
 
-### 代码梳理
+### 导入模块
 
 导入MindSpore模块和辅助模块:
 
@@ -295,7 +298,6 @@ class ImdbParser():
 ```
 
 定义`convert_to_mindrecord`函数将数据集格式转换为MindRecord格式，便于MindSpore读取。
-
 函数`_convert_to_mindrecord`中`weight.txt`为数据预处理后自动生成的weight参数信息文件。
 
 ```python
@@ -381,7 +383,7 @@ ds_eval = lstm_create_dataset(args.preprocess_path, cfg.batch_size, training=Fal
 STACK_LSTM_DEVICE = ["CPU"]
 ```
 
-定义`lstm_default_state`函数来初始化网络参数及网络状态。
+对于GPU平台，定义`lstm_default_state`函数来初始化网络参数及网络状态。
 
 ```python
 # Initialize short-term memory (h) and long-term memory (c) to 0
@@ -393,7 +395,7 @@ def lstm_default_state(batch_size, hidden_size, num_layers, bidirectional):
     return h, c
 ```
 
-定义`stack_lstm_default_state`函数来初始化小算子堆叠需要的初始化网络参数及网络状态。
+对于CPU平台，定义`stack_lstm_default_state`函数来初始化小算子堆叠需要的初始化网络参数及网络状态。
 
 ```python
 def stack_lstm_default_state(batch_size, hidden_size, num_layers, bidirectional):
@@ -604,7 +606,7 @@ if args.preprocess == "true":
     print("======================= Successful =======================")
 ```
 
-转换成功后会在`preprocess`目录下生成MindRecord文件，通常该操作在数据集不变的情况下，无需每次训练都执行，此时`preprocess`文件目录如下所示：
+转换成功后会在`preprocess`目录下生成MindRecord文件，通常该操作在数据集不变的情况下，无需每次训练都执行。`preprocess`文件目录如下所示：
 
 ```
  $ tree preprocess
@@ -634,7 +636,6 @@ if args.preprocess == "true":
 - `weight.txt`为预处理后自动生成的weight参数信息文件。
 
 通过`create_dict_iterator`方法创建字典迭代器，读取已创建的数据集`ds_train`中的数据。
-
 运行以下代码，读取第1个`batch`中的`label`数据列表，和第1个`batch`中第1个元素的`feature`数据。
 
 ```python
@@ -668,7 +669,8 @@ opt = nn.Momentum(network.trainable_params(), cfg.learning_rate, cfg.momentum)
 
 ### 同步训练并验证模型
 
-加载训练数据集（`ds_train`）并配置好`CheckPoint`生成信息，然后使用`model.train`接口，进行模型训练，此步骤在GPU上训练用时约7分钟。CPU上需更久；根据输出可以看到loss值随着训练逐步降低，最后达到0.225左右。
+加载训练数据集（`ds_train`）并配置好`CheckPoint`生成信息，然后使用`model.train`接口，进行模型训练，此步骤在GPU上训练用时约7分钟。
+CPU上需更久；根据输出可以看到loss值随着训练逐步降低，最后达到0.225左右。验证精度在83%左右。
 
 ```python
 model = Model(network, loss, opt, {'acc': Accuracy()})
@@ -717,10 +719,6 @@ Epoch time: 63056.078, per step time: 80.738, avg loss: 0.354
 {'acc': 0.8312996158770807}
 ============== Training Success ==============
 ```
-
-### 训练结果评价
-
-根据以上一段代码的输出可以看到，在经历了10轮epoch之后，使用验证的数据集，对文本的情感分析正确率在83%左右，达到一个基本满意的结果。
 
 ## 实验总结
 

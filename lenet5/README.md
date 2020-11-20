@@ -348,14 +348,14 @@ MindSpore还支持在本地CPU/GPU/Ascend环境上运行，如Windows/Ubuntu x64
 
 在Windows/Ubuntu x64笔记本上运行实验：
 
-```shell script
+```bash
 # 编辑main.py 将第15行的context设置为`device_target='CPU'`
 python main.py --data_url=D:\dataset\MNIST
 ```
 
 在Ascend服务器上运行实验：
 
-```shell script
+```bash
 vim main.py # 将第15行的context设置为`device_target='Ascend'`
 python main.py --data_url=/PATH/TO/MNIST
 ```

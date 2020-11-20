@@ -13,6 +13,9 @@ Then learn how to conduct experiments with ModelArts Training Jobs, ModelArts No
 and the precautions for the three ways, through [LeNet5](lenet5) and [Checkpoint](checkpoint).
 
 1. [Handwritten Digit Recognition [LeNet5] [Ascend/CPU/GPU]](lenet5)
+2. [Saving and Loading a Checkpoint [LeNet5] [Ascend/CPU/GPU]](checkpoint)
+3. [Flower Classification [MobileNetV2]](fine_tune)
+4. [Sentiment Classification [MobileNetV2]](lstm)
 
 ## License
 

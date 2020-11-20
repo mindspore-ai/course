@@ -377,10 +377,9 @@ class ModelCheckpoint(Callback):
 MindSpore提供了多种Metric评估指标，如`accuracy`、`loss`、`precision`、`recall`、`F1`。定义一个metrics字典/元组，里面包含多种指标，传递给`Model`，然后调用`model.eval`接口来计算这些指标。`model.eval`会返回一个字典，包含各个指标及其对应的值。
 
 ```python
-# # Please remove stale checkpoint folder `ckpt`
+# Please remove stale checkpoint folder `ckpt`
 def train(data_dir, lr=0.01, momentum=0.9, num_epochs=2, ckpt_name="lenet"):
     dataset_sink = context.get_context('device_target') == 'Ascend'
-    repeat = num_epochs if dataset_sink else 1
     ds_train = create_dataset(data_dir)
     ds_eval = create_dataset(data_dir, training=False)
     steps_per_epoch = ds_train.get_dataset_size()
@@ -548,14 +547,14 @@ MindSpore还支持在本地CPU/GPU/Ascend环境上运行，如Windows/Ubuntu x64
 
 在Windows/Ubuntu x64笔记本上运行实验：
 
-```shell script
+```bash
 # 编辑main.py 将第23行的context设置为`device_target='CPU'`
 python main.py --data_url=D:\dataset\MNIST
 ```
 
 在Ascend服务器上运行实验：
 
-```shell script
+```bash
 vim main.py # 将第23行的context设置为`device_target='Ascend'`
 python main.py --data_url=/PATH/TO/MNIST
 ```
