@@ -1,4 +1,4 @@
-#  基于MobileNetV2网络实现Fine-tune
+# 基于MobileNetV2网络实现Fine-tune
 
 ## 实验介绍
 
@@ -114,23 +114,23 @@ pointwise卷积|$C_{in} * H * W$|$C_{out}$|$1 * 1$|$1 * 1 * C_{in} * C_{out}$|$C
 
 - 线性瓶颈（Linear Bottlenecks）
 
-  非正式地，对于一组真实图像的输入，我们说这组层激活值（layer activations）形成“感兴趣的流形（manifold of interest）”。 长期以来，人们一直将神经网络中感兴趣的流形嵌入到低维子空间中。 换句话说，当我们查看一个深卷积层的所有单个通道像素时，这些值中编码的信息实际上位于某种流形中，而这些流又可以嵌入到低维子空间中。
-
-  - 如果感兴趣的流形在ReLU变换后仍保持非零体积，则它对应于线性变换。
-  - ReLU能够保留有关输入流形的完整信息，但前提是输入流形位于输入空间的低维子空间中。
-
-  这两个见解为我们提供了优化现有神经体系结构的经验提示：假设感兴趣的流形是低维的，我们可以通过将线性瓶颈层插入到卷积块中来捕获这一点。 实验证据表明，使用线性层至关重要，因为它可以防止非线性破坏过多的信息。
+    非正式地，对于一组真实图像的输入，我们说这组层激活值（layer activations）形成“感兴趣的流形（manifold of interest）”。 长期以来，人们一直将神经网络中感兴趣的流形嵌入到低维子空间中。 换句话说，当我们查看一个深卷积层的所有单个通道像素时，这些值中编码的信息实际上位于某种流形中，而这些流又可以嵌入到低维子空间中。
+    
+    - 如果感兴趣的流形在ReLU变换后仍保持非零体积，则它对应于线性变换。
+    - ReLU能够保留有关输入流形的完整信息，但前提是输入流形位于输入空间的低维子空间中。
+    
+    这两个见解为我们提供了优化现有神经体系结构的经验提示：假设感兴趣的流形是低维的，我们可以通过将线性瓶颈层插入到卷积块中来捕获这一点。 实验证据表明，使用线性层至关重要，因为它可以防止非线性破坏过多的信息。
 
 - 倒残差（Inverted residuals）
 
-  瓶颈块看起来类似于残差块，其中每个块包含一个输入，然后是多个瓶颈，然后是扩展。 但是，受直觉的启发，瓶颈实际上包含所有必要的信息，而扩展层仅充当张量的非线性转换的实现细节，我们直接在瓶颈之间使用快捷方式。
+    瓶颈块看起来类似于残差块，其中每个块包含一个输入，然后是多个瓶颈，然后是扩展。 但是，受直觉的启发，瓶颈实际上包含所有必要的信息，而扩展层仅充当张量的非线性转换的实现细节，我们直接在瓶颈之间使用快捷方式。
+    
+    下图显示了带或不带shortcut的MobileNetV2模块。
+    
+    - 如果stride = 1，请使用shortcut将输入瓶颈连接到输出瓶颈（在下图的左侧）。
+    - 如果跨度= 2，则没有shortcut的输入或输出功能（在下图的右侧）。
 
-  下图显示了带或不带shortcut的MobileNetV2模块。
-
-  - 如果stride = 1，请使用shortcut将输入瓶颈连接到输出瓶颈（在下图的左侧）。
-  - 如果跨度= 2，则没有shortcut的输入或输出功能（在下图的右侧）。
-
-![png](images/inverted_residual.png)
+    ![png](images/inverted_residual.png)
 
 #### MobileNetV2网络结构
 
@@ -245,11 +245,11 @@ class MobileNetV2Backbone(nn.Cell):
 
 输入|操作|输出|功能说明
 :--:|:--:|:--:|----
-$c_{in}*h*w$|conv2d 1*1, Relu|$c_{in} t*h*w$|扩张
-$c_{in} t*h*w$|depthwise conv2d  3*3 ,Relu|$c_{in} t* \frac{h}{s}*\frac{w}{s}$|depthwise卷积
-$c_{in} t* \frac{h}{s}*\frac{w}{s}$|conv2d 1*1, linear|$c* \frac{h}{s}*\frac{w}{s}$|depthwise卷积
+$c_{in}*h*w$|conv2d 1*1, Relu|$c_{in} t*h*w$|Pointwise卷积
+$c_{in} t*h*w$|depthwise conv2d  3*3 ,Relu|$c_{in} t* \frac{h}{s}*\frac{w}{s}$|Depthwise卷积
+$c_{in} t* \frac{h}{s}*\frac{w}{s}$|conv2d 1*1, linear|$c* \frac{h}{s}*\frac{w}{s}$|Pointwise卷积
 
-**注解： ** 其中t(扩张倍数expand_ratio)，c(输出通道数)，s(步长stride)
+**注释：** 其中t(扩张倍数expand_ratio)，c(输出通道数)，s(步长stride)
 
 InvertedResidual（src/MobileNetV2.py）定义如下所示：
 
@@ -540,7 +540,7 @@ config_cpu = ed({
 })
 ```
 
-**注意： ** 验证实验batch_size设为1，其他参数与训练时一致。
+**注意：** 验证实验batch_size设为1，其他参数与训练时一致。
 
 ### 微调训练  
 
@@ -625,6 +625,10 @@ total cost 156.8277 s
 - `--platform`：处理器类型，默认为“Ascend”，可以设置为“CPU”或“GPU”。本实验设置为“CPU”
 - `--pretrain_ckpt`：fine-tune后生成的Backbone+Head模型Checkpoint文件。
 - `--run_distribute`：是否使用分布式运行。默认值为False，本实验中无需修改。
+
+**注意：** `batch_size`必须小于等于验证集的大小，可以修改`src/config.py`文件的第26行如下
+
+`"batch_size": 50,`
 
 **方式一： ** 通过args文件指定运行参数
 

@@ -6,14 +6,14 @@ LeNet5 + MNIST is known as the "Hello World" in the deep learning domain. This e
 
 ## Objectives
 
-Learn how to use MindSpore to develop a simple convolutional neural network.
-Learn how to use MindSpore to train simple image classification tasks.
-Learn how to use MindSpore to validate a simple image classification task.
+- Learn how to use MindSpore to develop a simple convolutional neural network.
+- Learn how to use MindSpore to train simple image classification tasks.
+- Learn how to use MindSpore to validate a simple image classification task.
 
 ## Prerequisites
 
-Be proficient in Python and understand the basic knowledge of Shell and Linux operating systems.
-Have certain theoretical knowledge of deep learning, such as convolutional neural networks, loss functions, optimizers, and training strategies.
+- Be proficient in Python and understand the basic knowledge of Shell and Linux operating systems.
+- Have certain theoretical knowledge of deep learning, such as convolutional neural networks, loss functions, optimizers, and training strategies.
 
 ## Environment
 
@@ -21,18 +21,18 @@ MindSpore 1.0.0 CPU and third-party auxiliary modules:
 
 - MindSpore: https://www.mindspore.cn/install/en
 - Jupyter Notebook/JupyterLab: https://jupyter.org/install
-- MatplotLib: https://matplotlib.org/users/installing.html
+- Matplotlib: https://matplotlib.org/users/installing.html
 
-MindSpore supports running on local CPU/GPU/Ascend environments, such as Windows/Ubuntu x64 notebooks, 
+MindSpore supports running on local CPU/GPU/Ascend environments, such as Windows/Ubuntu x64 laptops, 
 NVIDIA GPU servers, and Atlas Ascend servers. Before running the experiment in the local environment, 
-you need to refer to [Installation Tutorial](https://www.mindspore.cn/install/) to install and configure the environment.
+you need to refer to [Installation Tutorial](https://www.mindspore.cn/install/en) to install and configure the environment.
 
 ## Preparation
 
 ### Dataset Preparation
 
 MNIST is a handwritten digits dataset. The training set contains 60,000 handwritten digits, and the test set contains 10,000 handwritten digits. The dataset contains 10 categories in total. MNIST official website:
-http://yann.lecun.com/exdb/mnist/、
+http://yann.lecun.com/exdb/mnist/
 
 Download the following files from the MNIST official website to the local PC and decompress them:
 
@@ -122,11 +122,11 @@ plt.show()
 
 ### Network Definition
 
-Define LeNet5 model. The structure of the LeNet5 model is shown below:
+Define the LeNet5 model. The structure of the LeNet5 model is shown below:
 
 ![](images/lenet5.jpg)
 
-[1] Picture is from http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
+[1] The picture is from http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
 
 > **Tips**: MindSpore model_zoo provides multiple common models that can be directly used.
 

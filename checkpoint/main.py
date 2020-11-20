@@ -86,7 +86,6 @@ CKPT_1 = 'ckpt/lenet-2_1875.ckpt'
 
 def resume_train(data_dir, lr=0.001, momentum=0.9, num_epochs=2, ckpt_name="lenet"):
     dataset_sink = context.get_context('device_target') == 'Ascend'
-    repeat = num_epochs if dataset_sink else 1
     ds_train = create_dataset(data_dir)
     ds_eval = create_dataset(data_dir, training=False)
     steps_per_epoch = ds_train.get_dataset_size()
