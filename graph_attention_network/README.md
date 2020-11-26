@@ -37,17 +37,37 @@ Cora数据集包含2708个科学出版物，分为七个类别。 引用网络�
 
 CiteSeer数据集包含3312种科学出版物，分为六类。 引用网络由4732个链接组成。 数据集中的每个出版物都用一个0/1值的词向量描述，0/1指示词向量中是否出现字典中相应的词。 该词典包含3703个独特的单词。 数据集中的README文件提供了更多详细信息。
 
-从华为云OBS上下载已经转换为MindRecord格式的[Cora](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/cora_mr.zip)和[Citeseer](https://share-course.obs.cn-north-4.myhuaweicloud.com/dataset/citeseer_mr.zip)数据集并解压。
+本实验使用Github上[kimiyoung/planetoid](https://github.com/kimiyoung/planetoid/tree/master/data)预处理和划分好的数据集。
 
-将数据集放置到data_mr文件夹下，该文件夹应包含以下文件：
+将数据集放置到所需的路径下，该文件夹应包含以下文件：
 
 ```
-└─data_mr 
-    ├─citeseer_mr
-    ├─citeseer_mr.db
-    ├─cora_mr
-    └─cora_mr.db
+data 
+├── ind.cora.allx 
+├── ind.cora.ally 
+├── ...
+├── ind.cora.test.index 
+├── trans.citeseer.tx
+├── trans.citeseer.ty
+├── ...
+└── trans.pubmed.y
 ```
+
+inductive模型的输入包含：
+
+- `x`，已标记的训练实例的特征向量，
+- `y`，已标记的训练实例的one-hot标签，
+- `allx`，标记的和未标记的训练实例（`x`的超集）的特征向量，
+- `graph`，一个`dict`，格式为`{index: [index_of_neighbor_nodes]}.`
+
+令n为标记和未标记训练实例的数量。在`graph`中这n个实例的索引应从0到n-1，其顺序与`allx`中的顺序相同。
+
+除了`x`，`y`，`allx`，和`graph`如上所述，预处理的数据集还包括：
+
+- `tx`，测试实例的特征向量，
+- `ty`，测试实例的one-hot标签，
+- `test.index`，`graph`中测试实例的索引，
+- `ally`，是`allx`中实例的标签。
 
 ### 脚本准备
 
@@ -55,11 +75,12 @@ CiteSeer数据集包含3312种科学出版物，分为六类。 引用网络由4
 
 ```
 gat
-├── data_mr
-│   ├── citeseer_mr
-│   ├── citeseer_mr.db
-│   ├── cora_mr
-│   └── cora_mr.db
+├── data
+├── graph_to_mindrecord 
+│   ├── citeseer
+│   ├── cora
+│   ├── graph_map_schema.py
+│   └── writer.py
 ├── src
 │   ├── utils.py
 │   ├── gat.py
@@ -95,13 +116,19 @@ gat
 
 ## 实验步骤（ModelArts训练作业）
 
+ModelArts提供了训练作业服务，训练作业资源池大，且具有作业排队等功能，适合大规模并发使用。使用训练作业时，如果有修改代码和调试的需求，有如下三个方案：
+
+1. 在本地修改代码后重新上传；
+2. 使用[PyCharm ToolKit](https://support.huaweicloud.com/tg-modelarts/modelarts_15_0001.html)配置一个本地Pycharm+ModelArts的开发环境，便于上传代码、提交训练作业和获取训练日志。
+3. 在ModelArts上创建Notebook，然后设置[Sync OBS功能](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0038.html)，可以在线修改代码并自动同步到OBS中。因为只用Notebook来编辑代码，所以创建CPU类型最低规格的Notebook就行。
+
 ###  适配训练作业
 
 创建训练作业时，运行参数会通过脚本传参的方式输入给脚本代码，脚本必须解析传参才能在代码中使用相应参数。如data_url和train_url，分别对应数据存储路径(OBS路径)和训练输出路径(OBS路径)。脚本对传参进行解析后赋值到`args`变量里，在后续代码里可以使用。
 
 ```python
 import argparse
-parser = argparse.ArgumentParser(description='GCN')
+parser = argparse.ArgumentParser(description='GAT')
 parser.add_argument('--data_url', required=True, help='Location of data.')
 parser.add_argument('--train_url', required=True, help='Location of training outputs.')
 args_opt = parser.parse_args()
@@ -112,7 +139,7 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
 ```python
 import moxing as mox
 # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
-mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
+mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data')
 ```
 
 ### 创建训练作业
@@ -124,7 +151,7 @@ mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
 - 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
 - 代码目录：选择上述新建的OBS桶中的gat目录
 - 启动文件：选择上述新建的OBS桶中的gat目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的gat目录下的data_mr目录
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的gat目录下的data目录
 - 训练输出位置：选择上述新建的OBS桶中的gat目录并在其中创建output目录
 - 作业日志路径：同训练输出位置
 - 规格：Ascend:1*Ascend 910
@@ -147,9 +174,10 @@ mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
 
 ```python
 import os
-# os.environ['DEVICE_ID']='0'
 
+import argparse
 import numpy as np
+
 from easydict import EasyDict as edict
 from mindspore import context
 
@@ -157,9 +185,10 @@ from src.gat import GAT
 from src.config import GatConfig
 from src.dataset import load_and_process
 from src.utils import LossAccuracyWrapper, TrainGAT
-from mindspore.train.serialization import load_checkpoint, _exec_save_checkpoint
+from graph_to_mindrecord.writer import run
+from mindspore.train.serialization import load_checkpoint, save_checkpoint
 
-context.set_context(mode=context.GRAPH_MODE,device_target="Ascend")
+context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
 ```
 
 ### 参数配置
@@ -245,7 +274,7 @@ def train(args_opt):
                 val_loss_model = eval_loss
                 if os.path.exists('ckpts/gat.ckpt'):
                     os.remove('ckpts/gat.ckpt')
-                _exec_save_checkpoint(train_net.network, "ckpts/gat.ckpt")
+                save_checkpoint(train_net.network, "ckpts/gat.ckpt")
             val_acc_max = np.max((val_acc_max, eval_acc))
             val_loss_min = np.min((val_loss_min, eval_loss))
             curr_step = 0
@@ -282,7 +311,7 @@ def train(args_opt):
 
 ```python
 #------------------------定义变量------------------------------
-dataname = 'cora_mr'
+dataname = 'cora'
 datadir_save = './data_mr'
 datadir = os.path.join(datadir_save, dataname)
 
@@ -301,6 +330,10 @@ cfg = edict({
     'test_nodes_num':1000
 })
 
+# 转换数据格式
+print("============== Graph To Mindrecord ==============")
+run(cfg)
+    
 #训练
 print("============== Starting Training ==============")
 train(cfg)

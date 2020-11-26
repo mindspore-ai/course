@@ -20,10 +20,9 @@ python writer.py --mindrecord_script /YourScriptPath ...
 import os
 import time
 import shutil
-import argparse
 
-from importlib import import_module
 from multiprocessing import Pool
+from importlib import import_module
 from easydict import EasyDict as edict
 from mindspore.mindrecord import FileWriter
 from .graph_map_schema import GraphMapSchema
@@ -33,18 +32,16 @@ def read_args():
     """
     read args
     """
-
     ret_args = edict({
     'mindrecord_script': 'template',
     'mindrecord_file': '/tmp/mindrecord/xyz',
-    'mindrecord_partitions': 1,  
-    'mindrecord_header_size_by_bit' : 24,
+    'mindrecord_partitions': 1,
+    'mindrecord_header_size_by_bit':24,
     'mindrecord_page_size_by_bit' : 25,
-    'mindrecord_workers': 8,
-    'num_node_tasks' : 1,
-    'num_edge_tasks':1,
+    'mindrecord_workers' : 8,
+    'num_node_tasks': 1,
+    'num_edge_tasks' : 1,
     'graph_api_args':'/tmp/nodes.csv:/tmp/edges.csv',
-    'test_nodes_num':1000
 })
 
     return ret_args

@@ -14,11 +14,10 @@
 # ============================================================================
 
 """
-GCN training script.
+GAT training script.
 """
 
 import os
-# os.environ['DEVICE_ID']='2'
 
 import argparse
 import numpy as np
@@ -30,10 +29,10 @@ from src.gat import GAT
 from src.config import GatConfig
 from src.dataset import load_and_process
 from src.utils import LossAccuracyWrapper, TrainGAT
+from graph_to_mindrecord.writer import run
 from mindspore.train.serialization import load_checkpoint, save_checkpoint
 
 context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
-
 
 def train(args_opt):
     """Train GAT model."""
@@ -130,16 +129,16 @@ def train(args_opt):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='GCN')
+    #------------------------定义变量------------------------------
+    parser = argparse.ArgumentParser(description='GAT')
     parser.add_argument('--data_url', required=True, help='Location of data.')
     parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
     args_opt = parser.parse_args()
 
     import moxing as mox
-    # Copy dataset from OBS bucket to container/cache.
-    mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
+    mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data')  # 将OBS桶中数据拷贝到容器中
 
-    dataname = 'cora_mr'
+    dataname = 'cora'
     datadir_save = './data_mr'
     datadir = os.path.join(datadir_save, dataname)
     cfg = edict({
@@ -157,8 +156,13 @@ if __name__ == '__main__':
         'test_nodes_num':1000
     })
 
-    # print("============== Convert dataset to MindRecord ==============")
-    # run(cfg)
-
+    # 转换数据格式
+    print("============== Graph To Mindrecord ==============")
+    run(cfg)
+    
+    #训练
     print("============== Starting Training ==============")
     train(cfg)
+
+    # src_url本地   将容器输出放入OBS桶中
+    # mox.file.copy_parallel(src_url='data_mr', dst_url=cfg.MINDRECORD_PATH)  

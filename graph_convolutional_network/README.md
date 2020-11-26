@@ -135,12 +135,14 @@ U取图的度矩阵（如下图中的degree matrix）,H取图的邻接矩阵（�
 
 - 了解GCN相关知识；
 - 在MindSpore中使用Cora和Citeseer数据集训练GCN示例。
+- 了解MindSpore的model_zoo模块，以及如何使用model_zoo中的模型。
 
 ## 预备知识
 
 - 熟练使用Python，了解Shell及Linux操作系统基本知识。
 - 具备一定的深度学习理论知识，如前馈神经网络、卷积神经网络、图卷积网络等。
-- 了解并熟悉MindSpore AI计算框架，MindSpore官网：[https://www.mindspore.cn](https://www.mindspore.cn/)
+- 了解华为云的基本使用方法，包括[OBS（对象存储）](https://www.huaweicloud.com/product/obs.html)、[ModelArts（AI开发平台）](https://www.huaweicloud.com/product/modelarts.html)、[Notebook（开发工具）](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0032.html)、[训练作业](https://support.huaweicloud.com/engineers-modelarts/modelarts_23_0238.html)等服务。华为云官网：https://www.huaweicloud.com
+- 了解并熟悉MindSpore AI计算框架，MindSpore官网：https://www.mindspore.cn
 
 ## 实验环境
 
@@ -206,7 +208,8 @@ gcn
 │   ├── dataset.py
 │   ├── gcn.py
 │   └── metrics.py
-└── main.py
+│── main.py
+└── README.md
 ```
 
 ### 创建OBS桶
@@ -249,7 +252,7 @@ ModelArts提供了训练作业服务，训练作业资源池大，且具有作�
 import argparse
 parser = argparse.ArgumentParser(description='GCN')
 parser.add_argument('--data_url', required=True, help='Location of data.')
-parser.add_argument('--train_url', required=True, default=None, help='Location of training outputs.')
+parser.add_argument('--train_url', required=True, help='Location of training outputs.')
 args_opt = parser.parse_args()
 ```
 
@@ -258,7 +261,7 @@ MindSpore暂时没有提供直接访问OBS数据的接口，需要通过ModelArt
 ```python
 import moxing as mox
 # src_url形如's3://OBS/PATH'，为OBS桶中数据集的路径，dst_url为执行容器中的路径
-mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
+mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data')
 ```
 
 ### 创建训练作业
@@ -270,7 +273,7 @@ mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
 - 算法来源：常用框架->Ascend-Powered-Engine->MindSpore
 - 代码目录：选择上述新建的OBS桶中的gcn目录
 - 启动文件：选择上述新建的OBS桶中的gcn目录下的`main.py`
-- 数据来源：数据存储位置->选择上述新建的OBS桶中的gcn目录下的data_mr目录
+- 数据来源：数据存储位置->选择上述新建的OBS桶中的gcn目录下的data目录
 - 训练输出位置：选择上述新建的OBS桶中的gcn目录并在其中创建output目录
 - 作业日志路径：同训练输出位置
 - 规格：Ascend:1*Ascend 910
@@ -291,7 +294,6 @@ mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data_mr')
 
 ```python
 import os
-# os.environ['DEVICE_ID']='7'
 
 import time
 import argparse
@@ -303,10 +305,9 @@ from easydict import EasyDict as edict
 from src.gcn import GCN, LossAccuracyWrapper, TrainNetWrapper
 from src.config import ConfigGCN
 from src.dataset import get_adj_features_labels, get_mask
-# from graph_to_mindrecord.writer import run
+from graph_to_mindrecord.writer import run
 
 context.set_context(mode=context.GRAPH_MODE,device_target="Ascend", save_graphs=False)
-
 ```
 
 ### 数据处理
@@ -431,6 +432,9 @@ class GCN(nn.Cell):
 训练和验证的主要逻辑在`main.py`中。包括数据集、网络、训练函数和验证函数的初始化，以及训练逻辑的控制。
 
 ```python
+def train(args_opt):
+    """Train model."""
+    np.random.seed(args_opt.seed)    
     config = ConfigGCN()
     adj, feature, label = get_adj_features_labels(args_opt.data_dir)
 
