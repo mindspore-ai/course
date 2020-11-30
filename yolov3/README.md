@@ -44,11 +44,11 @@
 
 从[这里](https://modelarts-labs.obs.cn-north-1.myhuaweicloud.com/codelab/mask_detection/mask_detection_500.tar.gz)下载目标检测所需要的数据集。文件说明如下所示：
 
-- tran: 训练数据集.
-  - *.jpg: 训练图片
+- train: 训练数据集.
+  - *.jpg: 训练集图片
   - *.xml：训练集标签
-- tran: 训练数据集.
-  - *.jpg: 测试图片
+- test: 测试数据集.
+  - *.jpg: 测试集图片
   - *.xml：测试集标签
 
 数据集包含三类，分别为：人（person），脸（face）、口罩（mask）
@@ -82,6 +82,33 @@ yolov3
 - yolov3.py : yolov3网络定义文件；
 - dataset.py:  数据预处理文件；
 - utils.py: 工具类文件；
+
+实验流程：
+
+1. 修改train.ipynb参数并运行，得到模型文件。
+2. 修改eval.ipynb参数并运行，得到可视化结果。
+
+### 数据处理（dataset.py）
+
+训练输入数据解析：
+
+名称|维度
+:--:|:--:
+images|(1, 3, 352, 640)
+bbox_1|(11, 20, 3, 8)
+bbox_2|(22, 40, 3, 8)
+bbox_3|(44, 80, 3, 8)
+gt_box1|(50, 4)
+gt_box2|(50, 4)
+gt_box3|(50, 4)
+
+测试数据解析：
+
+名称|维度
+:--:|:--:
+images|(1, 3, 352, 640)
+shape|图片尺寸，例如：[ 720 1280]
+anno|真实框[xmin,ymin,xmax,ymax]
 
 ### 参数设定
 
@@ -140,11 +167,6 @@ cfg = edict({
     "mindrecord_dir": "./mindrecord_dir"
 })
 ```
-
-### 实验流程
-
-1. 修改train.ipynb参数并运行，得到模型文件。
-2. 修改eval.ipynb参数并运行，得到可视化结果。
 
 ## 实验结果
 
