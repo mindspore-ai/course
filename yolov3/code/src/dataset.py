@@ -33,7 +33,6 @@ _NUM_BOXES = 50
 
 def preprocess_fn(image, box, file, is_training):
     """Preprocess function for dataset."""
-    #config_anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 163, 326]
     config_anchors = []
     temp = ConfigYOLOV3ResNet18.anchor_scales
     for i in temp:
@@ -239,7 +238,7 @@ def preprocess_fn(image, box, file, is_training):
                ori_image_shape, gt_box1, gt_box2, gt_box3
 
     if is_training:
-        images, bbox_1, bbox_2, bbox_3, _, gt_box1, gt_box2, gt_box3 = _data_aug(image, box, is_training)
+        images, bbox_1, bbox_2, bbox_3, image_shape, gt_box1, gt_box2, gt_box3 = _data_aug(image, box, is_training)
         return images, bbox_1, bbox_2, bbox_3, gt_box1, gt_box2, gt_box3
 
     images, shape, anno = _data_aug(image, box, is_training)
@@ -261,6 +260,7 @@ def filter_valid_data(image_dir):
     image_dict = {}
     image_files=[]
     for i in all_files:
+        
         if (i[-3:]=='jpg' or i[-4:]=='jpeg') and i not in image_dict:
             image_files.append(i)
             label=[]
@@ -289,35 +289,7 @@ def filter_valid_data(image_dir):
                 temp.append(int(ymax))
                 temp.append(class_num)
                 label.append(temp)
-                #print(temp) 
-            #print(label)
             image_dict[i]=label
-        
-    '''
-    if not os.path.isdir(image_dir):
-        raise RuntimeError("Path given is not valid.")
-   
-    all_files = os.listdir(args_opt.mindrecord_dir)
-    
-    image_dict = {}
-    for i in all_files:
-        if i[-3:]=='jpg' and i not in image_dict:
-            f=open(os.path.join(image_dir,i[:-3]+'xml'),r)
-    
-    i=0
-    for line in lines:
-        i=i+1
-        print(i)
-        line_str = line.decode("utf-8").strip()
-        line_split = str(line_str).split(' ')
-        file_name = line_split[0]
-        print(file_name)
-        if os.path.isfile(os.path.join(image_dir, file_name)):
-            print(file_name)
-            print(line_split[1:])
-            image_anno_dict[file_name] = anno_parser(line_split[1:])
-            image_files.append(file_name)
-    '''
     return image_files, image_dict
 
 

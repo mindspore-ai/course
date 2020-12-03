@@ -37,5 +37,5 @@ class ConfigYOLOV3ResNet18:
     obj_threshold = 0.3
     nms_threshold = 0.4
     
-    anchor_scales = [(5, 3),(8, 10), (16, 30), (33, 23), (30, 61), (62, 45), (59, 119), (156, 198),(163, 326)]
+    anchor_scales = [(5,3),(10, 13), (16, 30),(33, 23),(30, 61),(62, 45),(59, 119),(116, 90),(156, 198)]
     out_channel = int(len(anchor_scales) / 3 * (num_classes + 5))
