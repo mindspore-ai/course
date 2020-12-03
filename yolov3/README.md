@@ -76,8 +76,7 @@ yolov3
 
 代码文件说明：
 
-- train.ipynb：训练代码入口文件；
-- eval.ipynb：测试代码入口文件；
+- main.ipynb：训练和测试入口文件；
 - config.py：配置文件；
 - yolov3.py : yolov3网络定义文件；
 - dataset.py:  数据预处理文件；
@@ -85,8 +84,8 @@ yolov3
 
 实验流程：
 
-1. 修改train.ipynb参数并运行，得到模型文件。
-2. 修改eval.ipynb参数并运行，得到可视化结果。
+1. 修改main.ipynb 训练cell参数并运行，得到模型文件。
+2. 修改main.ipynb 测试cell参数并运行，得到可视化结果。
 
 ### 数据处理（dataset.py）
 
@@ -94,7 +93,7 @@ yolov3
 
 名称|维度
 :--:|:--:
-images|(1, 3, 352, 640)
+images|(32, 3, 352, 640)
 bbox_1|(11, 20, 3, 8)
 bbox_2|(22, 40, 3, 8)
 bbox_3|(44, 80, 3, 8)
@@ -136,7 +135,7 @@ class ConfigYOLOV3ResNet18:
     obj_threshold = 0.3
     nms_threshold = 0.4
 
-    anchor_scales = [(5, 3),(8, 10), (16, 30), (33, 23), (30, 61), (62, 45), (59, 119), (156, 198),(163, 326)]
+    anchor_scales = [(5,3),(10, 13), (16, 30),(33, 23),(30, 61),(62, 45),(59, 119),(116, 90),(156, 198)]
     out_channel = int(len(anchor_scales) / 3 * (num_classes + 5))
 ```
 
@@ -144,12 +143,10 @@ train.py / cfg
 
 ```python
 cfg = edict({
-    cfg = edict({
-    "only_create_dataset": False,
     "distribute": False,
     "device_id": 0,
     "device_num": 1,
-    "dataset_sink_mode": False,
+    "dataset_sink_mode": True,
 
     "lr": 0.001,
     "epoch_size": 90,
@@ -161,14 +158,45 @@ cfg = edict({
 
     "ckpt_dir": "./ckpt",
     "save_checkpoint_epochs" :1,
+    'keep_checkpoint_max': 1,
 
-    "mode": "source",       #{mindspore,source }
-
-    "mindrecord_dir": "./mindrecord_dir"
-})
+    "data_url": 's3://yyq-2/DATA/code/yolov3/mask_detection_500',
+    "train_url": 's3://yyq-2/DATA/code/yolov3/yolov3_out/',
+}) 
 ```
 
 ## 实验结果
+
+### 训练日志
+
+```
+Start create dataset!
+Create Mindrecord.
+Create Mindrecord Done, at ./data/mindrecord/train
+The epoch size:  15
+Create dataset done!
+Start train YOLOv3, the first epoch will be slower because of the graph compilation.
+epoch: 10 step: 15, loss is 215.95618
+epoch: 20 step: 15, loss is 147.80356
+epoch: 30 step: 15, loss is 106.00204
+epoch: 40 step: 15, loss is 101.95938
+epoch: 50 step: 15, loss is 70.30449
+epoch: 60 step: 15, loss is 63.806183
+```
+
+### 测试结果
+
+测试日志如下所示：
+
+```
+Create Mindrecord.
+Create Mindrecord Done, at ./data/mindrecord/test
+Start Eval!
+Load Checkpoint!
+========================================
+total images num:  8
+Processing, please wait a moment.
+```
 
 取其中一张图片结果如下所示：
 
