@@ -333,7 +333,11 @@ self-attention，思想和attention类似，但是self-attention是Transformer�
 The animal didn't cross the street because it was too tired
 这里的it到底代表的是animal还是street呢，对于我们来说能很简单的判断出来，但是对于机器来说，是很难判断的，self-attention就能够让机器把it和animal联系起来。
 
-![png](images/eg.PNG)
+![png](images/example.png)
+
+[2]图片来源https://blog.csdn.net/longxinchen_ml/article/details/86533005
+
+当我们编码“it”一词时，一个注意力头集中在“animal”上，而另一个则集中在“tired”上，从某种意义上说，模型对“it”一词的表达在某种程度上是“animal”和“tired”的代表。
 
 self-attention详细的处理过程如下所示：（详细代码参考`bert_model.py`中的`BertAttention`类。）
 
@@ -361,10 +365,12 @@ $$
 Query = INPUT_{embedding} * P_1 \\
 Key = INPUT_{embedding} * P_2 \\
 Value = INPUT_{embedding} * P_3 \\
-OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{hidden\_size}{num\_attention\_heads}}}) * Value + Value
+OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{HiddenSize}{NumAttentionHeads}}}) * Value + Value
 $$
 
-![png](images/attention.PNG)
+![png](images/self-attention.png)
+
+[3]图片来源https://zhuanlan.zhihu.com/p/47282410
 
 #### bert_for_finetune.py代码梳理
 
