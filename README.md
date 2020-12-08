@@ -10,6 +10,8 @@
 
 建议先学习[MindSpore入门](mindspore)了解MindSpore及其用法。再学习[手写数字识别](lenet5)和[模型保存和加载](checkpoint)，了解如何通过ModelArts训练作业、ModelArts Notebook、或本地环境进行实验，以及三者的注意事项。
 
+对于MindSpore端侧，建议先体验[端侧图像分类应用部署](lite_demo_deploy)，再了解[端侧C++推理流程](lite_cpp_inference)并完成课后任务，完成由浅入深的端侧推理部分学习过程。
+
 ### 深度学习
 
 1. [手写数字识别[LeNet5][Ascend/CPU/GPU]](lenet5)
@@ -23,6 +25,8 @@
 2. [CIFAR-10图像分类[ResNet50]](resnet50)
 3. [花卉分类[MobileNetV2]](fine_tune)
 4. [语义分割[DeepLabV3]](deeplabv3)
+5. [端侧图像分类应用部署[MobileNetV2][Lite]](lite_demo_deploy)
+6. [端侧目标检测[ssd_MobileNetV2][Lite]](lite_cpp_inference)
 
 ### 自然语言处理
 

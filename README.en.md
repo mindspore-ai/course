@@ -8,8 +8,8 @@ Please go to [MindSpore Open Source Community](https://www.mindspore.cn/) for mo
 
 ## Content
 
-It is recommended to start with [MindSpore Introduction](mindspore) to learn MindSpore and its usage. 
-Then learn how to conduct experiments with ModelArts Training Jobs, ModelArts Notebooks or local environments, 
+It is recommended to start with [MindSpore Introduction](mindspore) to learn MindSpore and its usage.
+Then learn how to conduct experiments with ModelArts Training Jobs, ModelArts Notebooks or local environments,
 and the precautions for the three ways, through [LeNet5](lenet5) and [Checkpoint](checkpoint).
 
 1. [Handwritten Digit Recognition [LeNet5] [Ascend/CPU/GPU]](lenet5)
