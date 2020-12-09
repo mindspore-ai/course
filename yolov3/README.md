@@ -87,19 +87,28 @@ yolov3
 1. 修改main.ipynb 训练cell参数并运行，得到模型文件。
 2. 修改main.ipynb 测试cell参数并运行，得到可视化结果。
 
-### 数据处理（dataset.py）
+### 数据预处理（dataset.py）
+
+数据预处理过程如下所示：
+
+1. 图片和框裁剪和resize到网络设定输入图片尺寸([352,640])得到images
+2. 求框和锚点之间的iou值，将框和锚点对应。
+3. 将框、可信度、类别对应在网格中，得到bbox_1、gt_box2、bbox_3。
+4. 将网格中框单独拿出来，得到gt_box1、gt_box2、gt_box3
+
+数据预处理结果可以直接用于训练和测试。预处理结果解析如下所示。
 
 训练输入数据解析：
 
-名称|维度
-:--:|:--:
-images|(32, 3, 352, 640)
-bbox_1|(11, 20, 3, 8)
-bbox_2|(22, 40, 3, 8)
-bbox_3|(44, 80, 3, 8)
-gt_box1|(50, 4)
-gt_box2|(50, 4)
-gt_box3|(50, 4)
+名称|维度|描述
+:--:|:--:|:--:
+images|(32, 3, 352, 640)|图片[batch_size,channel,weight,height]
+bbox_1|(11, 20, 3, 8)|大框在大网格（32*32）映射 [grid_big,grid_big,num_big,label]
+bbox_2|(22, 40, 3, 8)|中框在中网格（16*16）映射 [grid_middle,grid_big,num_middle,label]
+bbox_3|(44, 80, 3, 8)|小框在小网格（16*16）映射 [grid_small,grid_small,num_small,label]
+gt_box1|(50, 4)|大框
+gt_box2|(50, 4)|中框
+gt_box3|(50, 4)|小框
 
 测试数据解析：
 
