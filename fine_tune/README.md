@@ -20,7 +20,7 @@
 
 ## 实验环境
 
-- MindSpore 0.5.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
+- MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）；
 - Windows/Ubuntu x64笔记本，或NVIDIA GPU服务器等。
 
 ## 实验准备
