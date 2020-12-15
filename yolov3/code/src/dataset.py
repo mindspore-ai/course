@@ -28,8 +28,6 @@ from mindspore.mindrecord import FileWriter
 import mindspore.dataset.vision.c_transforms as C
 from src.config import ConfigYOLOV3ResNet18
 
-iter_cnt = 0
-_NUM_BOXES = 50
 
 def preprocess_fn(image, box, file, is_training):
     """Preprocess function for dataset."""
@@ -40,7 +38,7 @@ def preprocess_fn(image, box, file, is_training):
     
     anchors = np.array([float(x) for x in config_anchors]).reshape(-1, 2)
     do_hsv = False
-    max_boxes = 40
+    max_boxes = ConfigYOLOV3ResNet18._NUM_BOXES
     num_classes = ConfigYOLOV3ResNet18.num_classes
 
     def _rand(a=0., b=1.):
@@ -56,25 +54,19 @@ def preprocess_fn(image, box, file, is_training):
         boxes_wh = true_boxes[..., 2:4] - true_boxes[..., 0:2]
         true_boxes[..., 0:2] = boxes_xy / input_shape[::-1]
         true_boxes[..., 2:4] = boxes_wh / input_shape[::-1]
-
         grid_shapes = [input_shape // 32, input_shape // 16, input_shape // 8]
         y_true = [np.zeros((grid_shapes[l][0], grid_shapes[l][1], len(anchor_mask[l]),
                             5 + num_classes), dtype='float32') for l in range(num_layers)]
-
         anchors = np.expand_dims(anchors, 0)
         anchors_max = anchors / 2.
         anchors_min = -anchors_max
-
         valid_mask = boxes_wh[..., 0] >= 1
-
         wh = boxes_wh[valid_mask]
-
 
         if len(wh) >= 1:
             wh = np.expand_dims(wh, -2)
             boxes_max = wh / 2.
             boxes_min = -boxes_max
-
             intersect_min = np.maximum(boxes_min, anchors_min)
             intersect_max = np.minimum(boxes_max, anchors_max)
             intersect_wh = np.maximum(intersect_max - intersect_min, 0.)
@@ -82,7 +74,6 @@ def preprocess_fn(image, box, file, is_training):
             box_area = wh[..., 0] * wh[..., 1]
             anchor_area = anchors[..., 0] * anchors[..., 1]
             iou = intersect_area / (box_area + anchor_area - intersect_area)
-
             best_anchor = np.argmax(iou, axis=-1)
             for t, n in enumerate(best_anchor):
                 for l in range(num_layers):
@@ -96,9 +87,9 @@ def preprocess_fn(image, box, file, is_training):
                         y_true[l][j, i, k, 4] = 1.
                         y_true[l][j, i, k, 5 + c] = 1.
 
-        pad_gt_box0 = np.zeros(shape=[50, 4], dtype=np.float32)
-        pad_gt_box1 = np.zeros(shape=[50, 4], dtype=np.float32)
-        pad_gt_box2 = np.zeros(shape=[50, 4], dtype=np.float32)
+        pad_gt_box0 = np.zeros(shape=[ConfigYOLOV3ResNet18._NUM_BOXES, 4], dtype=np.float32)
+        pad_gt_box1 = np.zeros(shape=[ConfigYOLOV3ResNet18._NUM_BOXES, 4], dtype=np.float32)
+        pad_gt_box2 = np.zeros(shape=[ConfigYOLOV3ResNet18._NUM_BOXES, 4], dtype=np.float32)
 
         mask0 = np.reshape(y_true[0][..., 4:5], [-1])
         gt_box0 = np.reshape(y_true[0][..., 0:4], [-1, 4])
@@ -156,6 +147,8 @@ def preprocess_fn(image, box, file, is_training):
         flip = _rand() < .5
         # correct boxes
         box_data = np.zeros((max_boxes, 5))
+        flag =0
+        
         while True:
             # Prevent the situation that all boxes are eliminated
             new_ar = float(w) / float(h) * _rand(1 - jitter, 1 + jitter) / \
@@ -171,7 +164,8 @@ def preprocess_fn(image, box, file, is_training):
 
             dx = int(_rand(0, w - nw))
             dy = int(_rand(0, h - nh))
-
+            flag = flag + 1
+            
             if len(box) >= 1:
                 t_box = box.copy()
                 np.random.shuffle(t_box)
@@ -260,7 +254,6 @@ def filter_valid_data(image_dir):
     image_dict = {}
     image_files=[]
     for i in all_files:
-        
         if (i[-3:]=='jpg' or i[-4:]=='jpeg') and i not in image_dict:
             image_files.append(i)
             label=[]
