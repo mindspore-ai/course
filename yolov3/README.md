@@ -49,7 +49,6 @@
   - *.xml：训练集标签
 - test: 测试数据集.
   - *.jpg: 测试集图片
-  - *.xml：测试集标签
 
 数据集包含三类，分别为：人（person），脸（face）、口罩（mask）
 
@@ -158,6 +157,7 @@ for i in all_files:
         image_files.append(i)
         label=[]
         xml_path = os.path.join(image_dir,i[:-3]+'xml')
+            
         if not os.path.exists(xml_path):
             label=[[0,0,0,0,0]]
             image_dict[i]=label
@@ -196,12 +196,12 @@ mindrecord数据预处理过程如下所示，参考dataset.py / preprocess_fn
 **注意：** 
 
 - 本实验一张图片最多框数量设定为50，故最多可以保存50个框。
-- 本实验网格采用大（ $ 32 * 32 $ ）、中（ $ 16 * 16 $ ）、小（ $ 8 * 8 $ ）网格。选取9组锚点，其中包括3个大框、3个中框、3个小框。3个大框锚点采用大网格映射，3个中框采用中网格映射，3个小框采用小网格映射。
+- 本实验网格采用大（ $ 32 \times 32 $ ）、中（ $ 16 \times 16 $ ）、小（ $ 8 \times 8 $ ）网格。选取9组锚点，其中包括3个大框、3个中框、3个小框。3个大框锚点采用大网格映射，3个中框采用中网格映射，3个小框采用小网格映射。
 - 训练图片进行了增强。增强方式包括：随机裁剪噪声、翻转、扭曲。
 
 #### 图片和框resize
 
-本实验将图片都统一为[352,640]进行训练和测试。
+本实验将图片都统一为[352,640]进行训练和推理。
 
 测试图片改变尺寸使用传统的先裁剪后resize方式，在保证图片不失真的情况下改变图片尺寸。具体做法如下所示，参考dataset.py / _infer_data。
 
@@ -285,16 +285,17 @@ image = new_image
 
 - 变量h,w为设定图片大小（[352,640]），变量iw, ih为原始图片大小。
 - 变量scale为尺度的意思，在（0.25，2）比例尺度范围内获取多尺度特征。得到新的图片大小nh或者nw，nh和nw想不与h，w带有不同尺度特征。
-- 变量jitter控制随机噪声大小。变量new_ar定义如下所示，在宽高比$\frac{float(w)}{float(h)}$的基础上乘以一个1左右的随机数。随机数为$\frac{\_rand(1 - jitter, 1 + jitter)}{\_rand(1 - jitter, 1 + jitter)}$。通过改变new_ar从而改变resize后的图片大小(nw, nh)。带有噪声的图片(nw, nh)在一定范围内失真，失真比例由jitter控制
+- 变量jitter控制随机噪声大小。变量new_ar定义如下所示，在宽高比$\frac{float(w)}{float(h)}$的基础上乘以一个1左右的随机数。随机数为$\frac{\\_rand(1 - jitter, 1 + jitter)}{\\_rand(1 - jitter, 1 + jitter)}$。通过改变new_ar从而改变resize后的图片大小(nw, nh)。带有噪声的图片(nw, nh)在一定范围内失真，失真比例由jitter控制
 
 $$
-new\_ar = \frac{float(w)}{float(h)} *  \frac{\_rand(1 - jitter, 1 + jitter)}{\_rand(1 - jitter, 1 + jitter)}
+new\\_ar = \frac{float(w)}{float(h)} \times\frac{\\_rand(1 - jitter, 1 + jitter)}{\\_rand(1 - jitter, 1 + jitter)}
 $$
 
 - 变量dx和dy代表噪声大小。
-- 对图片和框进行相同的裁剪和resize操作，操作方式将大小为(nw, nh)的图片填充到（w,h）的dx,dy位置。其他位置用128填充。
+- 对图片和框进行相同的resize操作。
+- 操作方式为将大小为(nw, nh)的图片填充到（w,h）的dx,dy位置。其他位置用128填充。
 - box_data维度为[50,5]，其中50代表每张图片最多框数设定。5代表[xmin,ymin,xmax,ymax,class] 。通过修改config.py文件的nms_max_num大小，可以修改最大框数量。但是最大框数量必须比所有真实数据图片的最大框数大，否则制作数据集过程会引文box数量过多报错。
-- 得到的变量images为预处理结果，可以直接输入网络训练。得到的变量box_data需要进一步传入函数_preprocess_true_boxes中进行锚点和网格银色，集体参考下一步框预处理。
+- 得到的变量images为预处理结果，可以直接输入网络训练。得到的变量box_data需要进一步传入函数_preprocess_true_boxes中进行锚点和网格映射，集体参考下一步框预处理。
 
 #### 训练框预处理（框、锚点、网格映射，bbox计算）
 
@@ -347,13 +348,13 @@ if len(wh) >= 1:
                 y_true[l][j, i, k, 5 + c] = 1.
 ```
 
-**解析： ** 
+**解析**：
 
 - true_boxes为上一步结果box_data，具体请参照上一个解析。
 - num_layers为锚点层数，本实验，将锚点分为三个层次。分别为大框，中框，小框。
 - anchor_mask为锚点编号。config.py中的anchor_scales为锚点。根据标签框的大小来设定。
 - boxes_xy代表框的中心点坐标，boxes_wh代表框的宽高。
-- grid_shapes为网格，其中包含大网格（大框使用），中网格（中框使用），小网格（小框使用）。大框尺寸为 $ 32 * 32 $ ，中框尺寸为 $16 * 16$ ，小框尺寸为 $8 * 8$ 。网格维度分别为大框[11,20] ，中框[22,40] ，小框[44,80]（注：  $ 11 = \frac{352}{32}  $     $ 20 = \frac{640}{32}  $  $  22 = \frac{640}{16}  $   $  40 = \frac{640}{16}  $   $  44 =  \frac{352}{8}  $   $  80 = \frac{640}{8}  $  ）
+- grid_shapes为网格，其中包含大网格（大框使用），中网格（中框使用），小网格（小框使用）。大框尺寸为 $ 32 \times 32 $ ，中框尺寸为 $16 \times 16$ ，小框尺寸为 $8 \times 8$ 。网格维度分别为大框[11,20] ，中框[22,40] ，小框[44,80]（注：  $ 11 = \frac{352}{32}  $     $ 20 = \frac{640}{32}  $  $  22 = \frac{640}{16}  $   $  40 = \frac{640}{16}  $   $  44 =  \frac{352}{8}  $   $  80 = \frac{640}{8}  $  ）
 - y_true为已经映射到锚点、网格的框。y_true[0]为大框映射，维度为[11, 20, 3, 8]  ，y_true[1]为中框映射，维度为[22, 40, 3, 8]  ，  y_true[2]为小框映射，维度为[44, 80, 3, 8] 。 第2个维度3代表每个层次有几个框。本实验大框、中框、小框层都是有三个框对应。第3个维度8代表标签值，分别代表[boxes_xy,boxes_wh, Confidence(置信度)，class(one-hot值，person、face、mask)]
 - 映射方式如下所示。
 
@@ -412,19 +413,19 @@ best_anchor = np.argmax(iou, axis=-1)
 
 7、将true_boxes映射到锚点编号、网格中。其中y_true的解析参考前面解析。y_true即数据预处理结果bbox_1、bbox_2、bbox_3。矩阵数据范围为0-1（参考步骤1放缩）。
 
-**解析：** 将锚点和真实框放缩到（0，1）的目标是保证其中心点统一。锚点是没有中心点的。所有网格点都有锚点。这种放缩可以快速定位目标框属于哪个锚点（网格化以后的锚点，以小尺度为例子有 $ 11 * 20 * 3 $ 个锚点）。
+**解析：** 将锚点和真实框放缩到（0，1）的目标是保证其中心点统一。锚点是没有中心点的。所有网格点都有锚点。这种放缩可以快速定位目标框属于哪个锚点（网格化以后的锚点，以小尺度为例子有 $ 11 \times 20 \times 3 $ 个锚点）。
 
 ```python
- for t, n in enumerate(best_anchor):
-     for l in range(num_layers):
-         if n in anchor_mask[l]:
-             i = np.floor(true_boxes[t, 0] * grid_shapes[l][1]).astype('int32')
-             j = np.floor(true_boxes[t, 1] * grid_shapes[l][0]).astype('int32')
-             k = anchor_mask[l].index(n)
-             c = true_boxes[t, 4].astype('int32')
-             y_true[l][j, i, k, 0:4] = true_boxes[t, 0:4]
-             y_true[l][j, i, k, 4] = 1.
-             y_true[l][j, i, k, 5 + c] = 1.
+for t, n in enumerate(best_anchor):
+    for l in range(num_layers):
+        if n in anchor_mask[l]:
+            i = np.floor(true_boxes[t, 0] * grid_shapes[l][1]).astype('int32')
+            j = np.floor(true_boxes[t, 1] * grid_shapes[l][0]).astype('int32')
+            k = anchor_mask[l].index(n)
+            c = true_boxes[t, 4].astype('int32')
+            y_true[l][j, i, k, 0:4] = true_boxes[t, 0:4]
+            y_true[l][j, i, k, 4] = 1.
+            y_true[l][j, i, k, 5 + c] = 1.
 ```
 
 
@@ -451,7 +452,7 @@ pad_gt_box2[:gt_box2.shape[0]] = gt_box2
 
 #### 预处理结果展示
 
-数据预处理结果可以直接用于训练和测试。预处理结果解析如下所示。
+数据预处理结果可以直接用于训练和推理。预处理结果解析如下所示。
 
 网络训练输入数据（训练预处理结果）解析：
 
@@ -481,7 +482,7 @@ yolov3网络结构如下所示：
 - class YoloWithLossCell(x, y_true_0, y_true_1, y_true_2, gt_0, gt_1, gt_2)
     #----------------------------yolov3网络------------------------------------
     - class yolov3_resnet18(x)
-        #------------------------特征映射---------------------------------
+        #------------------------特征提取---------------------------------
         - class YOLOv3                        
             - class ResNet -> feature_map1, feature_map2, feature_map3
             - class YoloBlock(feature_map3) -> con1, big_object_output
@@ -532,7 +533,11 @@ resnet输出：feature_map3|(32, 512, 11, 20)|小尺度特征[batch_size, backbo
 输出：medium_object_output|(32, 24, 22, 40)|输出中尺度特征 [batch_size, out_channel, h/16, w/16] 
 输出：small_object_output|(32, 24, 44, 80)|输出大尺度特征[batch_size, out_channel, h/8, w/8]
 
-**解析：** 本实验 out_channel=24，计算方式为： $ out\_channel = \frac{len(anchor\_scales) }{3}  *  (num\_classes  +  5)  $ 。这里的num_classes代表8个标签，分别为4个位置信息：框的中心点坐标和框的长宽；一个置信度：框的概率；类别信息：共三类。这里的 $ out\_channel = \frac{len(anchor\_scales) }{3}  $ 代表每种尺度锚点个数，本实验每种尺度包含3个锚点。
+**解析：** 本实验 out_channel=24，计算方式为： $out\\_ channel= \frac{len(anchor\\_ scales) }{3}  \times  (num\\_classes  +  5)$
+
+这里的num_classes代表8个标签，分别为4个位置信息：框的中心点坐标和框的长宽；一个置信度：框的概率；类别信息：共三类。$out\\_channel = \frac{len(anchor\\_scales) }{3}$
+
+代表每种尺度锚点个数，本实验每种尺度包含3个锚点。
 
 ####  检测（class DetectionBlock）
 
@@ -566,18 +571,34 @@ box_probs|(32, 11,20, 3, 3)|预测绝对类别。[batch_size, h/32, w/32, num_an
 我们假设偏移量prediction各分量为：$t_x$ 、$t_y$ 、$t_w$ 、$t_h $ 、$ t_{confidence} $、$ t_{probs}$。分别为：中心点相对于所在网格左上角偏移量$t_x$ 、$t_y$ ， 宽高相对于锚点偏移量$t_w$ 、$t_h$，置信度和类别为$ t_{confidence} $、$ t_{probs}$；假设预测框绝对值为：$b_x$ 、$b_y$ 、$b_w$ 、$b_h$、$ b_{confidence} $、$ b_{probs}$，分别为：中心点坐标$b_x$ 、$b_y$ ， 宽高$b_w$ 、$b_h$，置信度和类别为$ b_{confidence} $、$ b_{probs}$；假设网格点：$c_x$ 、$c_y$; 假设锚点宽高为$p_w$ 、$p_h$。相对量（或偏移量）和绝对量之间的转换公式如下公式所示，参考图片如下图所示。
 
 $$
-b_x = \sigma( t_x ) + c_x \\
-b_y = \sigma( t_y ) + c_y \\
-b_w = p_w * e^{t_w} \\
-b_h  = p_h * e^{t_h} \\
-b_{confidence} = \sigma( t_{confidence} )  \\
-b_{probs} = \sigma( t_{probs} ) 
+b_x = \sigma( t_x ) + c_x
 $$
 
-**解析：** 
+$$
+b_y = \sigma( t_y ) + c_y
+$$
 
-- 其中$\sigma$为sigmoid函数，确保偏移量在（0，1）范围内。添加这样的转换主要是因为在训练时如果没有将和压缩到(0,1)区间内的话，模型在训练前期很难收敛。
-- **我们设定的锚点只有宽高，没有中心点，算法默认所有网格都有这些锚点，且中心点为网格左上角坐标。以小尺度为例，共有锚点  $ 11 * 20 * 3 $ 个。**
+$$
+b_w = p_w * e^{t_w}
+$$
+
+$$
+b_h  = p_h * e^{t_h}
+$$
+
+$$
+b_{confidence} = \sigma( t_{confidence} ) 
+$$
+
+$$
+b_{probs} = \sigma( t_{probs} )
+$$
+
+**解析**：
+
+其中$\sigma$为sigmoid函数，确保偏移量在（0，1）范围内。添加这样的转换主要是因为在训练时如果没有将和压缩到(0,1)区间内的话，模型在训练前期很难收敛。
+
+- **我们设定的锚点只有宽高，没有中心点，算法默认所有网格都有这些锚点，且中心点为网格左上角坐标。以小尺度为例，共有锚点  $ 11 \times 20 \times 3 $ 个。**
 - 计算得到的相对坐标（prediction）每个网格中都有3个（小尺度），中心点为每个网格的左上角坐标。
 - （$c_x$、$c_y$）为所有网格的左上角坐标。并非（0，0）点。
 
@@ -610,23 +631,21 @@ yolob3的loss由多部分相加组成。loss包含：
 - 置信度loss—— confidence_loss（真阳性+真阴性）；
 - 分类loss—— class_loss（交叉熵）；
 
-我们假设偏移量prediction各分量为：t_xy、t_wh  、 t_confidence 、 t_probs。假设真实值bbox（前面`预处理结果展示`标题下的表格）各分量为：true_xy、true_wh 、true_confidence、 true_probs。计算方式如下所示。
+我们假设偏移量prediction各分量为：$t\\_xy$、$t\\_wh$  、 $t\\_confidence$ 、 $t\\_probs$。假设真实值bbox（前面`预处理结果展示`标题下的表格）各分量为：$true\\_xy$、$true\\_wh$ 、$true\\_confidence$、 $true\\_probs$。计算方式如下所示。
 
-$$
-xy_loss =  true_confidence *(2 - true_w * true_h )* cross_entropy(t_xy, true_xy* grid_shape - grid) \\
+$xy\\_loss =  true\\_confidence \times(2 - true\\_w \times true\\_h )\times cross\\_entropy(t\\_xy, true\\_xy \times grid\\_shape - grid)$
 
-wh_loss = true_confidence *(2 - true_w * true_h )* \frac{1}{2} |t_wh - (true_wh* grid_shape - grid) | ^2  \\
+$wh\\_loss = true\\_confidence \times(2 - true\\_w \times true\\_h )\times \frac{1}{2} |t\\_wh - (true\\_wh \times grid\\_shape - grid) | ^2 $
 
-cross_con = cross_entropy(t_confidence, true_confidence) \\
+$cross\\_con = cross\\_entropy(t\\_confidence, true\\_confidence)$
 
-confidence_loss = true_confidence * cross_con  + (1 - true_confidence) * cross_con  * ignore_mask  \\
+$confidence\\_loss = true\\_confidence \times cross\\_con + (1 - true\\_confidence) \times cross\\_con \times ignore\\_mask$
 
-class_loss = object_mask * cross_entropy( t_probs, true_probs)
-$$
+$class\\_loss = object\\_mask \times cross\\_entropy( t\\_probs, true\\_probs)$
 
-**解析： **  
+**解析**:
 
-- 公式xy_loss、wh_loss 中的 $(2 - true\_w * true\_h )$ 是为了弱化边界框尺寸对损失值的影响，该值为1-2。
+- 公式$xy\\_loss$、$wh\\_loss$ 中的 $(2 - true\\_w  \times true\\_h )$ 是为了弱化边界框尺寸对损失值的影响，该值为1-2。
 - ignore_mask为求得的   的忽略框mask。阈值见config.py文件中的ignore_threshold。计算方式如下所示：
     1. 计算pred_boxes（预测值，非偏移。看代码）和gt_box的iou值。
     2. 比较这些iou值与ignore_threshold值大小。结果为ignore_mask
@@ -686,8 +705,8 @@ box、boxes_scores介绍如下所示（以小尺度为例）：
 
 名称|维度|描述
 :--:|:--:|:--:
-box|(32,  $ 11 * 20 * 3 $ ，4)|预测框，共  $ 11 * 20 * 3 $  个,每个框由四个标签，[xmin,ymin,xmax,ymax]
-boxes_scores|(32,  $ 11 * 20 * 3 $ ，3)|预测框分数（3个类别），共 $ 11 * 20 * 3 $ 个框，每个框由3个分数。
+box|(32,  $ 11 \times 20 \times 3 $ ，4)|预测框，共  $ 11 \times 20 \times 3 $  个,每个框由四个标签，[xmin,ymin,xmax,ymax]
+boxes_scores|(32,  $ 11 \times 20 \times 3 $ ，3)|预测框分数（3个类别），共 $ 11 \times 20 \times 3 $ 个框，每个框由3个分数。
 
 **解析：**
 
@@ -695,14 +714,14 @@ boxes_scores|(32,  $ 11 * 20 * 3 $ ，3)|预测框分数（3个类别），共 $
 - 此Yolov3网络共可以得到13860个框。是三个尺度框数的总和：
 
 $$
-13860 = 11 * 20 * 3 + 22 * 40 * 3 + 44 * 80 * 3
+13860 = 11 \times 20 \times 3 + 22 \times 40 \times 3 + 44 \times 80 \times 3
 $$
 
 - 分数为框的分数和类别分数的成绩，即：boxes_scores = box_confidence * box_probs 。
 
-### yolov3评估
+### yolov3推理
 
-yolov3评估需要从前面得到的13860个框中得到我们需要的有用框。具体做法如下所示，见（main.py中tobox函数）。其中从众多框中选择有效框算法为nms算法，见utils.py文件中的apply_nm函数。
+yolov推理需要从前面得到的13860个框中得到我们需要的有用框。具体做法如下所示，见（main.py中tobox函数）。其中从众多框中选择有效框算法为nms算法，见utils.py文件中的apply_nm函数。
 
 ```python
 def tobox(boxes, box_scores):
@@ -822,9 +841,9 @@ epoch: 50 step: 15, loss is 70.30449
 epoch: 60 step: 15, loss is 63.806183
 ```
 
-### 测试结果
+### 推理结果
 
-测试日志如下所示：
+推理日志如下所示：
 
 ```
 Create Mindrecord.
