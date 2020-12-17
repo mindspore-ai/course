@@ -1,12 +1,29 @@
 # Deeplabv3—语义分割
 
 ## 实验介绍
-本实验主要介绍使用MindSpore深度学习框架在PASCAL VOC2012数据集上训练deeplabv3网络模型。本实验使用了MindSpore开源仓库model_zoo中的[deeplabv3](https://gitee.com/mindspore/mindspore/tree/r0.5/model_zoo/deeplabv3)模型案例。
+本实验主要介绍使用MindSpore深度学习框架在PASCAL VOC2012数据集上训练deeplabv3网络模型。本实验使用了MindSpore开源仓库model_zoo中的[deeplabv3](https://gitee.com/mindspore/mindspore/tree/r1.0/model_zoo/official/cv/deeplabv3)模型案例。
 
 ## deeplabv3简要介绍
-deeplabv1和deeplabv2，即带孔卷积(atrous convolution), 能够明确地调整filters的感受野，并决定DNN计算得到特征的分辨率。
-deeplabv3中提出 Atrous Spatial Pyramid Pooling(ASPP)模块, 挖掘不同尺度的卷积特征，以及编码了全局内容信息的图像层特征，提升分割效果。
-详细介绍参考论文：http://arxiv.org/abs/1706.05587 。
+
+图像的语义分割是计算机视觉中重要的基本问题之一，其目标是对图像的每个像素点进行分类，将图像分割为若干个视觉上有意义的或感兴趣的区域，以利于后续的图像分析和视觉理解。输入输出为大小相同的图片。
+
+随着DCNN（深度卷积网络）的发展，图片中的特征更容易提取。deeplab系列语义分割算法就是在DCNN算法的基础上发展而来。这里先描述一下语义分割DCNN网络是如何设计，调整VGG16模型，转为一个可以有效提取特征的语义分割系统。具体来说，先将VGG16的FC层转为卷积层，模型变为全卷积的方式，在图像的原始分辨率上产生非常稀疏的计算检测分数(步幅32,步幅=输入尺寸/输出特征尺寸步幅)，为了以更密集(步幅8)的计算得分,我们在最后的两个最大池化层不下采样(padding到原大小)，再通过2或4的采样率的空洞卷积对特征图做采样扩大感受野，缩小步幅。空洞卷积也是密集分类的常用方法。
+
+此外分类器获取以对象中心的决策是需要空间变换的不变性，这天然的限制了DCNN的定位精度，DeepLabv采用完全连接的条件随机场(DenseCRF)提高模型捕获细节的能力(全局)。deeplabv1采用了条件随机场（CRF）进行进一步精修，细化边缘分割效果。deeplabv3使用aspp池化代替crf，简化了模型。
+
+deeplabv1使用带孔卷积(atrous convolution)（也叫膨胀卷积）, 能够明确地调整filters的感受野，并决定DNN计算得到特征的分辨率。使用crf捕捉全局特征，使边缘更锐利。deeplabv2提出 Atrous Spatial Pyramid Pooling(ASPP)模块,挖掘不同尺度的卷积特征。deeplabv3 编码了全局内容信息的图像层特征，提升分割效果。详细介绍参考论文：http://arxiv.org/abs/1706.05587 。
+
+带孔卷积/膨胀卷积效果图：
+
+![png](images/rate.PNG)
+
+[1] 图片来源 https://arxiv.org/pdf/1706.05587.pdf
+
+deeplabv3网络结构图：
+
+![png](images/deeplabv3.png)
+
+[2] 图片来源 https://img.it610.com/image/info8/2caddeef33e4400791c34e4feed9d910.jpg
 
 ## 实验目的
 * 了解如何使用MindSpore加载常用的PASCAL VOC2012数据集。
@@ -30,14 +47,38 @@ deeplabv3中提出 Atrous Spatial Pyramid Pooling(ASPP)模块, 挖掘不同尺�
 [Pascal VOC2012数据集](https://blog.csdn.net/haoji007/article/details/80361587)主要是针对视觉任务中监督学习提供标签数据，它有二十个类别。主要有四个大类别，分别是人、常见动物、交通车辆、室内家具用品。这里只说与图像分割（segmentation）有关的信息,本用例使用已去除分割标注的颜色，仅保留了分割任务的数据集。VOC2012[官网地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html)，[官方下载地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar)。
 
 本实验指导的数据集可通过如下方式获取：
-* 方式一，参考（推荐）[lenet5（手写数字识别）](../lenet5)或[checkpoint（模型的保存和加载）](../checkpoint)实验，拷贝他人共享的OBS桶中的数据集。
-    ```
-    import moxing
-    moxing.file.copy_parallel(src_url="s3://share-course/dataset/voc2012/", dst_url='voc2012/')
-    ```
-* 方式二，从官网下载数据集
 
-另外，本实验采用fine-tune的训练方式，为了节省训练时间，我们提前准备好了预训练的[checkpoint文件](https://share-course.obs.cn-north-4.myhuaweicloud.com/checkpoint/deeplabv3/deeplab_v3_s8-800_82.ckpt)，方便直接获取使用。
+- 方式一，参考（推荐）[lenet5（手写数字识别）](../lenet5)或[checkpoint（模型的保存和加载）](../checkpoint)实验，拷贝他人共享的OBS桶中的数据集。
+
+```python
+data_path = './VOC2012'
+import moxing as mox
+mox.file.copy_parallel(src_url="s3://share-course/dataset/voc2012_raw/", dst_url=data_path)
+```
+
+* 方式二，从官网下载数据集。
+
+### 预训练模型准备
+
+本实验采用fine-tune的训练方式，为了节省训练时间，我们提前准备好了预训练的[checkpoint文件](https://share-course.obs.cn-north-4.myhuaweicloud.com/checkpoint/deeplabv3/deeplab_v3_s8-800_82.ckpt)，方便直接获取使用。推荐使用上面的数据集下载方式一下载checkpoint模型。
+
+```python
+ckpt_path = 'deeplab_s8.ckpt'
+mox.file.copy_parallel(src_url="s3://share-course/checkpoint/deeplabv3/deeplab_v3_s8-800_82.ckpt", dst_url=ckpt_path)
+```
+
+该模型为vocaug数据集训练得到。voccaug数据集是voc2012数据集和sbd数据集的集合。sbd数据属于voc2012数据集，但是voc2012数据集的训练或者验证图片的标签图非常少。但是sbd给出的很多，所以可以综合这两个数据集得到更加多的验证集和数据集标签。
+
+数据集名称|训练|测试
+:--:|:--:|:--:
+voc2012数据集|1464|1449
+sbd数据集|8498|2857
+vocaug数据集|8829|\
+
+**解析：** vocaug数据集8829样例个数已经去重。
+
+本实验采用vocaug数据集数据集训练得到的deeplab_v3_s8-800_82.ckpt模型，使用voc2012训练数据集对模型进行微调训练，最后在voc2012测试数据对模型进行测试。
+
 
 ### 脚本准备
 
@@ -62,9 +103,9 @@ deeplabv3
 
 - main.ipynb：代码入口文件；
 - dataset.py：数据处理文件；
-- loss：loss定义文件；
-- deeplab_v3: deeplabv3网络定义文件；
-- learning_rates.py: 学习率定义文件
+- loss.py：loss定义文件；
+- deeplab_v3.py：deeplabv3网络定义文件；
+- learning_rates.py：学习率定义文件。
 
 实验流程：
 
@@ -72,11 +113,11 @@ deeplabv3
 2. 修改main.ipynb测试1（test 1 cell）参数并运行，运行测试1单元得到mean iou结果。
 3. 修改main.ipynb测试2（test 2 cell）参数并运行，运行测试2单元得到可视化结果。
 
-### 数据处理（dataset.py）
+### 数据预处理（dataset.py）
 
 数据处理流程如下所示：
 
-1. 将语义标签转换为灰度图（dataset.py中SegDataset.get_gray_dataset）
+1. 将语义标签(原始图片为三通道彩色)转换为灰度图（dataset.py中SegDataset.get_gray_dataset）
 2. 将图片和标签灰度图转换为mindrecord格式数据集（dataset.py中SegDataset.get_mindrecord_dataset）
 3. 读取mindrecord数据集并预处理。（dataset.py中SegDataset.get_dataset。其中preprocess_为数据预处理。）
 
@@ -102,6 +143,381 @@ dataset.get_mindrecord_dataset(is_training=True)
 dataset = dataset.get_dataset(repeat=1)
 ```
 
+#### VOC原始数据分析
+
+VOC 数据集主要有 Object Classification（分类，20类） 、Object Detection（目标检测）、Object Segmentation（实例分割）、Human Layout（人体部位识别）、Action Classification（行为识别） 这几类子任务数据。总共分 4 个大类：vehicle、household、animal、person，总共 20 个小类（加背景 21 类）。类别如下所示。
+
+- Person: person
+- Animal: bird, cat, cow, dog, horse, sheep
+- Vehicle: aeroplane, bicycle, boat, bus, car, motorbike, train
+- Indoor: bottle, chair, dining table, potted plant, sofa, tv/monitor
+
+VOC原始数据集包含以下目录结构：
+
+```
+VOC
+├── Annotations   # 目标检测任务标签，xml 形式，文件名与图片名对应
+├── ImageSets  # 存放不同任务训练和测试数据的编号，可根据编号在JPEGImages文件中找到参与训练和测试的数据图片。（有些任务编号直接带标签）
+|   ├── Action        # 行为识别（包含数据编号和包含标签）,格式.txt 
+|   ├── Layout        # 人体部位识别（包含数据编号和包含标签）,格式.txt
+|   ├── Main          # 分类（包含数据编号和对应标签）,格式.txt
+|   └──Segmentation   # 语义分割（包含数据编号无对应标签，标签参考文件SegmentationClass）。
+|       ├── trainval.txt
+|       ├── val.txt
+|       └── train.txt
+├── JPEGImages            # 数据集所有源图（彩色三通道），格式.jpg
+├── SegmentationClass     # 语义分割标签图（彩色三通道）,格式.png
+└── SegmentationObject    # 实例分割标签图（彩色三通道）,格式.png
+```
+
+语义分割任务输入为图片（来源于ImageSets/Segmentation文件中编号在JPEGImages文件中对应图），输出为语义分割图（见SegmentationClass文件）。
+
+ImageSets/Segmentation/train.txt文件如下所示，每一行对应一个编号（年_编号格式），这些编号在JPEGImages文件中可以找到，组成了训练集。测试集同理。
+
+```
+2007_000032
+2007_000039
+2007_000063
+2007_000068
+...
+2011_003238
+2011_003246
+2011_003255
+```
+
+输入图片（JPEGImages中图片）如下所示：
+
+![png](images/2007_000032.jpg)
+
+语义分割标签图（SegmentationClass）中图片如下所示，（该分割图的原始图片为上图）
+
+![png](images/2007_000032.png)
+
+其中颜色对应标签如下所示：
+
+![png](images/source_lable.png)
+
+[1]图片来源 https://blog.csdn.net/weixin_38437404/article/details/78788250?utm_source=blogxgwz7
+
+#### 标签转化为灰度图
+
+从上面的颜色标签对应图可以发现，虽然标签图是三通道的，但是颜色只有21种（加背景的黑色）。为了减少计算量，我们将彩色同转换为灰度图。转换代码见src/dataset.py中get_gray_dataset。如下所示：
+
+```python
+def get_gray_dataset(self):
+    if os.path.exists(self.voc_anno_gray_dir):
+        print('the gray file is already exists！')
+        return
+    os.makedirs(self.voc_anno_gray_dir)
+
+    # convert voc color png to gray png
+    print('converting voc color png to gray png ...')
+    for ann in os.listdir(self.voc_anno_dir):
+        ann_im = Image.open(os.path.join(self.voc_anno_dir, ann))
+        ann_im = Image.fromarray(np.array(ann_im))
+        ann_im.save(os.path.join(self.voc_anno_gray_dir, ann))
+    print('converting done')
+```
+
+#### 将数据转换为mindrecord格式
+
+本实验将图片和灰度分割图（标签）转换为mindrecord格式。见src/dataset.py中get_mindrecord_dataset函数。mindrecord字段包含：
+
+- file_name ：图片名字，字段类型string；
+- label ：语义分割灰度图，字段类型bytes；
+- data：图片，字段类型bytes；
+
+```python
+def get_mindrecord_dataset(self, is_training,num_shards=1, shuffle=True):
+        datas = []
+        if is_training:
+            data_lst = self.voc_train_lst
+            self.mindrecord_save = os.path.join(self.mindrecord_save,'train')
+        else:
+            data_lst = self.voc_val_lst
+            self.mindrecord_save = os.path.join(self.mindrecord_save,'eval')
+        
+        if os.path.exists(self.mindrecord_save):
+            #shutil.rmtree(self.mindrecord_save)
+            print('mindrecord file is already exists！')
+            self.mindrecord_save = os.path.join(self.mindrecord_save,'VOC_mindrecord')
+            return
+        
+        with open(data_lst) as f:
+            lines = f.readlines()
+        if shuffle:
+            np.random.shuffle(lines)
+            
+        print('creating mindrecord dataset...')
+        os.makedirs(self.mindrecord_save)
+        self.mindrecord_save = os.path.join(self.mindrecord_save,'VOC_mindrecord')
+        print('number of samples:', len(lines))
+        seg_schema = {"file_name": {"type": "string"}, "label": {"type": "bytes"}, 
+                      "data": {"type": "bytes"}}
+        writer = FileWriter(file_name=self.mindrecord_save, shard_num=num_shards)
+        writer.add_schema(seg_schema, "seg_schema")
+        cnt = 0
+        for l in lines:
+            id_ = l.strip()
+            img_path = os.path.join(self.voc_img_dir, id_ + '.jpg')
+            label_path = os.path.join(self.voc_anno_gray_dir, id_ + '.png')
+            
+            sample_ = {"file_name": img_path.split('/')[-1]}
+            with open(img_path, 'rb') as f:
+                sample_['data'] = f.read()
+            with open(label_path, 'rb') as f:
+                sample_['label'] = f.read()
+            datas.append(sample_)
+            cnt += 1
+            if cnt % 1000 == 0:
+                writer.write_raw_data(datas)
+                print('number of samples written:', cnt)
+                datas = []
+
+        if datas:
+            writer.write_raw_data(datas)
+        writer.commit()
+        print('number of samples written:', cnt)
+        print('Create Mindrecord Done')
+```
+
+#### 读取mindrecord数据集并预处理（仅训练）
+
+训练时，读取前面构建好的mindrecord数据集，并进行归一化等预处理，参考见src/dataset.py中get_dataset函数preprocess_函数。具体预处理有以下几点：
+
+1.  获取多尺度信息并归一化。
+    -  sc为随机尺度，最小尺度为self.min_scale，默认为0.5。最大尺度为self.max_scale，默认为2.0。
+    -  样本获取其随机尺度信息是图片增强常用方法之一。
+
+```python
+sc = np.random.uniform(self.min_scale, self.max_scale)
+new_h, new_w = int(sc * image_out.shape[0]), int(sc * image_out.shape[1])
+image_out = cv2.resize(image_out, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+label_out = cv2.resize(label_out, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+
+image_out = (image_out - self.image_mean) / self.image_std      # 归一化
+```
+
+2. 裁剪填充，代码入下所示。
+   - self.crop_size设定为513，代表默认训练/测试图片大小为 $ 513 * 513 $ 。
+   - self.ignore_label为255,代表标签图（语义分割灰度图）使用黑色填充边框。
+   - 图片使用白色填充边框。
+   - 经过裁剪填充以后的图片尺寸变大，最小尺寸为 $ 513 * 513 $ 。
+   - 经过裁剪以后的图片和标签图保留了图片原有的信息。
+
+```python
+h_, w_ = max(new_h, self.crop_size), max(new_w, self.crop_size)
+pad_h, pad_w = h_ - new_h, w_ - new_w
+if pad_h > 0 or pad_w > 0:
+    image_out = cv2.copyMakeBorder(image_out, 0, pad_h, 0, pad_w,      
+                                   cv2.BORDER_CONSTANT, value=0)
+    label_out = cv2.copyMakeBorder(label_out, 0, pad_h, 0, pad_w, 
+                  cv2.BORDER_CONSTANT, value=self.ignore_label)
+```
+
+3.  图片resize，统一图片尺寸，切割图片尺寸为 [513,513] （self.crop_size），其中offset_h和offset_w为随机切割起点（图片增强方式）。
+
+```python
+offset_h = np.random.randint(0, h_ - self.crop_size + 1)
+offset_w = np.random.randint(0, w_ - self.crop_size + 1)
+image_out = image_out[offset_h: offset_h + self.crop_size, offset_w: offset_w + self.crop_size, :]
+label_out = label_out[offset_h: offset_h + self.crop_size, offset_w: offset_w+self.crop_size]
+```
+
+4. 随机左右翻转，随机训练图片翻转是数据增强的常用方法之一。
+
+```python
+if np.random.uniform(0.0, 1.0) > 0.5:
+    image_out = image_out[:, ::-1, :]
+    label_out = label_out[:, ::-1]
+```
+
+**注意：** 测试时，数据输入格式为tensor，数据预处理方式与训练相似（没有经过数据增强）。
+
+### deeplabv3网络结构（deeplab_v3.py）
+
+本实验的deeplabv3网络主要由由resnet特征提取模块、aspp模块组成。
+
+```
+- class DeepLabV3
+    - class Resnet
+        - 略（参考实验resnet50）
+    - class ASPP
+        - class ASPPConv -> x1
+            - nn.Conv2d（dilation=atrous_rate）   # 膨胀卷积
+            - nn.BatchNorm2d
+            - nn.ReLU
+        - class ASPPConv(共四个) -> x2, x3, x4
+        - class ASPPPooling -> x5
+            - nn.AvgPool2d
+            - nn.Conv2d             # 普通卷积，非膨胀
+            - nn.BatchNorm2d
+            - nn.ReLU
+            - P.ResizeNearestNeighbor
+        - P.Concat(x1,x2,x3,x4,x5)  
+        - nn.Conv2d             # 普通卷积，非膨胀
+        - nn.BatchNorm2d
+        - nn.ReLU
+        - nn.Conv2d             # 普通卷积，非膨胀,out_class为num_class(21)
+    - P.ResizeBilinear
+```
+
+#### aspp模块
+
+deeplabv2中的aspp在特征顶部映射图使用了四中不同采样率的空洞卷积。这表明以不同尺度采样时有效的，在Deeolabv3中向ASPP中添加了BN层（参考class ASPPConv）。不同采样率的空洞卷积可以有效捕获多尺度信息，但会发现随着采样率的增加，滤波器有效权重（权重有效的应用在特征区域，而不是填充0）逐渐变小。如下图所示：
+
+![png](images/atrous.PNG)
+
+[4] 图片来源 https://arxiv.org/pdf/1706.05587.pdf
+
+针对上面的问题，并将全局内容信息整合进模型中，则采用图像级特征。采用全局平均池化(global average pooling)对模型的feature map进行处理，将得到的图像级特征输入到一个1×1 convolution with 256 filters(加入 batch normalization)中，然后将特征进行双线性上采样(bilinearly upsample)到特定的空间维度。（参考class ASPPPooling）
+
+deeplabv3网络变量分析：
+
+名称|维度|描述
+:--:|:--:|:--:
+images_x|(16, 3, 513, 513)|输入图片维度 [batch_size, channel,h,w]
+lables|(513, 513，16)|输入图片的标签  [batch_size, h,w] （见loss.py中labels）
+resnet_out|(16, 2048, 65, 65)|resnet输出(特征提取)
+aspp_x1|(16,256, 65, 65) | 第一个aspp输出（见代码aspp1输出）, rate = 1 
+aspp_x2|(16,256, 65, 65) | 第二个aspp输出（见代码aspp2输出）,  rate =6 
+aspp_x3|(16,256, 65, 65) | 第三个aspp输出（见代码aspp3输出）,  rate =12 
+aspp_x4|(16,256, 65, 65) | 第四个aspp输出（见代码aspp4输出）,  rate =18 
+aspp_pooling_x5|(16,256, 65, 65) | aspp_pooling输出（见代码aspp_pooling输出） 
+concat_x|(16, 1280, 65, 65)| 前面五个x  concat
+ASPP_out|(16, 21, 65, 65)| ASPP模块输出（concat以后经过了两个卷积）
+net_out|(16, 21, 513, 513)|ASPP模块输出经过P.ResizeBilinear操作，是整个网络输出。
+
+**解析：** 
+
+1. 表中的名称与代码有些出入，请根据表中英文名确定变量与代码对应。
+2. deeplabv3网络输出net_out维度为(16,21,513,513)。训练计算loss时（参考loss.py），使用该结果和lables比较，进行梯度更新。
+
+### 测试流程（数据流）
+
+本实验由两种测试方式，计算平均iou值和结果可视化。这两种方式的数据预处理和模型部分是一致的，只有在结果出来以后的展示有区别。
+
+#### 构建测试网络
+
+构建测试网络的代码如下所示，在DeepLabV3网络（参考前面deeplabv3网络结构）的最后加了softmax层，保证输出概率为0-1的范围内。
+```python
+class BuildEvalNetwork(nn.Cell):
+    def __init__(self, network):
+        super(BuildEvalNetwork, self).__init__()
+        self.network = network
+        self.softmax = nn.Softmax(axis=1)
+
+    def construct(self, input_data):
+        output = self.network(input_data)
+        output = self.softmax(output)
+        return output
+
+# network
+if args.model == 'deeplab_v3_s16':
+    network = deeplab_v3.DeepLabV3('eval', args.num_classes, 16, args.freeze_bn)
+elif args.model == 'deeplab_v3_s8':
+    network = deeplab_v3.DeepLabV3('eval', args.num_classes, 8, args.freeze_bn)
+else:
+    raise NotImplementedError('model [{:s}] not recognized'.format(args.model))
+
+eval_net = BuildEvalNetwork(network)
+```
+
+#### 测试数据处理
+
+测试数据预处理部分与训练相似，但是没有做数据增强，只保留图片本身信息。测试数据后处理主要是将结果图片resize为原始大小，并利用argmax函数得到最后结果。测试数据处理过程如下所示，参考main.py测试部分。
+
+1. 读取图片和标签图，并分为batch。batch_img_lst变量中存放图片原始图，列表长度为batch_size。batch_msk_lst变量中存放图片标签原始图，列表长度为batch_size。
+
+```python
+batch_img_lst = []
+batch_msk_lst = []
+image_num = 0
+for i, line in enumerate(img_lst):
+    id_ = line.strip()
+    img_path = os.path.join(cfg.voc_img_dir, id_ + '.jpg')
+    msk_path = os.path.join(cfg.voc_anno_gray_dir, id_ + '.png')
+            
+    img_ = cv2.imread(img_path)
+    msk_ = cv2.imread(msk_path, cv2.IMREAD_GRAYSCALE)
+    batch_img_lst.append(img_)
+    batch_msk_lst.append(msk_)
+```
+
+2. 图像预处理，见pre_process函数。
+    - 裁剪并resize为大小为 （513,513） ，作为网络的输入。返回值为resize为（513，513）大小的图片（img_）、长宽等比例裁剪以后的尺寸（resize_h, resize_w）（见resize_long函数）。**注：   裁剪结果resize_h, resize_w中有一条边（原始长边）变为513，另一条同比例改变，变为小于513。**
+    - 归一化，归一化的方差和均值与训练一致。
+
+```python
+def resize_long(img, long_size=513):
+    h, w, _ = img.shape
+    if h > w:
+        new_h = long_size
+        new_w = int(1.0 * long_size * w / h)
+    else:
+        new_w = long_size
+        new_h = int(1.0 * long_size * h / w)
+    imo = cv2.resize(img, (new_w, new_h))
+    return imo
+
+def pre_process(args, img_, crop_size=513):
+    # resize
+    img_ = resize_long(img_, crop_size)
+    resize_h, resize_w, _ = img_.shape
+
+    # mean, std
+    image_mean = np.array(args.image_mean)
+    image_std = np.array(args.image_std)
+    img_ = (img_ - image_mean) / image_std
+
+    # pad to crop_size
+    pad_h = crop_size - img_.shape[0]
+    pad_w = crop_size - img_.shape[1]
+    if pad_h > 0 or pad_w > 0:
+        img_ = cv2.copyMakeBorder(img_, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
+
+    # hwc to chw
+    img_ = img_.transpose((2, 0, 1))
+    return img_, resize_h, resize_w
+```
+
+3.  利用deeplabv3网络进行预测并后处理。后处理见pre_process。如下所示。支持反向预测来增加结果准备度。后处理将结果（维度（16，21，513，513））resize为原始尺寸大小。
+
+```python
+def eval_batch(args, eval_net, img_lst, crop_size=513, flip=True):
+    ...
+    if flip:
+        batch_img = batch_img[:, :, :, ::-1]
+        net_out_flip = eval_net(Tensor(batch_img, mstype.float32))
+        net_out += net_out_flip.asnumpy()[:, :, :, ::-1]
+
+    for bs in range(batch_size):
+        probs_ = net_out[bs][:, :resize_hw[bs][0], :resize_hw[bs][1]].transpose((1, 2, 0))        
+        ori_h, ori_w = img_lst[bs].shape[0], img_lst[bs].shape[1]
+        probs_ = cv2.resize(probs_, (ori_w, ori_h))
+        result_lst.append(probs_)
+    return result_lst
+```
+
+4. 测试支持多尺度预测，即：考虑多种尺度输入图片并将结果相加以提高预测精度。参考参数scales。默认为[1.0]，数据格式列表。可以多添加几种尺度。参考参数scales长度代表每个样例测试次数，会影响测试速度。参考eval_batch_scales函数。
+
+```python
+
+def eval_batch_scales(args, eval_net, img_lst, scales,
+                      base_crop_size=513, flip=True):
+    sizes_ = [int((base_crop_size - 1) * sc) + 1 for sc in scales]
+    probs_lst = eval_batch(args, eval_net, img_lst, crop_size=sizes_[0], flip=flip)
+
+    for crop_size_ in sizes_[1:]:
+        probs_lst_tmp = eval_batch(args, eval_net, img_lst, crop_size=crop_size_, flip=flip)
+        for pl, _ in enumerate(probs_lst):
+            probs_lst[pl] += probs_lst_tmp[pl]
+
+    result_msk = []
+    for i in probs_lst:
+        result_msk.append(i.argmax(axis=2))
+    return result_msk
+```
 
 ### 训练输入文件导入
 
@@ -116,6 +532,16 @@ ckpt_path = 'deeplab_s8.ckpt'
 if not os.path.exists(ckpt_path):
     mox.file.copy_parallel(src_url="s3://share-course/checkpoint/deeplabv3/deeplab_v3_s8-800_82.ckpt", dst_url=ckpt_path)
 cfg.ckpt_file = ckpt_path
+```
+
+### 评价指标和可视化
+
+前面已经提到测试由两种方式，方式一为平均iou，方式二可视化结果。有测试cfg中 if_png 参数控制。当 if_png 为 True 则采用可视化方式，当 if_png 为False则计算测试集和真实标签的平均iou（计算方式如下所示）。
+
+```python
+def cal_hist(a, b, n):
+    k = (a >= 0) & (a < n)
+    return np.bincount(n * a[k].astype(np.int32) + b[k], minlength=n ** 2).reshape(n, n)
 ```
 
 ### 训练输入文件导入
