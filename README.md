@@ -27,8 +27,8 @@
 4. [语义分割[DeepLabV3]](deeplabv3)
 5. [人、脸、口罩检测[YOLOV3][ResNet18]](yolov3)
 6. [生物图像分割[U-Net]](unet)
-7. [端侧图像分类应用部署[MobileNetV2][Lite]](lite_demo_deploy)
-8. [端侧目标检测[ssd_MobileNetV2][Lite]](lite_cpp_inference)
+7. [端侧部署图像分类应用[MobileNetV2][Lite]](lite_demo_deploy)
+8. [端侧实现目标检测推理流程[ssd_MobileNetV2][Lite]](lite_cpp_inference)
 
 ### 自然语言处理
 

@@ -2,9 +2,9 @@
 
 ## 实验介绍
 
-本实验主要以MindSpore Lite图像分类demo为例，介绍端侧推理流程及如何使用C++ API实现推理过程。
+本实验以MindSpore Lite图像分类demo为例，介绍端侧推理流程及如何使用C++ API实现这一过程。之后请补充目标检测推理代码，体验MindSpore Lite目标检测模型。
 
-进行本实验前，建议先完成[图像分类demo部署章节](lite_demo_deploy)，并参考该章节下`code`文件夹中的源代码。
+进行本实验前，建议先完成[图像分类demo部署章节](../lite_demo_deploy)，并参考该章节下`code`文件夹中的源代码。
 
 ## 实验目的
 
@@ -13,7 +13,7 @@
 ## 预备知识
 
 - 具备一定的Android开发基础知识
-- 了解并熟悉MindSpore AI计算框架，MindSpore官网：<https://www.mindspore.cn/>
+- 了解并熟悉MindSpore端侧框架，MindSpore Lite官网：<https://www.mindspore.cn/lite>
 
 ## 实验环境
 
