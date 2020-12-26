@@ -25,8 +25,10 @@
 2. [CIFAR-10图像分类[ResNet50]](resnet50)
 3. [花卉分类[MobileNetV2]](fine_tune)
 4. [语义分割[DeepLabV3]](deeplabv3)
-5. [端侧图像分类应用部署[MobileNetV2][Lite]](lite_demo_deploy)
-6. [端侧目标检测[ssd_MobileNetV2][Lite]](lite_cpp_inference)
+5. [人、脸、口罩检测[YOLOV3][ResNet18]](yolov3)
+6. [生物图像分割[U-Net]](unet)
+7. [端侧图像分类应用部署[MobileNetV2][Lite]](lite_demo_deploy)
+8. [端侧目标检测[ssd_MobileNetV2][Lite]](lite_cpp_inference)
 
 ### 自然语言处理
 
@@ -45,6 +47,7 @@
 2. [鸢尾花二分类[Logistic Regression]](logistic_regression)
 3. [鸢尾花三分类[Softmax Regression]](softmax_regression)
 4. [葡萄酒分类[KNN]](knn)
+5. [鸢尾花特征主成分分析[PCA]](pca)
 
 ### 性能加速
 

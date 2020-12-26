@@ -196,7 +196,7 @@ ModelArts Notebook资源池较小，且每个运行中的Notebook会一直占用
 
 - 计费模式：按需计费
 - 名称：checkpoint
-- 工作环境：Python3
+- 工作环境：公共镜像->Ascend-Powered-Engine
 - 资源池：公共资源
 - 类型：Ascend
 - 规格：单卡1*Ascend 910
