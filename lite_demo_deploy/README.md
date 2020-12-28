@@ -1,4 +1,4 @@
-# 端侧图像分类应用部署
+# 端侧部署图像分类应用
 
 ## 实验介绍
 
@@ -14,12 +14,12 @@
 ## 预备知识
 
 - 具备一定的Android开发基础知识
-- 了解并熟悉MindSpore AI计算框架，MindSpore官网：<https://www.mindspore.cn/>
+- 了解并熟悉MindSpore端侧框架，MindSpore Lite官网：<https://www.mindspore.cn/lite>
 
 ## 实验环境
 
 - Android手机
-- Android Studio >= 3.2 (推荐4.0以上版本)
+- Android Studio >= 3.5 (推荐4.0以上版本)
 - NDK >= 21.3
 - CMake >= 3.10.2  
 - Android SDK >= 26
