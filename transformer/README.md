@@ -196,6 +196,42 @@ transformer网络如下图所示，其中左边为编码网路，右边 为解�
 
 [1] 图片来源https://proceedings.neurips.cc/paper/2017/file/3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf
 
+Transformer网络训练重要变量维度介绍（只有部分变量）如下表所示，可参考后边的原理理解。
+
+变量|维度|说明                             
+:--:|:--:|:--:
+TransformerModel输入source_ids             |（32，40）|同数据预处理source_sos_ids
+TransformerModel输入source_mask|（32，40）|同数据预处理source_sos_mask
+TransformerModel输入target_ids|（32，40）|同数据预处理target_sos_ids
+TransformerModel输入target_mask|（32，40）|同数据预处理target_sos_mask
+TransformerTrainingLoss输入label_ids|（32，40）|同数据预处理target_eos_ids
+TransformerTrainingLoss输入label_weights|（32，40）|同数据预处理target_eos_mask
+EmbeddingLookup输出src_word_embeddings| (32,40,512) |单词embedding输出
+EmbeddingLookup输出embedding_tables| (10067,512) |embedding表
+EmbeddingPostprocessor输出src_embedding_output| (32,40,512) |位置embedding输出
+CreateAttentionMaskFromInputMask输出enc_attention_mask|(32,40,40)|mask
+TransformerEncoder输出encoder_output|(32,40,512）|编码网络输出
+TransformerDecoder输出decoder_output             | (32,40,512） |解码网络输出（与测试不同）
+PredLogProbs 输出decoder_output|(32*40,10067）| transormer网络输出
+
+**解析：** 
+
+- 表中32代表batch_size，40代表序列长度，512代表hiddle长度，10067代表词表长度。
+- 网络输出PredLogProbs为batch_size个样例，的输出预测，预测长度为40，onehot形式。每个预测值都有10067个概率与之对应，代表输出为词表中每个词的概率。概率最大的为其输出。
+- decoder_output与label_ids和label_weights比较得到loss值，从而更新梯度。
+
+Transformer网络测试重要变量维度介绍（只有部分变量）如下表所示，可参考后边的原理理解。
+
+变量|维度|说明                             
+:--:|:--:|:--:
+TransformerModel输入source_ids             |（32，40）|同数据预处理source_sos_ids
+TransformerModel输入source_mask|（32，40）|同数据预处理source_sos_mask
+TransformerModel输入target_ids|（32，40）|同数据预处理target_sos_ids
+TransformerModel输入target_mask|（32，40）|同数据预处理target_sos_mask
+TileBeam输出beam_encoder_output|（32*4，40，512）|解码输入
+TileBeam输出beam_enc_attention_mask|（32*4，40，40）|解码输入
+BeamSearchDecoder输出predicted_ids|(32，40）|解码输出
+
 每一个编码器在结构上都是一样的，但它们的权重参数是不同的。每一个编码器里面，可以分为 2 层（Self-Attention 层、前馈神经网络）。输入编码器的文本数据，首先会经过一个 Self Attention 层，这个层处理一个词的时候，不仅会使用这个词本身的信息，也会使用句子中其他词的信息（可以类比为：当我们翻译一个词的时候，不仅会只关注当前的词，也会关注这个词的上下文的其他词的信息）。接下来，Self Attention 层的输出会经过前馈神经网络。同理，解码器也具有这两层，但是这两层中间还插入了一个 Encoder-Decoder Attention 层，这个层能帮助解码器聚焦于输入句子的相关部分（类似于 seq2seq 模型 中的 Attention）。
 
 ![png](images/encode-decode.png)
@@ -250,12 +286,12 @@ self-attention详细的处理过程如下所示：（详细代码参考`transfor
 :--:|:--:
 输入矩阵:embedding向量|[batch_size,seq_length,hidden_size] (32,40,512)
 矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)(64=512/8)
-Query（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
-Key（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
-Value（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
-Source（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64)
-输出矩阵(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (16,40,64）
-输出矩阵(多头合并)|[batch_size,seq_length,hidden_size]  (16,40,64）
+Query（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)
+Key（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)
+Value（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)
+Source（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)
+输出矩阵(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64）
+输出矩阵(多头合并)|[batch_size,seq_length,hidden_size]  (32,40,512）
 
 计算公式如下所示：
 
@@ -263,7 +299,7 @@ $$
 Query = INPUT_{embedding} * P_1 \\
 Key = INPUT_{embedding} * P_2 \\
 Value = INPUT_{embedding} * P_3 \\
-OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{hiddenSize}{NumAttentionHeads}}}) * Value + Value
+OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{hiddenSize}{NumAttentionHeads}}}) * Value
 $$
 
 ![png](images/self-attention.png)

@@ -365,7 +365,7 @@ $$
 Query = INPUT_{embedding} * P_1 \\
 Key = INPUT_{embedding} * P_2 \\
 Value = INPUT_{embedding} * P_3 \\
-OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{HiddenSize}{NumAttentionHeads}}}) * Value + Value
+OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{HiddenSize}{NumAttentionHeads}}}) * Value
 $$
 
 ![png](images/self-attention.png)
