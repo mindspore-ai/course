@@ -3,8 +3,6 @@
 ## 实验介绍
 本实验主要介绍使用MindSpore深度学习框架在PASCAL VOC2012数据集上训练deeplabv3网络模型。本实验使用了MindSpore开源仓库model_zoo中的[deeplabv3](https://gitee.com/mindspore/mindspore/tree/r1.0/model_zoo/official/cv/deeplabv3)模型案例。
 
-## deeplabv3简要介绍
-
 图像的语义分割是计算机视觉中重要的基本问题之一，其目标是对图像的每个像素点进行分类，将图像分割为若干个视觉上有意义的或感兴趣的区域，以利于后续的图像分析和视觉理解。输入输出为大小相同的图片。
 
 随着DCNN（深度卷积网络）的发展，图片中的特征更容易提取。deeplab系列语义分割算法就是在DCNN算法的基础上发展而来。这里先描述一下语义分割DCNN网络是如何设计，调整VGG16模型，转为一个可以有效提取特征的语义分割系统。具体来说，先将VGG16的FC层转为卷积层，模型变为全卷积的方式，在图像的原始分辨率上产生非常稀疏的计算检测分数(步幅32,步幅=输入尺寸/输出特征尺寸步幅)，为了以更密集(步幅8)的计算得分,我们在最后的两个最大池化层不下采样(padding到原大小)，再通过2或4的采样率的空洞卷积对特征图做采样扩大感受野，缩小步幅。空洞卷积也是密集分类的常用方法。
@@ -38,13 +36,13 @@ deeplabv3网络结构图：
 
 ## 实验环境
 * MindSpore 1.0.0（MindSpore版本会定期更新，本指导也会定期刷新，与版本配套）。
-* 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。。
+* 华为云ModelArts（控制台左上角选择“华北-北京四”）：ModelArts是华为云提供的面向开发者的一站式AI开发平台，集成了昇腾AI处理器资源池，用户可以在该平台下体验MindSpore。
 
 ## 实验准备
 
 ### 数据集准备
 
-[Pascal VOC2012数据集](https://blog.csdn.net/haoji007/article/details/80361587)主要是针对视觉任务中监督学习提供标签数据，它有二十个类别。主要有四个大类别，分别是人、常见动物、交通车辆、室内家具用品。这里只说与图像分割（segmentation）有关的信息,本用例使用已去除分割标注的颜色，仅保留了分割任务的数据集。VOC2012[官网地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html)，[官方下载地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar)。
+[Pascal VOC2012数据集](https://blog.csdn.net/haoji007/article/details/80361587)主要是针对视觉任务中监督学习提供标签数据，它有二十个类别。主要有四个大类别，分别是人、常见动物、交通车辆、室内家具用品。这里使用VOC2012数据集中的分割数据进行fine_tune和测试。VOC2012[官网地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/index.html)，[官方下载地址](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar)。
 
 本实验指导的数据集可通过如下方式获取：
 
@@ -67,17 +65,17 @@ ckpt_path = 'deeplab_s8.ckpt'
 mox.file.copy_parallel(src_url="s3://share-course/checkpoint/deeplabv3/deeplab_v3_s8-800_82.ckpt", dst_url=ckpt_path)
 ```
 
-该模型为vocaug数据集训练得到。voccaug数据集是voc2012数据集和sbd数据集的集合。sbd数据属于voc2012数据集，但是voc2012数据集的训练或者验证图片的标签图非常少。但是sbd给出的很多，所以可以综合这两个数据集得到更加多的验证集和数据集标签。
+该模型为VOCaug数据集训练得到。VOCaug数据集是VOC2012数据集和SBD数据集的集合。SBD数据属于VOC2012数据集，但是VOC2012数据集的训练或者验证图片的标签图非常少。但是SBD给出的很多，所以可以综合这两个数据集得到更加多的验证集和数据集标签。
 
 数据集名称|训练|测试
 :--:|:--:|:--:
-voc2012数据集|1464|1449
-sbd数据集|8498|2857
-vocaug数据集|8829|\
+VOC2012数据集|1464|1449
+SBD数据集|8498|2857
+VOCaug数据集|8829|\
 
-**解析：** vocaug数据集8829样例个数已经去重。
+**解析：** VOCaug数据集8829样例个数已经去重。
 
-本实验采用vocaug数据集数据集训练得到的deeplab_v3_s8-800_82.ckpt模型，使用voc2012训练数据集对模型进行微调训练，最后在voc2012测试数据对模型进行测试。
+本实验采用VOCaug数据集数据集训练得到的deeplab_v3_s8-800_82.ckpt模型，使用VOC2012训练数据集对模型进行微调训练，最后在VOC2012测试数据对模型进行测试。
 
 
 ### 脚本准备
@@ -201,7 +199,7 @@ ImageSets/Segmentation/train.txt文件如下所示，每一行对应一个编号
 
 #### 标签转化为灰度图
 
-从上面的颜色标签对应图可以发现，虽然标签图是三通道的，但是颜色只有21种（加背景的黑色）。为了减少计算量，我们将彩色同转换为灰度图。转换代码见src/dataset.py中get_gray_dataset。如下所示：
+从上面的颜色标签对应图可以发现，虽然标签图是三通道的，但是颜色只有21种（加背景的黑色）。为了减少计算量，我们将彩色图转换为灰度图。转换代码见src/dataset.py中get_gray_dataset。如下所示：
 
 ```python
 def get_gray_dataset(self):
@@ -285,9 +283,9 @@ def get_mindrecord_dataset(self, is_training,num_shards=1, shuffle=True):
 
 训练时，读取前面构建好的mindrecord数据集，并进行归一化等预处理，参考见src/dataset.py中get_dataset函数preprocess_函数。具体预处理有以下几点：
 
-1.  获取多尺度信息并归一化。
+1.  随机尺度缩放并归一化。
     -  sc为随机尺度，最小尺度为self.min_scale，默认为0.5。最大尺度为self.max_scale，默认为2.0。
-    -  样本获取其随机尺度信息是图片增强常用方法之一。
+    -  样本随机尺度缩放是图片增强常用方法之一。
 
 ```python
 sc = np.random.uniform(self.min_scale, self.max_scale)
@@ -298,7 +296,7 @@ label_out = cv2.resize(label_out, (new_w, new_h), interpolation=cv2.INTER_NEARES
 image_out = (image_out - self.image_mean) / self.image_std      # 归一化
 ```
 
-2. 裁剪填充，代码入下所示。
+2. 裁剪填充，代码如下所示。
    - self.crop_size设定为513，代表默认训练/测试图片大小为 $ 513 * 513 $ 。
    - self.ignore_label为255,代表标签图（语义分割灰度图）使用黑色填充边框。
    - 图片使用白色填充边框。
@@ -324,7 +322,7 @@ image_out = image_out[offset_h: offset_h + self.crop_size, offset_w: offset_w + 
 label_out = label_out[offset_h: offset_h + self.crop_size, offset_w: offset_w+self.crop_size]
 ```
 
-4. 随机左右翻转，随机训练图片翻转是数据增强的常用方法之一。
+4. 随机左右翻转，图片随机翻转是数据增强的常用方法之一。
 
 ```python
 if np.random.uniform(0.0, 1.0) > 0.5:
@@ -362,9 +360,9 @@ if np.random.uniform(0.0, 1.0) > 0.5:
     - P.ResizeBilinear
 ```
 
-#### aspp模块
+#### ASPP模块
 
-deeplabv2中的aspp在特征顶部映射图使用了四中不同采样率的空洞卷积。这表明以不同尺度采样时有效的，在Deeolabv3中向ASPP中添加了BN层（参考class ASPPConv）。不同采样率的空洞卷积可以有效捕获多尺度信息，但会发现随着采样率的增加，滤波器有效权重（权重有效的应用在特征区域，而不是填充0）逐渐变小。如下图所示：
+deeplabv2中的ASPP在特征顶部映射图使用了四种不同采样率的空洞卷积。这表明以不同尺度采样是有效的，在Deeplabv3中向ASPP中添加了BN层（参考class ASPPConv）。不同采样率的空洞卷积可以有效捕获多尺度信息，但会发现随着采样率的增加，滤波器有效权重（权重有效的应用在特征区域，而不是填充0）逐渐变小。如下图所示：
 
 ![png](images/atrous.PNG)
 
@@ -377,7 +375,7 @@ deeplabv3网络变量分析：
 名称|维度|描述
 :--:|:--:|:--:
 images_x|(16, 3, 513, 513)|输入图片维度 [batch_size, channel,h,w]
-lables|(513, 513，16)|输入图片的标签  [batch_size, h,w] （见loss.py中labels）
+lables|(513, 513, 16)|输入图片的标签  [batch_size, h,w] （见loss.py中labels）
 resnet_out|(16, 2048, 65, 65)|resnet输出(特征提取)
 aspp_x1|(16,256, 65, 65) | 第一个aspp输出（见代码aspp1输出）, rate = 1 
 aspp_x2|(16,256, 65, 65) | 第二个aspp输出（见代码aspp2输出）,  rate =6 
@@ -390,7 +388,7 @@ net_out|(16, 21, 513, 513)|ASPP模块输出经过P.ResizeBilinear操作，是整
 
 **解析：** 
 
-1. 表中的名称与代码有些出入，请根据表中英文名确定变量与代码对应。
+1. 表中的名称与代码有些出入，请根据表中英文名确定变量与代码对应关系。
 2. deeplabv3网络输出net_out维度为(16,21,513,513)。训练计算loss时（参考loss.py），使用该结果和lables比较，进行梯度更新。
 
 ### 测试流程（数据流）
