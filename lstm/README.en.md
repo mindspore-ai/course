@@ -166,7 +166,7 @@ from mindspore.common.initializer import initializer
 from mindspore.train.callback import Callback, CheckpointConfig, ModelCheckpoint, TimeMonitor, LossMonitor
 ```
 
-## Data Preprocessing
+### Data Preprocessing
 
 Process the text dataset, including encoding, word segmentation, alignment, and processing of the original data of
 GloVe, to adapt it to the network structure.
