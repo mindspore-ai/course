@@ -335,7 +335,7 @@ Class TransformerModel
 
 #### beam search（`beam_search.py`）
 
-在机器翻译中，beam search算法在测试的时候用的，因为在训练过程中，每一个decoder的输出是有与之对应的正确答案做参照，也就不需要beam search去加大输出的准确率。
+Beam Search 是一种受限的宽度优先搜索方法，经常用在各种 NLP 生成类任务中，在机器翻译中，beam search算法在测试的时候用的，因为在训练过程中，每一个decoder的输出是有与之对应的正确答案做参照，也就不需要beam search去加大输出的准确率。
 
 Transformer解码部分,使用Beam Search。每个时刻它会保存b（beam size）个概率最大的选择作为当前的最佳选择，然后解码下一时刻时，继续选择和之前保存的b个选择组合起来后的概率最大的b个选择，依次循环迭代下去，直到编码结束。
 
@@ -365,6 +365,22 @@ $$P(Y|C)=P(y_1|C)P(y_2|C,y_1),...,P(y_6|C,y_1,y_2,y_3,...,y_{max\_position\_embe
 以上就是Beam search算法的思想，当beam size=1时，就变成了贪心算法。Beam search算法例子过程如下图所示。其中橙色和绿色代表top-4路径。灰色代表淘汰路径，绿色代表最优路径。（以下例子max_position_embeddings为4）。
 
 ![png](images/search.png)
+
+#### BeamSearchDecoder 
+
+BeamSearchDecoder 定义了单步解码的操作，Beam Search Decoder是解码神经网络输出常用的一种方法，常应用在OCR、文本翻译、语音识别等算法应用中。 其目的是从神经网络生成的一个二维矩阵中计算概率最大的路径，此路径上的内容（字符）即网络要生成的目标。Beam Search搜索是为了解决贪心算法结果不准确的问题。其不止搜索一条概率最大路径，而是保存搜索的多条路径，最后再合并路径，去除占位符(blank)，以达到最优解。
+
+在Transformer模型中，beam search的方法只用在测试的情况，因为在训练过程中，每一个decoder的输出是有正确答案的，也就不需要beam search去加大输出的准确率。test的时候，假设词表大小为3，内容为a，b，c。beam size是decoder解码的时候：
+
+1： 生成第1个词的时候，选择概率最大的2个词，假设为a,c,那么当前序列就是a,c
+
+2：生成第2个词的时候，我们将当前序列a和c，分别与词表中的所有词进行组合，得到新的6个序列aa ab ac ca cb cc,然后从其中选择2个得分最高的，作为当前序列，假如为aa cb
+
+3：后面会不断重复这个过程，直到遇到结束符为止。最终输出2个得分最高的序列。
+
+![beamsearchdecoder](./images/beamsearchdecoder.png)
+
+注意:这里面的具体做法是每次将beam size个结果再分别输入到decoder中得到不同路径！这是beam search基础算法在decode中应用时的具体改动。
 
 ### 参数设定
 
@@ -458,6 +474,56 @@ cfg = edict({
 >3. 参数`max_position_embeddings`的值大于或等于`seq_length`
 
 `schema_file` 文件时控制输入样本个数的。为.json格式，如下所示。其中input_ids、segment_ids、input_mask、label_ids代表四个输入字段。type、rank、shape代表各个字段的类型、开始rank、数据维度。
+
+### 测试
+
+循环测试数据进行预测，生成过程对每个测试的数据都会把待翻译语言句子和`batch_size`个预测的句子打印输出比对；核心代码如下。
+
+```python
+tfm_model = TransformerModel(config=transformer_net_cfg, is_training=False, use_one_hot_embeddings=False)
+    print(cfg.model_file)
+    parameter_dict = load_weights(cfg.model_file)
+    load_param_into_net(tfm_model, parameter_dict)
+    tfm_infer = TransformerInferCell(tfm_model)
+    model = Model(tfm_infer)
+    
+    tokenizer = tokenization.WhiteSpaceTokenizer(vocab_file=cfg.vocab_file)
+    dataset = load_test_data(batch_size=cfg.batch_size, data_file=cfg.data_file)
+    predictions = []
+    source_sents = []
+    target_sents = []
+    f = open(cfg.token_file, 'w', encoding='utf-8')
+    f1 = open(cfg.pred_file, 'w', encoding='utf-8')
+    f2 = open(cfg.test_source_file, 'r', encoding='utf-8')
+    for batch in dataset.create_dict_iterator():
+        source_sents.append(batch["source_eos_ids"])
+        target_sents.append(batch["target_eos_ids"])
+        source_ids = Tensor(batch["source_eos_ids"], mstype.int32)
+        source_mask = Tensor(batch["source_eos_mask"], mstype.int32)
+        predicted_ids = model.predict(source_ids, source_mask)
+        #predictions.append(predicted_ids.asnumpy())
+        # ----------------------------------------decode and write to file(token file)---------------------
+        batch_out = predicted_ids.asnumpy()
+        for i in range(transformer_net_cfg.batch_size):
+            if batch_out.ndim == 3:
+                batch_out = batch_out[:, 0]
+            token_ids = [str(x) for x in batch_out[i].tolist()]
+            print(" ".join(token_ids))
+            token=" ".join(token_ids)
+            f.write(token + "\n")
+            #-------------------------------token_ids to real output file-------------------------------
+            token_ids = [int(x) for x in token.strip().split()]
+            tokens = tokenizer.convert_ids_to_tokens(token_ids)
+            sent = " ".join(tokens)
+            sent = sent.split("<s>")[-1]
+            sent = sent.split("</s>")[0]
+            print(sent.strip())
+            f1.write(f2.readline().strip()+'\t')
+            f1.write(sent.strip()+'\n')
+    f.close()
+    f1.close()
+    f2.close()
+```
 
 ### 适配训练作业
 
