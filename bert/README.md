@@ -351,7 +351,7 @@ self-attention详细的处理过程如下所示：（详细代码参考`bert_mod
 名称|维度
 :--:|:--:
 输入矩阵:embedding向量|[batch_size,seq_length,hidden_size] (16,128,768)
-矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
+矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (16,768,64)
 Query（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
 Key（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
 Value（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,128,64)
@@ -361,12 +361,10 @@ Source（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (16,1
 
 计算公式如下所示：
 
-$$
-Query = INPUT_{embedding} * P_1 \\
-Key = INPUT_{embedding} * P_2 \\
-Value = INPUT_{embedding} * P_3 \\
-OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{HiddenSize}{NumAttentionHeads}}}) * Value
-$$
+$$ Query = INPUT_{embedding} \cdot P_1 $$
+$$ Key = INPUT_{embedding} \cdot P_2 $$
+$$ Value = INPUT_{embedding} \cdot P_3 $$
+$$ OUT = softmax(\frac{Query \cdot Key^T}{\sqrt{\frac{HiddenSize}{NumAttentionHeads}}}) * Value $$
 
 ![png](images/self-attention.png)
 

@@ -97,8 +97,8 @@ create_data.py代码是对原始数据进行处理。主要处理有两个方面
 
 - source_train.txt: 训练数据集txt格式。包括中英对照。共18886条。
 - source_test.txt:测试数据集txt格式。包括中英对照。共4721条。
-- train.mindrecord：训练数据集mindrecord格式，本实验直接使用mindrecord格式数据训练
-- test.mindrecord：测试数据集mindrecord格式，本实验直接使用mindrecord格式数据训练
+- train.mindrecord：训练数据集mindrecord格式，本实验直接使用mindrecord格式数据进行训练。
+- test.mindrecord：测试数据集mindrecord格式，本实验直接使用mindrecord格式数据进行测试。
 
 mindrecord数据字段如下所示，以`Peace talks will begin next week.—和 平 会 谈 将 在 下 周 开 始 。`句子对为例。
 
@@ -122,7 +122,7 @@ mindrecord数据字段如下所示，以`Peace talks will begin next week.—和
 
 `[1,126,916,42,558,395,20,84,323,102,362,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
 
-- `target_sos_mask`：添加句子开头标记后中文句子mask编码。例子：<s> 和 平 会 谈 将 在 下 周 开 始 。
+- `target_sos_mask`：添加句子开头标记后中文句子mask编码。例子：`<s> 和 平 会 谈 将 在 下 周 开 始 。`
 
 `[1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
 
@@ -130,7 +130,7 @@ mindrecord数据字段如下所示，以`Peace talks will begin next week.—和
 
 `[126,916,42,558,395,20,84,323,102,362,4,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
 
-- `target_eos_mask`：添加句子结束标记后中文句子mask编码。例子：和 平 会 谈 将 在 下 周 开 始 。 </s>
+- `target_eos_mask`：添加句子结束标记后中文句子mask编码。例子：`和 平 会 谈 将 在 下 周 开 始 。 </s>`
 
 ` [1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
 
@@ -158,27 +158,27 @@ Class TransformerModel
 - Class EmbeddingPostprocessor               # Embedding位置向量编码
 - Class CreateAttentionMaskFromInputMask      # 创建注意力机制mask
 - Class TransformerEncoder                   # Transformer编码
-    - Class EncoderCell（共循环6次EncoderCell（transformer_net_cfg.num_hidden_layers））      
+    - Class EncoderCell（共循环6次EncoderCell（transformer_net_cfg.num_hidden_layers））
         - Class SelfAttention                 # 注意力机制
             - Class LayerPreprocess
                 - nn.LayerNorm
             - Class MultiheadAttention        # 多头注意力机制（头数参考transformer_net_cfg.num_attention_heads）
-            - Class LayerPostprocess           # 后处理（resnet连接）
+            - Class LayerPostprocess           # 后处理（残差连接）
                 - P.TensorAdd()
         - Class FeedForward                   # 前馈模块
             - Class LayerPreprocess           # 前处理（归一化）
             - nn.Dense
             - nn.Dense
-            - Class LayerPostprocess           # 后处理（resnet连接）
+            - Class LayerPostprocess           # 后处理（残差连接）
     - Class LayerPreprocess                    # 前处理（归一化）
 
-- Class EmbeddingLookup(target_ids)                      # Embedding词向量编码
+- Class EmbeddingLookup(target_ids)           # Embedding词向量编码
 - Class EmbeddingPostprocessor               # Embedding位置向量编码
 - Class CreateAttentionMaskFromInputMask      # 创建注意力机制mask
 - Class TransformerDecoder  
-    - Class DecoderCell（共循环6次EncoderCell（transformer_net_cfg.num_hidden_layers））    
+    - Class DecoderCell（共循环6次DecoderCell（transformer_net_cfg.num_hidden_layers））
         - Class SelfAttention(is_encdec_att=False)
-        - - Class LayerPreprocess       # 前处理
+            - Class LayerPreprocess       # 前处理
             - Class MultiheadAttention    # 多头注意力机制
             - Class LayerPostprocess      #后处理
         - Class SelfAttention(is_encdec_att=True)         # cross-attention
@@ -196,11 +196,11 @@ transformer网络如下图所示，其中左边为编码网路，右边 为解�
 
 [1] 图片来源https://proceedings.neurips.cc/paper/2017/file/3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf
 
-Transformer网络训练重要变量维度介绍（只有部分变量）如下表所示，可参考后边的原理理解。
+Transformer训练网络重要变量维度介绍（只有部分变量）如下表所示，可参考后边的原理理解。
 
 变量|维度|说明                             
 :--:|:--:|:--:
-TransformerModel输入source_ids             |（32，40）|同数据预处理source_sos_ids
+TransformerModel输入source_ids |（32，40）|同数据预处理source_sos_ids
 TransformerModel输入source_mask|（32，40）|同数据预处理source_sos_mask
 TransformerModel输入target_ids|（32，40）|同数据预处理target_sos_ids
 TransformerModel输入target_mask|（32，40）|同数据预处理target_sos_mask
@@ -216,11 +216,11 @@ PredLogProbs 输出decoder_output|(32*40,10067）| transormer网络输出
 
 **解析：** 
 
-- 表中32代表batch_size，40代表序列长度，512代表hiddle长度，10067代表词表长度。
-- 网络输出PredLogProbs为batch_size个样例，的输出预测，预测长度为40，onehot形式。每个预测值都有10067个概率与之对应，代表输出为词表中每个词的概率。概率最大的为其输出。
+- 表中32代表batch_size，40代表序列长度，512代表hidden_size，10067代表词表长度。
+- 网络输出PredLogProbs为batch_size个样例的输出预测，预测长度为40，onehot形式。每个预测值都有10067个概率与之对应，代表输出为词表中每个词的概率。概率最大的为其输出。
 - decoder_output与label_ids和label_weights比较得到loss值，从而更新梯度。
 
-Transformer网络测试重要变量维度介绍（只有部分变量）如下表所示，可参考后边的原理理解。
+Transformer测试网络重要变量维度介绍（只有部分变量）如下表所示，可参考后边的原理理解。
 
 变量|维度|说明                             
 :--:|:--:|:--:
@@ -247,13 +247,13 @@ Transformer的输入部分是个线性序列，每个词有两个embedding，如
 
 Transformer模型并没有捕捉顺序序列的能力，也就是说无论句子的结构怎么打乱，Transformer都会得到类似的结果。换句话说，Transformer只是一个功能更强大的词袋模型而已。为了解决这个问题，论文中在编码词向量时引入了位置编码（Position Embedding）的特征。具体地说，位置编码会在词向量中加入了单词的位置信息，这样Transformer就能区分不同位置的单词了。
 
-Transformer网络作者设计了位置编码规则，编码规则如下所示：
+Transformer网络作者设计了位置编码（Position Embedding, PE）规则，编码规则如下所示：
 
-$$
-position\_encoding = [sin(\frac{pos}{10000^{\frac{2i}{depth}}}),cos(\frac{pos}{10000^{\frac{2i}{depth}}})]
-$$
+$$ PE(pos, 2i) = sin(\frac{pos}{10000^{\frac{2i}{depth}}}) $$
+$$ PE(pos, 2i + 1) = cos(\frac{pos}{10000^{\frac{2i}{depth}}}) $$
 
-在上式中， pos表示单词的位置，i表示单词的维度。关于位置编码的实现可在`transformer_model.py`中的position\_encoding函数找到对应的代码。不同维度上sin 或cos的波长从$2\pi$到$10000*2\pi$都有；区分了奇偶数维度的函数形式。这使得每一维度上都包含了一定的位置信息，而各个位置字符的位置编码又各不相同。
+在上式中，pos表示单词的位置；depth为每个单词位置编码的维度，同单词embedding_size，本实验中是512；i为位置编码中元素的索引，因为奇数和偶数位置的值分别由sin和cos计算。
+sin和cos的函数特性使得该位置编码方法可以适应无限长度的句子。关于位置编码的实现可在`transformer_model.py`中的position_encoding函数找到对应的代码。
 
 该位置编码方式有以下优点：
 
@@ -263,7 +263,7 @@ $$
 
 #### Self-Attention（Class MultiheadAttention）
 
-self-attention，思想和attention类似，但是self-attention是Transformer用来将其他相关单词的“理解”转换成我们正常理解的单词的一种思路，能帮助当前节点不仅仅只关注当前的词，从而能获取到上下文的语义。我们看个例子：
+self-attention，思想和attention类似，但是self-attention是作用在自身句子上的。使当前节点不仅仅只关注当前的词，同事关注上下文的单词，从而能获取到上下文的语义。我们看个例子：
 The animal didn't cross the street because it was too tired
 这里的it到底代表的是animal还是street呢，对于我们来说能很简单的判断出来，但是对于机器来说，是很难判断的，self-attention就能够让机器把it和animal联系起来。
 
@@ -285,7 +285,7 @@ self-attention详细的处理过程如下所示：（详细代码参考`transfor
 名称|维度
 :--:|:--:
 输入矩阵:embedding向量|[batch_size,seq_length,hidden_size] (32,40,512)
-矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)(64=512/8)
+矩阵P(单头)|[batch_size,seq_length,hidden_size/num_attention_heads] (32,512,64)(64=512/8)
 Query（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)
 Key（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)
 Value（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,40,64)
@@ -295,12 +295,10 @@ Source（单头）|[batch_size,seq_length,hidden_size/num_attention_heads] (32,4
 
 计算公式如下所示：
 
-$$
-Query = INPUT_{embedding} * P_1 \\
-Key = INPUT_{embedding} * P_2 \\
-Value = INPUT_{embedding} * P_3 \\
-OUT = softmax(\frac{Query * Key^T}{\sqrt{\frac{hiddenSize}{NumAttentionHeads}}}) * Value
-$$
+$$ Query = INPUT_{embedding} \cdot P_1 $$
+$$ Key = INPUT_{embedding} \cdot P_2 $$
+$$ Value = INPUT_{embedding} \cdot P_3 $$
+$$ OUT = softmax(\frac{Query \cdot Key^T}{\sqrt{\frac{hiddenSize}{NumAttentionHeads}}}) * Value $$
 
 ![png](images/self-attention.png)
 
@@ -310,7 +308,7 @@ $$
 
 ```
 Class TransformerModel
-- Class EmbeddingLookup(source_ids)                      # Embedding词向量编码
+- Class EmbeddingLookup(source_ids)           # Embedding词向量编码
 - Class EmbeddingPostprocessor               # Embedding位置向量编码
 - Class CreateAttentionMaskFromInputMask      # 创建注意力机制mask
 - Class TransformerEncoder                   # Transformer编码
@@ -319,13 +317,13 @@ Class TransformerModel
             - Class LayerPreprocess
             - nn.LayerNorm
             - Class MultiheadAttention        # 多头注意力机制（头数参考transformer_net_cfg.num_attention_heads）
-            - Class LayerPostprocess           # 后处理（resnet连接）
+            - Class LayerPostprocess           # 后处理（残差连接）
             - P.TensorAdd()
         - Class FeedForward                   # 前馈模块
             - Class LayerPreprocess           # 前处理（归一化）
             - nn.Dense
             - nn.Dense
-            - Class LayerPostprocess           # 后处理（resnet连接）
+            - Class LayerPostprocess           # 后处理（残差连接）
     - Class LayerPreprocess                    # 前处理（归一化）
     
 - Class TileBeamen(ecoder_output)
@@ -337,7 +335,7 @@ Class TransformerModel
 
 Beam Search 是一种受限的宽度优先搜索方法，经常用在各种 NLP 生成类任务中，在机器翻译中，beam search算法在测试的时候用的，因为在训练过程中，每一个decoder的输出是有与之对应的正确答案做参照，也就不需要beam search去加大输出的准确率。
 
-Transformer解码部分,使用Beam Search。每个时刻它会保存b（beam size）个概率最大的选择作为当前的最佳选择，然后解码下一时刻时，继续选择和之前保存的b个选择组合起来后的概率最大的b个选择，依次循环迭代下去，直到编码结束。
+Transformer解码部分使用Beam Search。每个时刻它会保存b（beam size）个概率最大的选择作为当前的最佳选择，然后解码下一时刻时，继续选择和之前保存的b个选择组合起来后的概率最大的b个选择，依次循环迭代下去，直到编码结束。
 
 如下从英文到中文的翻译：
 英文：`He got angry .`
@@ -354,11 +352,11 @@ Transformer解码部分,使用Beam Search。每个时刻它会保存b（beam siz
 
 2. 接着生成第二个输出$y_2$，我们已经得到编码阶段的语义向量C，还有第一个输出$y_1$。此时有个问题，$y_1$有四个，怎么作为这一时刻的输入呢（解码阶段需要将前一时刻的输出作为当前时刻的输入），答案就是都试下，具体做法是：
    
-    假设`他`为第一时刻的输出，将其作为第二时刻的输入，得到在已知(C,我) 的条件下，各个单词作为该时刻输出的条件概率 $P (b_i∣C ,他)$，前两个词翻译为{我，b_i}的概率为$P(I|C) P(y_2|C ,I) $。同理可以假设`了`、`。`、`生`作为第一时刻的输出，得到前两个词翻译为{了，b_i}、{。，b_i}、{生，b_i}的概率。从这些概率中选择概率值top4的那四种组合。
+    假设`他`为第一时刻的输出，将其作为第二时刻的输入，得到在已知(C,我) 的条件下，各个单词作为该时刻输出的条件概率 $P(b_i∣C, 他)$，前两个词翻译为{我，b_i}的概率为$P(我|C) P(y_2|C,我) $。同理可以假设`了`、`。`、`生`作为第一时刻的输出，得到前两个词翻译为{了，b_i}、{。，b_i}、{生，b_i}的概率。从这些概率中选择概率值top4的那四种组合。
     
-3. 接下来要做的重复这个过程，逐步生成单词，直到遇到结束标识符停止。最后得到概率最大的那个生成序列。其概率为：
+3. 接下来要做的就是重复这个过程，逐步生成单词，直到遇到结束标识符停止。最后得到概率最大的那个生成序列。其概率为：
 
-$$P(Y|C)=P(y_1|C)P(y_2|C,y_1),...,P(y_6|C,y_1,y_2,y_3,...,y_{max\_position\_embeddings})$$
+$$P(Y|C)=P(y_1|C)P(y_2|C,y_1),...,P(y_6|C,y_1,y_2,y_3,...,y_{max\\_position\\_embeddings})$$
 
 其中`max_position_embeddings`参考train_config.py或eval_config.py中`transformer_net_cfg.max_position_embeddings`
 
@@ -370,17 +368,18 @@ $$P(Y|C)=P(y_1|C)P(y_2|C,y_1),...,P(y_6|C,y_1,y_2,y_3,...,y_{max\_position\_embe
 
 BeamSearchDecoder 定义了单步解码的操作，Beam Search Decoder是解码神经网络输出常用的一种方法，常应用在OCR、文本翻译、语音识别等算法应用中。 其目的是从神经网络生成的一个二维矩阵中计算概率最大的路径，此路径上的内容（字符）即网络要生成的目标。Beam Search搜索是为了解决贪心算法结果不准确的问题。其不止搜索一条概率最大路径，而是保存搜索的多条路径，最后再合并路径，去除占位符(blank)，以达到最优解。
 
-在Transformer模型中，beam search的方法只用在测试的情况，因为在训练过程中，每一个decoder的输出是有正确答案的，也就不需要beam search去加大输出的准确率。test的时候，假设词表大小为3，内容为a，b，c。beam size是decoder解码的时候：
+在Transformer模型中，beam search的方法只用在测试的情况，因为在训练过程中，每一个decoder的输出是有正确答案的，也就不需要beam search去加大输出的准确率。
+test的时候，假设词表大小为3，内容为a，b，c。beam size为2，decoder解码的时候：
 
-1： 生成第1个词的时候，选择概率最大的2个词，假设为a,c,那么当前序列就是a,c
+1. 生成第1个词的时候，选择概率最大的2个词，假设为a,c,那么当前序列就是a,c
 
-2：生成第2个词的时候，我们将当前序列a和c，分别与词表中的所有词进行组合，得到新的6个序列aa ab ac ca cb cc,然后从其中选择2个得分最高的，作为当前序列，假如为aa cb
+2. 生成第2个词的时候，我们将当前序列a和c，分别与词表中的所有词进行组合，得到新的6个序列aa ab ac ca cb cc,然后从其中选择2个得分最高的，作为当前序列，假如为aa cb
 
-3：后面会不断重复这个过程，直到遇到结束符为止。最终输出2个得分最高的序列。
+3. 后面会不断重复这个过程，直到遇到结束符为止。最终输出2个得分最高的序列。
 
 ![beamsearchdecoder](./images/beamsearchdecoder.png)
 
-注意:这里面的具体做法是每次将beam size个结果再分别输入到decoder中得到不同路径！这是beam search基础算法在decode中应用时的具体改动。
+注意：这里面的具体做法是每次将beam size个结果再分别输入到decoder中得到不同路径。这是beam search基础算法在decoder中应用时的具体做法。
 
 ### 参数设定
 
@@ -404,7 +403,7 @@ cfg = edict({
 
 ```python
 cfg = edict({
-    #--------------------------------------nework confige---------------
+    #--------------------------------------network config---------------
     'transformer_network': 'base',
     'init_loss_scale_value': 1024,
     'scale_factor': 2,
@@ -416,21 +415,21 @@ cfg = edict({
         'start_decay_step': 16000,
         'min_lr': 0.0,
     }),
-    #-----------------------------------save model confige-------------
-    'enable_save_ckpt': True ,        #Enable save checkpointdefault is true.
+    #-----------------------------------save model config-------------
+    'enable_save_ckpt': True ,        #Enable save checkpoint, default is true.
     'save_checkpoint_steps':590,   #Save checkpoint steps, default is 590.
     'save_checkpoint_num':2,     #Save checkpoint numbers, default is 2.
     'save_checkpoint_path': './checkpoint',    #Save checkpoint file path,default is ./checkpoint/
     'save_checkpoint_name':'transformer-32_40',
     'checkpoint_path':'',     #Checkpoint file path
     
-    #-------------------------------device confige----------------------
+    #-------------------------------device config----------------------
     'enable_data_sink':False,   #Enable data sink, default is False.
     'device_id':0,
     'device_num':1,
     'distribute':False,
     
-    # -----------------mast same with the dataset-----------------------
+    # -----------------same as the dataset-----------------------
     'seq_length':40,
     'vocab_size':10067,
     
@@ -457,13 +456,13 @@ cfg = edict({
     'token_file': './token-32-40.txt',
     'pred_file':'./pred-32-40.txt',
     
-    # ----------------mast same with the train config and the datsset---
+    # ----------------same as the train config and the datsset---
     'seq_length':40,
     'vocab_size':10067,
 
     #-------------------------------------eval config-------------------
     'batch_size':32,
-    'max_position_embeddings':40       # mast same with the train config
+    'max_position_embeddings':40       # same as the train config
 })
 
 ```
@@ -473,7 +472,7 @@ cfg = edict({
 >2. 参数`vocab_size`、`seq_length`与数据集统一。本实验给定的数据集`seq_length=40`（与source_train.txt、source_test.txt文件英/中最长长度相同）、`vocab_size=10067`(与vocab文件行数相同)
 >3. 参数`max_position_embeddings`的值大于或等于`seq_length`
 
-`schema_file` 文件时控制输入样本个数的。为.json格式，如下所示。其中input_ids、segment_ids、input_mask、label_ids代表四个输入字段。type、rank、shape代表各个字段的类型、开始rank、数据维度。
+`schema_file` 控制输入样本个数的。为`.json`格式，如下所示。其中input_ids、segment_ids、input_mask、label_ids代表四个输入字段。type、rank、shape代表各个字段的类型、开始rank、数据维度。
 
 ### 测试
 
@@ -645,7 +644,7 @@ print('BLUE_mean:',score_mean)
 
 实验结果如下所示，只展示测试和评测结果。
 
-测试翻译结果如下所示（pred.txt）,其中第一列为英文输入，第二列为标准翻译答案，第三列为模型预测输出。（测试输出保存了测试输出的token值和测试结果，这里不展示token值文件）
+测试翻译结果如下所示（pred.txt），其中第一列为英文输入，第二列为标准翻译答案，第三列为模型预测输出。（测试输出保存了测试输出的token值和测试结果，这里不展示token值文件）
 
 ```
 Hi .	你 好 。	嗨 ！
