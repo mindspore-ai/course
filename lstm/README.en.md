@@ -9,17 +9,17 @@ This experiment describes how to use MindSpore to train the LSTM model in the CP
 ### Introdution to LSTM
 
 The long-term short-term memory network-commonly referred to as "LSTM" is a special kind of RNN that can learn long-term
- dependencies. It is mainly to solve the problem of gradient disappearance and gradient explosion in the training 
+ dependencies. It is mainly to solve the problem of gradient disappearance and gradient explosion in the training
  process of long sequences, and is suitable for processing and predicting important events with very long intervals and
  delays in time sequences. It was first proposed by Hochreiter & Schmidhuber in 1997,
  and after being refined and popularized by many experts and scholars, it is now widely used due to its excellent performance.
 
 The design purpose of LSTM is very clear: to solve long-term dependency problems. For LSTM, "remembering" information
  for a long time is a default behavior, not something difficult to learn.
- 
+
 RNN is a chain that contains a large number of repetitive neural network modules. In a standard RNN, these repetitive
  neural network structures are often very simple, such as a structure containing only a single tanh layer:
- 
+
 ![LSTM1](./images/LSTM1.png)
 
 LSTM also has a similar chain structure, but the difference is that its repeating module is different, and it
@@ -69,9 +69,9 @@ The sigmoid layer outputs a number between 0 and 1. The pointwise multiplication
 
 MindSpore 1.0.0 CPU and third-party auxiliary modules:
 
-- MindSpore: https://www.mindspore.cn/install/en
-- Jupyter Notebook/JupyterLab: https://jupyter.org/install
-- gensim: https://pypi.org/project/gensim/
+- MindSpore: <https://www.mindspore.cn/install/en>
+- Jupyter Notebook/JupyterLab: <https://jupyter.org/install>
+- gensim: <https://pypi.org/project/gensim/>
 
 ## Preparation
 
@@ -81,7 +81,7 @@ IMDB is a movie review website similar to Douban, and the data set used in this 
  website. The IMDB data set contains a total of 50,000 movie review texts, 25,000 training data and test data each.
  Each movie review text is marked as positive or negative, so this experiment can be regarded as a two-category problem.
  IMDB dataset official website: [Large Movie Review Dataset](http://ai.stanford.edu/~amaas/data/sentiment/).
- 
+
 - Method 1: Download [aclImdb_v1.tar.gz](http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz) from the official website of Stanford University and unzip it.
 - Method 2, download [aclImdb_v1.tar.gz](https://obs-deeplearning.obs.cn-north-1.myhuaweicloud.com/obs-80d2/aclImdb_v1.tar.gz) from Huawei Cloud OBS and unzip it.
 
@@ -90,7 +90,7 @@ At the same time, download the GloVe file and add a new line `400000 200` at the
 
 Modifiy glove.6B.200.txt as follows(you may need Sublime Text):
 
-```
+```text
 400000 200
 the -0.071549 0.093459 0.023738 -0.090339 0.056123 0.32547…
 ```
@@ -109,10 +109,10 @@ In the IMDB dataset, the number of positive samples is similar to that of negati
 ### Script Preparation
 
 Create a Jupyter Notebook and copy the code in the subsequent experiment steps to the Notebook for execution.
-Alternatively, download corresponding scripts from [mindspore/course](https://gitee.com/mindspore/mindspore/tree/r1.0/model_zoo/official/nlp/lstm) and run the script in a Terminal.
+Alternatively, copy the code in the subsequent experiment steps to the  `main.py` and run the script in a Terminal.
 Organize the script and dataset as follows:
 
-```
+```text
 lstm
 ├── aclImdb
 │   ├── imdbEr.txt
@@ -125,6 +125,12 @@ lstm
 │   ├── glove.6B.100d.txt # optional
 │   ├── glove.6B.200d.txt
 │   ├── glove.6B.300d.txt # optional
+├── src # ignored in English version
+│   ├── config.py
+│   ├── lstm.py
+│   ├── imdb.py
+│   ├── lr_schedule.py
+│   └── dataset.py
 └── main.ipynb # Alternatively, main.py
 ```
 
@@ -162,7 +168,7 @@ from mindspore.train.callback import Callback, CheckpointConfig, ModelCheckpoint
 
 ## Data Preprocessing
 
-Process the text dataset, including encoding, word segmentation, alignment, and processing of the original data of 
+Process the text dataset, including encoding, word segmentation, alignment, and processing of the original data of
 GloVe, to adapt it to the network structure.
 
 ```python
@@ -300,7 +306,7 @@ class ImdbParser():
 ```
 
 Define the `convert_to_mindrecord` function to convert the dataset format to MindRecord for MindSpore to read.
-The `weight.txt` file in the `_convert_to_mindrecord` function is the weight parameter file automatically generated 
+The `weight.txt` file in the `_convert_to_mindrecord` function is the weight parameter file automatically generated
 after data preprocessing.
 
 ```python
@@ -548,7 +554,7 @@ class SentimentNet(nn.Cell):
 
 ### Defining the Callback Function
 
-Define the callback function `EvalCallBack` to validate the accuracy of the model every number of epochs during training. 
+Define the callback function `EvalCallBack` to validate the accuracy of the model every number of epochs during training.
 After the training, quickly select the optimal model by viewing the accuracy change of the corresponding model.
 
 ```python
@@ -558,7 +564,7 @@ class EvalCallBack(Callback):
         self.eval_dataset = eval_dataset
         self.eval_per_epoch = eval_per_epoch
         self.epoch_per_eval = epoch_per_eval
-        
+
     def epoch_end(self, run_context):
         cb_param = run_context.original_args()
         cur_epoch = cb_param.cur_epoch_num
@@ -571,7 +577,7 @@ class EvalCallBack(Callback):
 
 ### Configure the running information
 
-The parser module is used to import necessary information, such as the dataset storage path and GloVe storage path. 
+The parser module is used to import necessary information, such as the dataset storage path and GloVe storage path.
 This enables flexible input of the configuration that changes frequently during code running.
 
 - `preprocess`: specifies whether to preprocess the dataset. The default value is false.
@@ -584,7 +590,7 @@ This enables flexible input of the configuration that changes frequently during 
 
 ```python
 parser = argparse.ArgumentParser(description='MindSpore LSTM Example')
-parser.add_argument('--preprocess', type=str, default='false', choices=['true', 'false'],			help='whether to preprocess data.')
+parser.add_argument('--preprocess', type=str, default='false', choices=['true', 'false'],   help='whether to preprocess data.')
 parser.add_argument('--aclimdb_path', type=str, default="./aclImdb",
                     help='path where the dataset is stored.')
 parser.add_argument('--glove_path', type=str, default="./glove",
@@ -611,11 +617,11 @@ if args.preprocess == "true":
     print("======================= Successful =======================")
 ```
 
-After the conversion is successful, a MindRecord file will be generated in the `preprocess` directory. 
-Normally, this operation does not need to be executed every time when the data set is unchanged. 
+After the conversion is successful, a MindRecord file will be generated in the `preprocess` directory.
+Normally, this operation does not need to be executed every time when the data set is unchanged.
 The `preprocess` file directory is as follows:
 
-```
+```text
  $ tree preprocess
  ├── aclImdb_test.mindrecord0
  ├── aclImdb_test.mindrecord0.db
@@ -677,7 +683,7 @@ opt = nn.Momentum(network.trainable_params(), cfg.learning_rate, cfg.momentum)
 ### Synchronous Model Training and Validation
 
 Load the training dataset (`ds_train`), configure the checkpoint parameter, and use the `model.train` API to train the model.
-This step takes about 7 minutes on the GPU. It requires a longer time on the CPU. According to the output, the loss 
+This step takes about 7 minutes on the GPU. It requires a longer time on the CPU. According to the output, the loss
 value gradually decreases with the training and finally reaches about 0.225. And the validation accuracy is about 83%.
 
 ```python
@@ -700,7 +706,7 @@ else:
 print("============== Training Success ==============")
 ```
 
-```
+```text
 ============== Starting Training ==============
 epoch: 1 step: 1, loss is 0.6938
 epoch: 1 step: 2, loss is 0.6922
@@ -730,5 +736,5 @@ Epoch time: 63056.078, per step time: 80.738, avg loss: 0.354
 
 ## Summary
 
-This experiment helps us understand how to use MindSpore to process sentiment classification problems in natural 
+This experiment helps us understand how to use MindSpore to process sentiment classification problems in natural
 languages, how to define and initialize the LSTM-based SentimentNet network for model training, and how to validate the accuracy.
