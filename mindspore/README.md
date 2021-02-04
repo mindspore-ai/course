@@ -10,7 +10,7 @@ MindSpore是一个开源全场景AI计算框架，最佳匹配昇腾AI处理器�
 - MindExpress子系统主要是指Python表达子系统，通过高低两层API支撑用户进行网络构建、子图执行以及单算子执行。MindExpress将用户编写的代码解析为中间表示（Intermediate Representation，IR）。
 - MindCompiler子系统提供面向MindIR的图级即时编译能力：
     - Graph High Level Optimization (GHLO)面向应用，进行偏前端的优化和处理，如类型推倒、自动微分(Auto Difference)、二阶优化、自动并行等。
-    - Graph Low Level Optimization (GHLO)面向硬件，进行偏底层的优化，如算子融合、layout优化、冗余消除、内存优化等。
+    - Graph Low Level Optimization (GLLO)面向硬件，进行偏底层的优化，如算子融合、layout优化、冗余消除、内存优化等。
 - MindRT子系统是统一的运行时（RunTime）系统，支持端、云多种设备形态要求，支持多种硬件设置的调度管理，如Ascend、GPU、CPU。
     - 将全图下沉到Ascend芯片上（循环、变量、计算等），图执行本身异步化，减少host-device交互开销。同时输入/输出数据异步并行拷贝，device通过队列等待和触发，从而隐藏数据读取、预处理的开销。
     - 通过静态内存规划、内存池化管理，提升内存复用率，减少运行时内存创建和销毁的开销。
@@ -164,7 +164,6 @@ Tensor提供了类似Numpy的索引接口，语法和限制同Numpy类似，具�
 import pprint
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.ops import operations as P
 from mindspore.common.api import ms_function
 
 x = Tensor([[0, 1, 2],
@@ -208,7 +207,6 @@ Tensor也提供了类似Numpy的切片接口，语法和限制同Numpy类似。�
 import pprint
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.ops import operations as P
 from mindspore.common.api import ms_function
 
 x = Tensor([[0, 1, 2],
@@ -292,6 +290,8 @@ pprint.pprint(slice())
      Tensor(shape=[2, 3], dtype=Float16, value=
     [[ 0.0000e+00,  1.0000e+00,  2.0000e+00],
      [ 4.0000e+01,  4.1000e+01,  4.2000e+01]]))
+
+**提示：** 在Ascend环境上可以基于切片修改Tensor中部分元素的值，基于索引修改值后续会支持，CPU/GPU平台上也会陆续支持。
 
 #### 张量的拼接
 
