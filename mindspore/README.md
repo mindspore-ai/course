@@ -89,7 +89,7 @@ from mindspore import Tensor
 
 x = Tensor([[1, 2], [3, 4]], ms.int32)
 
-print(x.shape, x.dtype, x.dim(), x.size())
+print(x.shape, x.dtype, x.dim, x.size)
 print(x.asnumpy())
 x.set_dtype(ms.float32)
 print(x)
@@ -114,16 +114,11 @@ print(x)
 
 ```python
 from mindspore import Tensor
-from mindspore.ops import functional as F
-from mindspore.common.api import ms_function
+from mindspore import ops
 
 x = Tensor([[1, 2], [3, 4]])
-
-@ms_function
-def reshape():
-    return F.reshape(x, (1, 4))
-
-print(reshape())
+x = ops.reshape(x, (1, 4))
+print(x)
 ```
 
     [[1 2 3 4]]
@@ -139,17 +134,12 @@ print(reshape())
 import mindspore as ms
 from mindspore import Tensor
 from mindspore.ops import operations as P
-from mindspore.common.api import ms_function
 
-input_tensor = Tensor([[1, 2, 3], [4, 5, 6]], ms.float32)
+x = Tensor([[1, 2, 3], [4, 5, 6]], ms.float32)
 perm = (1, 0)
 transpose = P.Transpose()
-
-@ms_function
-def trans():
-    return transpose(input_tensor, perm)
-
-print(trans())
+x = transpose(x, perm)
+print(x)
 ```
 
     [[1. 4.]
@@ -161,10 +151,8 @@ print(trans())
 Tensor提供了类似Numpy的索引接口，语法和限制同Numpy类似，具体参见如下例子。
 
 ```python
-import pprint
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.common.api import ms_function
 
 x = Tensor([[0, 1, 2],
             [10, 11, 12],
@@ -172,31 +160,24 @@ x = Tensor([[0, 1, 2],
             [30, 31, 32],
             [40, 41, 42]], ms.float16)
 
-@ms_function
-def index():
-    # 简单写法
-    ele = x[2, 1]
-    row = x[2]
-    col = x[:, 1]
-    # 级联写法
-    cascade = x[2][1]
-    # tuple写法
-    tuple_ = x[(2, 1)]
-    # 省略写法，...代表任意维度
-    ellipsis = x[..., 1]
-    return ele, row, col, cascade, tuple_, ellipsis
-
-pprint.pprint(x.shape)
-pprint.pprint(index())
+# 简单写法
+print(x[2, 1])
+print(x[2])
+print(x[:, 1])
+# 级联写法
+print(x[2][1])
+# tuple写法
+print(x[(2, 1)])
+# 省略写法，...代表任意维度
+print(x[..., 1])
 ```
 
-    (5, 3)
-    (Tensor(shape=[], dtype=Float16, value= 21),
-     Tensor(shape=[3], dtype=Float16, value= [ 2.0000e+01,  2.1000e+01,  2.2000e+01]),
-     Tensor(shape=[5], dtype=Float16, value= [ 1.0000e+00,  1.1000e+01,  2.1000e+01,  3.1000e+01,  4.1000e+01]),
-     Tensor(shape=[], dtype=Float16, value= 21),
-     Tensor(shape=[], dtype=Float16, value= 21),
-     Tensor(shape=[5], dtype=Float16, value= [ 1.0000e+00,  1.1000e+01,  2.1000e+01,  3.1000e+01,  4.1000e+01]))
+    21.0
+    [20. 21. 22.]
+    [ 1. 11. 21. 31. 41.]
+    21.0
+    21.0
+    [ 1. 11. 21. 31. 41.]
 
 Tensor也提供了类似Numpy的切片接口，语法和限制同Numpy类似。有如下注意事项：
 
@@ -204,10 +185,8 @@ Tensor也提供了类似Numpy的切片接口，语法和限制同Numpy类似。�
 - 索引与切片混合使用，索引作用的维度/坐标轴会被剥离（索引的固有效果）。
 
 ```python
-import pprint
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.common.api import ms_function
 
 x = Tensor([[0, 1, 2],
             [10, 11, 12],
@@ -216,80 +195,65 @@ x = Tensor([[0, 1, 2],
             [40, 41, 42]], ms.float16)
 idx = Tensor([0, 2, 4], ms.int32)
 
-@ms_function
-def slice():
-    # 简单切片，[start:end]
-    simple_0 = x[0:2, 0:2]
-    simple_1 = x[0:2, :]
-    simple_2 = x[:, 0:2]
-    
-    # step切片，[start:stop:step]
-    step_0 = x[0:5:2, 0:3:2]
-    step_1 = x[0:5:2]
-    step_2 = x[::, 0:3:2]
-    
-    # tensor切片，Tensor([row1, row3])，仅支持沿第一维操作
-    tensor = x[idx]
-    
-    # 切片+索引混合，注意返回的Tensor维度变化
-    mix_0 = x[1, 0:2] # 维度降1
-    mix_1 = x[1, 0:3:2] # 维度降1
-    mix_2 = x[..., 0:3:2]
-    
-    # 简单切片+step切片混合
-    mix_3 = x[0:2, 0:3:2]
-    
-    # 不支持级联，相当于连续调用[]
-    cascade = x[0:5:2][0:3:2]
-    
-    return simple_0, simple_1, simple_2, step_0, step_1, step_2, tensor, mix_0, mix_1, mix_2, mix_3, cascade
-pprint.pprint(slice())
+# 简单切片，[start:end]
+print(x[0:2, 0:2])
+print(x[0:2, :])
+print(x[:, 0:2])
+
+# step切片，[start:stop:step]
+print(x[0:5:2, 0:3:2])
+print(x[0:5:2])
+print(x[::, 0:3:2])
+
+# tensor切片，Tensor([row1, row3])，仅支持沿第一维操作
+print(x[idx])
+
+# 切片+索引混合，注意返回的Tensor维度变化
+print(x[1, 0:2]) # 维度降1
+print(x[1, 0:3:2]) # 维度降1
+print(x[..., 0:3:2])
+
+# 简单切片+step切片混合
+print(x[0:2, 0:3:2])
+
+# 不支持级联，相当于连续调用[]
+print(x[0:5:2][0:3:2])
 ```
 
-    (Tensor(shape=[2, 2], dtype=Float16, value=
-    [[ 0.0000e+00,  1.0000e+00],
-     [ 1.0000e+01,  1.1000e+01]]),
-     Tensor(shape=[2, 3], dtype=Float16, value=
-    [[ 0.0000e+00,  1.0000e+00,  2.0000e+00],
-     [ 1.0000e+01,  1.1000e+01,  1.2000e+01]]),
-     Tensor(shape=[5, 2], dtype=Float16, value=
-    [[ 0.0000e+00,  1.0000e+00],
-     [ 1.0000e+01,  1.1000e+01],
-     [ 2.0000e+01,  2.1000e+01]
-     [ 3.0000e+01,  3.1000e+01],
-     [ 4.0000e+01,  4.1000e+01]]),
-     Tensor(shape=[3, 2], dtype=Float16, value=
-    [[ 0.0000e+00,  2.0000e+00],
-     [ 2.0000e+01,  2.2000e+01],
-     [ 4.0000e+01,  4.2000e+01]]),
-     Tensor(shape=[3, 3], dtype=Float16, value=
-    [[ 0.0000e+00,  1.0000e+00,  2.0000e+00],
-     [ 2.0000e+01,  2.1000e+01,  2.2000e+01],
-     [ 4.0000e+01,  4.1000e+01,  4.2000e+01]]),
-     Tensor(shape=[5, 2], dtype=Float16, value=
-    [[ 0.0000e+00,  2.0000e+00],
-     [ 1.0000e+01,  1.2000e+01],
-     [ 2.0000e+01,  2.2000e+01]
-     [ 3.0000e+01,  3.2000e+01],
-     [ 4.0000e+01,  4.2000e+01]]),
-     Tensor(shape=[3, 3], dtype=Float16, value=
-    [[ 0.0000e+00,  1.0000e+00,  2.0000e+00],
-     [ 2.0000e+01,  2.1000e+01,  2.2000e+01],
-     [ 4.0000e+01,  4.1000e+01,  4.2000e+01]]),
-     Tensor(shape=[2], dtype=Float16, value= [ 1.0000e+01,  1.1000e+01]),
-     Tensor(shape=[2], dtype=Float16, value= [ 1.0000e+01,  1.2000e+01]),
-     Tensor(shape=[5, 2], dtype=Float16, value=
-    [[ 0.0000e+00,  2.0000e+00],
-     [ 1.0000e+01,  1.2000e+01],
-     [ 2.0000e+01,  2.2000e+01]
-     [ 3.0000e+01,  3.2000e+01],
-     [ 4.0000e+01,  4.2000e+01]]),
-     Tensor(shape=[2, 2], dtype=Float16, value=
-    [[ 0.0000e+00,  2.0000e+00],
-     [ 1.0000e+01,  1.2000e+01]]),
-     Tensor(shape=[2, 3], dtype=Float16, value=
-    [[ 0.0000e+00,  1.0000e+00,  2.0000e+00],
-     [ 4.0000e+01,  4.1000e+01,  4.2000e+01]]))
+    [[ 0.  1.]
+     [10. 11.]]
+    [[ 0.  1.  2.]
+     [10. 11. 12.]]
+    [[ 0.  1.]
+     [10. 11.]
+     [20. 21.]
+     [30. 31.]
+     [40. 41.]]
+    [[ 0.  2.]
+     [20. 22.]
+     [40. 42.]]
+    [[ 0.  1.  2.]
+     [20. 21. 22.]
+     [40. 41. 42.]]
+    [[ 0.  2.]
+     [10. 12.]
+     [20. 22.]
+     [30. 32.]
+     [40. 42.]]
+    [[ 0.  1.  2.]
+     [20. 21. 22.]
+     [40. 41. 42.]]
+    [10. 11.]
+    [10. 12.]
+    [[ 0.  2.]
+     [10. 12.]
+     [20. 22.]
+     [30. 32.]
+     [40. 42.]]
+    [[ 0.  2.]
+     [10. 12.]]
+    [[ 0.  1.  2.]
+     [40. 41. 42.]]
 
 **提示：** 在Ascend环境上可以基于切片修改Tensor中部分元素的值，基于索引修改值后续会支持，CPU/GPU平台上也会陆续支持。
 
@@ -306,17 +270,12 @@ pprint.pprint(slice())
 ```python
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.ops import operations as P
-from mindspore.common.api import ms_function
+from mindspore import ops
 
 x1 = Tensor([[0, 1], [10, 11]], ms.float32)
 x2 = Tensor([[20, 21], [30, 31]], ms.float32)
-
-@ms_function
-def concat():
-    return P.Concat()((x1, x2))
-
-print(concat())
+x = ops.Concat()((x1, x2))
+print(x)
 ```
 
     [[ 0.  1.]
@@ -326,7 +285,7 @@ print(concat())
 
 #### 张量的分割
 
-`mindspore.ops.Split(axis=0, output_num=1)`（r1.0 cpu版本暂不支持）
+`mindspore.ops.Split(axis=0, output_num=1)`
 
 参数：
 - `axis`：分割作用在原始张量的哪个坐标轴上。
@@ -354,7 +313,7 @@ print(y2)
 
 #### 张量的排序
 
-`mindspore.ops.TopK`
+`mindspore.ops.TopK`（1.1版本CPU平台暂不支持该算子）
 
 - `input_x`：待排序的原始张量。
 - `k`：沿原始张量最后一维取的最大元素的数量，必须是常量。
@@ -363,7 +322,7 @@ print(y2)
 import mindspore as ms
 from mindspore.ops import operations as P
 
-x = Tensor([1, 2, 3, 4, 5], ms.float32)
+x = ms.Tensor([1, 2, 3, 4, 5], ms.float32)
 k = 3
 values, indices = P.TopK(sorted=True)(x, k)
 print(values)
@@ -381,12 +340,11 @@ print(indices)
 import pprint
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.common.api import ms_function
 
 x1 = Tensor([[0, 1, 2], [10, 11, 12]], ms.int32)
 x2 = Tensor([[1, 1, 1], [2, 2, 2]], ms.int32)
 
-@ms_function
+@ms.ms_function
 def element_wise():
     # P.TensorAdd()/F.tensor_add()
     add = x1 + x2
@@ -425,11 +383,11 @@ pprint.pprint(element_wise())
 import pprint
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.common.api import ms_function
 
 x1 = Tensor([[0, 1, 2], [10, 11, 12]], ms.int32)
 x2 = Tensor([[1, 1, 1], [2, 2, 2]], ms.int32)
-@ms_function
+
+@ms.ms_function
 def broadcast():
     add = x1 + 1
     mul = x1 * 2
@@ -474,11 +432,10 @@ pprint.pprint(broadcast())
 
 ```python
 import mindspore as ms
-from mindspore import context, nn, Tensor
+from mindspore import nn, Tensor
 
 x1 = Tensor([[0, 1, 2], [10, 11, 12]], ms.float32)
 x2 = Tensor([[1, 1, 1], [2, 2, 2]], ms.float32)
-context.set_context(mode=context.GRAPH_MODE)
 matmul = nn.MatMul(transpose_x2=True)(x1, x2)
 print(matmul)
 ```
@@ -488,7 +445,7 @@ print(matmul)
 
 ## 3. 参数（Parameter）
 
-`Parameter`是可以改变的张量，即参数。如卷积层的Kernel、Bias，全连接层的Weights、Bias。在模型训练过程种，需要不断更新Parameter。
+`Parameter`是可以改变的张量（继承了Tensor类），即参数。如卷积层的Kernel、Bias，全连接层的Weights、Bias。在模型训练过程种，需要不断更新Parameter。
 
 ### 3.1 初始化
 
@@ -513,15 +470,14 @@ y = Parameter(default_input=initializer('ones', [2, 3], ms.int32), name='y')
 z = Parameter(default_input=2.0, name='z', requires_grad=False)
 
 print(x)
-print(y)
-print(z)
+print(y.asnumpy())
+print(z.data)
 ```
 
-    Parameter (name=x, value=[[1 2]
-     [3 4]])
-    Parameter (name=y, value=[[1 1 1]
-     [1 1 1]])
-    Parameter (name=z, value=2.0)
+    Parameter (name=x)
+    [[1 1 1]
+     [1 1 1]]
+    Parameter (name=z)
 
 ### 3.2 属性
 
@@ -557,12 +513,13 @@ print("name: ", x.name,
      [3 4 5]] (2, 3) Int64
 
 ### 3.3 方法
+
 - `init_data`：在网络采用半自动或者全自动并行策略的场景下，当初始化`Parameter`传入的数据是`Initializer`时，可调用该接口将`Parameter`保存的数据转换为`Tensor`。
 - `set_data`：设置`Parameter`保存的数据，支持传入`Tensor`、`Initializer`、`int`和`float`进行设置。将方法的入参`slice_shape`设置为True时，可改变`Parameter`的shape，反之，设置的数据shape必须与`Parameter`原来的shape保持一致。
 - `set_param_ps`：控制训练参数是否通过[Parameter Server](https://www.mindspore.cn/tutorial/training/zh-CN/master/advanced_use/apply_parameter_server_training.html)进行训练。
 - `clone`：克隆`Parameter`，需要指定克隆之后的参数名称。
 
-下例通过`Initializer`来初始化`Tensor`，调用了`Parameter`的相关方法。如下：
+`Parameter`也继承了`Tensor`的方法。下例通过`Initializer`来初始化`Parameter`，调用了`Parameter`的相关方法。如下：
 
 ```python
 import mindspore as ms
@@ -570,15 +527,16 @@ from mindspore import Parameter
 from mindspore.common.initializer import initializer
 
 x = Parameter(default_input=initializer('ones', [2, 3], ms.int32), name='x')
-
-print(x)
-print(x.clone(prefix="c"))
+y = x.clone()
+x .set_data(ms.Tensor([[1, 2, 3], [11, 12, 13]], ms.int32))
+print(x.asnumpy())
+print(y.asnumpy())
 ```
 
-    Parameter (name=x, value=[[1 1 1]
-     [1 1 1]])
-    Parameter (name=c.x, value=[[1 1 1]
-     [1 1 1]])
+    [[ 1  2  3]
+     [11 12 13]]
+    [[1 1 1]
+     [1 1 1]]
 
 ## 4. 算子（Operation）
 
@@ -599,7 +557,7 @@ Primitive算子也称为算子原语，它直接封装了底层的Ascend、GPU�
 
 Primitive算子接口是构建高阶接口、自动微分、网络模型等能力的基础。
 
-代码样例如下（当前版本仅支持Ascend/GPU）：
+代码样例如下：
 
 ```python
 import mindspore as ms
@@ -613,16 +571,15 @@ print("output =", output)
 
     output = [ 1.  4. 16.]
 
-MindSpore中单算子代码是通过PyNative模式执行的，由于CPU环境下，MindSpore不支持PyNative模式，所以无法运行。我们使用MindSpore提供的ms_function，该功能将Python函数或者Python类的方法编译成计算图，以图模式运行。
+MindSpore中单算子代码是通过PyNative模式执行的。PyNative模式下，算子/模型的执行性能还可以提高。MindSpore提供了Staging功能（ms_function），该功能将Python函数或者Python类的方法编译成计算图，通过图优化等技术提高运行速度。
 
 ```python
 import mindspore as ms
 import mindspore.ops.operations as P
-from mindspore.common.api import ms_function
 
 input_x = ms.Tensor([1.0, 2.0, 4.0], ms.float32)
 
-@ms_function
+@ms.ms_function
 def square(x):
     square = P.Square() # 先实例化
     return square(x) # 后使用
@@ -641,17 +598,12 @@ print(square(input_x))
 
 ```python
 import mindspore as ms
-from mindspore.ops import functional as F
-from mindspore.common.api import ms_function
+from mindspore import ops
 
 x = ms.Tensor([0, -1, 2], ms.float32)
 y = 3
-
-@ms_function
-def power():
-    return F.pow(x, y)
-
-print(power())
+z = ops.tensor_pow(x, y)
+print(z)
 ```
 
     [ 0. -1.  8.]
@@ -698,18 +650,13 @@ Array算子包括针对张量的结构操作和类型转换算子。：
 ```python
 import mindspore as ms
 from mindspore import Tensor
-from mindspore import ops as P
-from mindspore.common.api import ms_function
+from mindspore import ops
 
 x = Tensor([[[1, 1, 1], [2, 2, 2]],
             [[3, 3, 3], [4, 4, 4]],
             [[5, 5, 5], [6, 6, 6]]], ms.float32)
-
-@ms_function
-def slice():
-    return P.Slice()(x, (1, 0, 0), (1, 1, 3))
-
-print(slice())
+x = ops.Slice()(x, (1, 0, 0), (1, 1, 3))
+print(x)
 ```
 
     [[[3. 3. 3.]]]
@@ -723,8 +670,7 @@ print(slice())
 ```python
 import mindspore as ms
 from mindspore import Tensor
-from mindspore.ops import functional as F
-from mindspore.common.api import ms_function
+from mindspore import ops
 
 x = Tensor([[ 0,  1,  2,  3],
             [10, 11, 12, 13],
@@ -732,18 +678,15 @@ x = Tensor([[ 0,  1,  2,  3],
 indices = Tensor([1, 3], ms.int32)
 axis = 1
 
-@ms_function
-def gather():
-    return F.gather(x, indices, axis)
-
-print(gather())
+x = ops.gather(x, indices, axis)
+print(x)
 ```
 
     [[ 1.  3.]
      [11. 13.]
      [21. 23.]]
 
-`mindspore.ops.GatherNd()`/`mindspore.ops.functional.gather_nd(input_params, input_indices, axis)`
+`mindspore.ops.GatherNd()`/`mindspore.ops.functional.gather_nd(input_params, input_indices, axis)`（1.1版本仅GPU/Ascend环境支持）
 
 - `input_x`：需要索引的原始张量。
 - `indices`：原始张量上的索引。
@@ -756,7 +699,6 @@ from mindspore.ops import functional as F
 x = Tensor([[0, 1, 2, 3], [10, 11, 12, 13], [20, 21, 22, 23]], ms.float32)
 indices_1 = Tensor([[0, 0]])
 indices_2 = Tensor([[0, 0], [1, 1]])
-# r1.0版本仅GPU/Ascend环境支持
 print(F.gather_nd(x, indices_1))
 print(F.gather_nd(x, indices_2))
 ```
@@ -769,16 +711,13 @@ print(F.gather_nd(x, indices_2))
 ```python
 import mindspore as ms
 from mindspore import Tensor, ops
-from mindspore.common.api import ms_function
 
 x = Tensor([[0, 1], [11, 12]], ms.int32)
 type_a = P.DType()(x)
 print(type_a)
 
-@ms_function
-def cast():
- return ops.Cast()(x, ms.float32)
-print(cast().dtype)
+x = ops.Cast()(x, ms.float32)
+print(x.dtype)
 ```
 
     Int32
@@ -791,27 +730,21 @@ print(cast().dtype)
 ```python
 import pprint
 import mindspore as ms
-from mindspore.common.api import ms_function
 
 x = ms.Tensor([0, -1, 2], ms.float32)
 y = 3
 
-@ms_function
-def scalar():
-    # 张量+标量
-    add = ms.ops.tensor_add(x, y)
-    # 取绝对值
-    abs_ = ms.ops.Abs()(x)
-    # 幂运算
-    power = ms.ops.pow(x, y)
-    return add, abs_, power
-
-pprint.pprint(scalar())
+# 张量+标量
+print(ms.ops.tensor_add(x, y))
+# 取绝对值
+print(ms.ops.Abs()(x))
+# 幂运算
+print(ms.ops.tensor_pow(x, y))
 ```
 
-    (Tensor(shape=[3], dtype=Float32, value= [ 3.00000000e+00,  2.00000000e+00,  5.00000000e+00]),
-     Tensor(shape=[3], dtype=Float32, value= [ 0.00000000e+00,  1.00000000e+00,  2.00000000e+00]),
-     Tensor(shape=[3], dtype=Float32, value= [ 0.00000000e+00, -1.00000000e+00,  8.00000000e+00]))
+    [3. 2. 5.]
+    [0. 1. 2.]
+    [ 0. -1.  8.]
 
 MindSpore还支持常见的矩阵运算，如矩阵乘运算。
 
@@ -827,16 +760,12 @@ MindSpore还支持常见的矩阵运算，如矩阵乘运算。
 
 ```python
 import mindspore as ms
-from mindspore.common.api import ms_function
 
 x1 = ms.Tensor([[0, 1, 2], [10, 11, 12]], ms.float32)
 x2 = ms.Tensor([[1], [2], [3]], ms.float32)
 
-@ms_function
-def matmul():
-    return ms.ops.MatMul()(x1, x2)
-
-print(matmul())
+x = ms.ops.MatMul()(x1, x2)
+print(x)
 ```
 
     [[ 8.]
@@ -865,7 +794,6 @@ print(matmul())
 ```python
 import numpy as np
 import mindspore as ms
-from mindspore.common.api import ms_function
 
 N, C, H, W = 1, 1, 8, 8
 Cout, Cin, Hk, Wk = 2, 1, 3, 3
@@ -874,11 +802,8 @@ x = ms.Tensor(np.ones([N, C, H, W]), ms.float32)
 weight = ms.Tensor(np.ones([Cout, Cin, Hk, Wk]), ms.float32)
 conv2d = ms.ops.Conv2D(out_channel=Cout, kernel_size=Hk, pad_mode='valid', stride=1)
 
-@ms_function
-def conv():
-    return conv2d(x, weight)
-
-print(conv())
+x = conv2d(x, weight)
+print(x)
 ```
 
     [[[[9. 9. 9. 9. 9. 9.]
@@ -918,7 +843,6 @@ print(conv())
 ```python
 import numpy as np
 import mindspore as ms
-from mindspore.common.api import ms_function
 ms.context.set_context(mode=ms.context.GRAPH_MODE)
 
 N, C, H, W = 1, 1, 8, 8
@@ -948,15 +872,10 @@ print(conv2d(x))
 
 ```python
 import mindspore as ms
-from mindspore.common.api import ms_function
 
 x = ms.Tensor([[-1, 0, 1], [0, 1, 2]], ms.float32)
-
-@ms_function
-def relu():
-    return ms.ops.ReLU()(x)
-
-print(relu())
+x = ms.ops.ReLU()(x)
+print(x)
 ```
 
     [[0. 0. 1.]
@@ -970,22 +889,20 @@ print(relu())
 
 ```python
 import mindspore as ms
-from mindspore.common.api import ms_function
 
 logits = ms.Tensor([[2, 4, 1, 4, 5], [2, 1, 2, 4, 3]], ms.float32)
 labels = ms.Tensor([[0, 0, 0, 0, 1], [0, 0, 0, 1, 0]], ms.float32)
-softmax_cross = P.SoftmaxCrossEntropyWithLogits()
-@ms_function
-def loss():
-    loss, backprop = softmax_cross(logits, labels)
-    return loss, backprop
+softmax_cross = ms.ops.SoftmaxCrossEntropyWithLogits()
 
-print(loss())
+loss, backprop = softmax_cross(logits, labels)
+
+print(loss)
+print(backprop)
 ```
 
-    (Tensor(shape=[2], dtype=Float32, value= [ 5.89929760e-01,  5.23744047e-01]), Tensor(shape=[2, 5], dtype=Float32, value=
-    [[ 2.76002679e-02,  2.03939959e-01,  1.01535711e-02,  2.03939959e-01, -4.45633769e-01],
-     [ 8.01589265e-02,  2.94888206e-02,  8.01589265e-02, -4.07701194e-01,  2.17894584e-01]]))
+    [0.58992976 0.52374405]
+    [[ 0.02760027  0.20393996  0.01015357  0.20393996 -0.44563377]
+     [ 0.08015893  0.02948882  0.08015893 -0.4077012   0.21789458]]
 
 对应的Cell类接口为`mindspore.nn.SoftmaxCrossEntropyWithLogits(sparse=False, reduction='none')`
 
@@ -999,8 +916,6 @@ print(loss())
 
 ```python
 import mindspore as ms
-from mindspore.common.api import ms_function
-ms.context.set_context(mode=ms.context.GRAPH_MODE)
 
 logits = ms.Tensor([[2, 4, 1, 4, 5], [2, 1, 2, 4, 3]], ms.float32)
 labels = ms.Tensor([4, 3], ms.int32)
@@ -1094,10 +1009,7 @@ class MyNet(nn.Cell):
 pprint.pprint(MyNet().trainable_params())
 ```
 
-    [Parameter (name=weight, value=Tensor(shape=[2, 3], dtype=Float32, value=
-    [[-3.79058602e-03, -7.49116531e-03,  6.54395670e-03],
-     [ 2.95572029e-03,  2.35575647e-03, -1.18450755e-02]])),
-     Parameter (name=bias, value=Tensor(shape=[3], dtype=Float32, value= [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00]))]
+    [Parameter (name=weight), Parameter (name=bias)]
 
 ### 5.2 预置的Cell
 
@@ -1128,11 +1040,7 @@ class MyNet(nn.Cell):
 pprint.pprint(MyNet().trainable_params())
 ```
 
-    [Parameter (name=fc.weight, value=Tensor(shape=[3, 2], dtype=Float32, value=
-    [[-3.79058602e-03, -7.49116531e-03],
-     [ 6.54395670e-03,  2.95572029e-03],
-     [ 2.35575647e-03, -1.18450755e-02]])),
-     Parameter (name=fc.bias, value=Tensor(shape=[3], dtype=Float32, value= [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00]))]
+    [Parameter (name=fc.weight), Parameter (name=fc.bias)]
 
 以下代码示例展示了如何通过网络算子、损失函数、优化器，以及`mindspore.train.Model`API来构建模型并启动训练。
 
