@@ -151,18 +151,16 @@ print('一张图像的标签样式：', train_y[0])  # 一共10类，用0-9的�
 # 转换数据类型为Dataset
 XY_train = list(zip(train_x, train_y))
 ds_train = ds.GeneratorDataset(XY_train, ['x', 'y'])
-ds_train.set_dataset_size(cfg.train_size)
 ds_train = ds_train.shuffle(buffer_size=cfg.train_size).batch(cfg.batch_size, drop_remainder=True).repeat(
     cfg.epoch_size)
 XY_test = list(zip(test_x, test_y))
 ds_test = ds.GeneratorDataset(XY_test, ['x', 'y'])
-ds_test.set_dataset_size(cfg.test_size)
 ds_test = ds_test.shuffle(buffer_size=cfg.test_size).batch(cfg.batch_size, drop_remainder=True).repeat(cfg.epoch_size)
 
 # 构建网络
 network = Forward_fashion(cfg.num_classes)
 # 定义模型的损失函数，优化器
-net_loss = nn.SoftmaxCrossEntropyWithLogits(is_grad=False, sparse=True, reduction="mean")
+net_loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction="mean")
 net_opt = nn.Adam(network.trainable_params(), cfg.lr)
 # 训练模型
 model = Model(network, loss_fn=net_loss, optimizer=net_opt, metrics={"acc"})
@@ -181,7 +179,7 @@ print(metric)
 class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
                'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 #从测试集中取出一组样本，输入模型进行预测
-test_ = ds_test.create_dict_iterator().get_next()
+test_ = ds_test.create_dict_iterator().__next__()
 #利用key值选出样本
 test = Tensor(test_['x'], mindspore.float32)
 predictions = model.predict(test)

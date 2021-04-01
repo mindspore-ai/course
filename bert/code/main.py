@@ -167,8 +167,8 @@ def eval():
 
     if cfg.data_file[-4:]=='json':
         submit(model, cfg.data_file, bert_net_cfg.seq_length)
-        import moxing as mox
-        mox.file.copy_parallel(src_url=cfg.eval_out_file, dst_url=os.path.join(args_opt.train_url, cfg.eval_out_file))
+        # import moxing as mox
+        # mox.file.copy_parallel(src_url=cfg.eval_out_file, dst_url=os.path.join(args_opt.train_url, cfg.eval_out_file))
     else:
         callback = F1() if cfg.task == "NER" else Accuracy()
         columns_list = ["input_ids", "input_mask", "segment_ids", "label_ids"]
@@ -209,12 +209,12 @@ if __name__ == "__main__":
     else:
         raise Exception("Target error, GPU or Ascend is supported.")
 
-    import moxing as mox
-    mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data/')
-    mox.file.copy_parallel(src_url=args_opt.ckpt_url, dst_url='./ckpt/')
+    # import moxing as mox
+    # mox.file.copy_parallel(src_url=args_opt.data_url, dst_url='./data/')
+    # mox.file.copy_parallel(src_url=args_opt.ckpt_url, dst_url='./ckpt/')
     if cfg.is_train:
         train()
-        mox.file.copy_parallel(src_url=cfg.ckpt_dir, dst_url=args_opt.train_url)
+        # mox.file.copy_parallel(src_url=cfg.ckpt_dir, dst_url=args_opt.train_url)
     else:
         eval()
         

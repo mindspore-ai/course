@@ -54,9 +54,9 @@ if __name__ == '__main__':
         save_graphs=False,
         device_target=args.device_target)
 
-    import moxing as mox
+    # import moxing as mox
 
-    mox.file.copy_parallel(src_url='s3://zhengnj-course/lstm/glove', dst_url=args.glove_path)
+    # mox.file.copy_parallel(src_url='s3://zhengnj-course/lstm/glove', dst_url=args.glove_path)
 
     if args.device_target == 'Ascend':
         cfg = lstm_cfg_ascend
@@ -116,8 +116,8 @@ if __name__ == '__main__':
         model.train(cfg.num_epochs, ds_train, callbacks=[time_cb, ckpoint_cb, loss_cb])
     print("============== Training Success ==============")
 
-    mox.file.copy_parallel(src_url='./preprocess', dst_url=args.train_url)
-    mox.file.copy_parallel(src_url='lstm-20_390.ckpt', dst_url=args.ckpt_path)
+    # mox.file.copy_parallel(src_url='./preprocess', dst_url=args.train_url)
+    # mox.file.copy_parallel(src_url='lstm-20_390.ckpt', dst_url=args.ckpt_path)
 
     ds_eval = lstm_create_dataset(args.preprocess_path, cfg.batch_size, training=False)
 
