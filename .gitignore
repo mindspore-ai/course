@@ -142,3 +142,4 @@ dmypy.json
 # IDE
 .idea/
 .vscode/
+.history/

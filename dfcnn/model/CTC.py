@@ -1,18 +1,17 @@
-'''
-Author: jojo
-Date: 2021-08-03 10:20:33
-LastEditors: jojo
-LastEditTime: 2021-08-03 10:20:57
-FilePath: /210610338/model/CTC_v2.py
-'''
+"""
+CTCLoss
+"""
 from mindspore import nn
-from mindspore.ops import composite as C
-from mindspore.ops import functional as F
 from mindspore.ops import operations as P
-class ctc_loss(nn.Cell):
+
+
+class CTCLoss(nn.Cell):
+    """
+    CTCLoss
+    """
 
     def __init__(self):
-        super(ctc_loss, self).__init__()
+        super(CTCLoss, self).__init__()
 
         self.loss = P.CTCLoss(preprocess_collapse_repeated=False,
                               ctc_merge_repeated=True,
@@ -23,6 +22,19 @@ class ctc_loss(nn.Cell):
         self.reshape = P.Reshape()
 
     def construct(self, inputs, labels_indices, labels_values, sequence_length):
+        """
+        CTCLoss forward
+
+
+        Args:
+            inputs: the output of the DFCNN
+            labels_indices: get from the data generator
+            labels_values: get from the data generator
+            sequence_length: get from the data generator
+
+        Returns:
+            loss: the loss value
+        """
         inputs = self.transpose(inputs, (1, 0, 2))
 
         loss, _ = self.loss(inputs, labels_indices, labels_values, sequence_length)

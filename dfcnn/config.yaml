@@ -18,7 +18,7 @@ has_bias: False # CNN层是否使用偏差
 use_dropout: True # 是否使用drop-out
 
 # 超参数
-batch_size : 16 # 训练时的batch大小
+batch_size: 16 # 训练时的batch大小
 test_dev_batch_size: 16 # 边训练边验证与测试时的 batch 大小
 learning_rate: 0.0005 # 学习率
 epochs: 100 # 迭代次数

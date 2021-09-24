@@ -1,16 +1,9 @@
-'''
-Author: jojo
-Date: 2021-08-03 10:01:10
-LastEditors: jojo
-LastEditTime: 2021-08-26 03:59:41
-FilePath: /210610338/model/training_cell.py
-ref: https://gitee.com/mindspore/mindspore/blob/master/model_zoo/official/cv/cnnctc/src/cnn_ctc.py
-'''
-
+"""
+Training cell for the DFCNN+CTC
+"""
 import mindspore.common.dtype as mstype
 import mindspore.nn as nn
 from mindspore import Parameter, ParameterTuple, Tensor, context
-from mindspore.common.initializer import TruncatedNormal, initializer
 from mindspore.communication.management import get_group_size
 from mindspore.context import ParallelMode
 from mindspore.nn.wrap.grad_reducer import DistributedGradReducer
@@ -21,19 +14,24 @@ from mindspore.ops import operations as P
 grad_scale = C.MultitypeFuncGraph("grad_scale")
 reciprocal = P.Reciprocal()
 
+
 @grad_scale.register("Tensor", "Tensor")
 def tensor_grad_scale(scale, grad):
     return grad * F.cast(reciprocal(scale), F.dtype(grad))
 
+
 _grad_overflow = C.MultitypeFuncGraph("_grad_overflow")
 grad_overflow = P.FloatStatus()
+
 
 @_grad_overflow.register("Tensor")
 def _tensor_grad_overflow(grad):
     return grad_overflow(grad)
 
+
 GRADIENT_CLIP_MIN = -64000
 GRADIENT_CLIP_MAX = 64000
+
 
 class ClipGradients(nn.Cell):
     """
@@ -45,6 +43,7 @@ class ClipGradients(nn.Cell):
         self.clip_by_norm = nn.ClipByNorm()
         self.cast = P.Cast()
         self.dtype = P.DType()
+
     def construct(self, grads, clip_min, clip_max):
         new_grads = ()
         for grad in grads:
@@ -66,6 +65,7 @@ class DFCNNCTCTrainOneStepWithLossScaleCell(nn.Cell):
         optimizer (Optimizer): Optimizer for updating the weights.
         scale_sense (Cell): Loss scaling value.
     """
+
     def __init__(self, network, optimizer, scale_sense):
         super(DFCNNCTCTrainOneStepWithLossScaleCell, self).__init__(auto_prefix=False)
         self.network = network
@@ -116,6 +116,18 @@ class DFCNNCTCTrainOneStepWithLossScaleCell(nn.Cell):
         return self.network.predict(img)
 
     def construct(self, img, label_indices, text, sequence_length, lab_len):
+        """
+        Cell's forward
+        Args:
+            img: input
+            label_indices: get from the data generator
+            text: label got from the data generator
+            sequence_length: get from the data generator
+            lab_len: get from the data generator
+
+        Returns:
+            loss: loss value
+        """
         weights = self.weights
         loss = self.network(img, label_indices, text, sequence_length)
 
@@ -128,13 +140,14 @@ class DFCNNCTCTrainOneStepWithLossScaleCell(nn.Cell):
         grads = self.clip_gradients(grads, GRADIENT_CLIP_MIN, GRADIENT_CLIP_MAX)
 
         if self.reducer_flag:
-            #apply grad reducer on grads
+            # apply grad reducer on grads
             grads = self.grad_reducer(grads)
 
         success = self.optimizer(grads)
 
         ret = (loss, scaling_sens)
         return F.depend(ret, success)
+
 
 class WithLossCell(nn.Cell):
 
@@ -153,4 +166,3 @@ class WithLossCell(nn.Cell):
 
     def predict(self, img):
         return self._backbone(img)
-

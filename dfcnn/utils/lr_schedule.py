@@ -1,22 +1,20 @@
-'''
-Author: jojo
-Date: 2021-08-12 12:04:22
-LastEditors: jojo
-LastEditTime: 2021-08-12 12:14:05
-FilePath: /210610338/utils/lr_schedule.py
-reference: https://gitee.com/mindspore/mindspore/blob/master/model_zoo/official/cv/cnnctc/src/lr_schedule.py
-'''
+"""
+learning rate scheduler
+"""
 import math
+
 
 def linear_warmup_learning_rate(current_step, warmup_steps, base_lr, init_lr):
     lr_inc = (float(base_lr) - float(init_lr)) / float(warmup_steps)
     learning_rate = float(init_lr) + lr_inc * current_step
     return learning_rate
 
+
 def a_cosine_learning_rate(current_step, base_lr, warmup_steps, decay_steps):
     base = float(current_step - warmup_steps) / float(decay_steps)
     learning_rate = (1 + math.cos(base * math.pi)) / 2 * base_lr
     return learning_rate
+
 
 def dynamic_lr(base_lr, warmup_step, warmup_ratio, epochs, steps_per_epoch):
     """dynamic learning rate generator"""
