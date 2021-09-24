@@ -49,7 +49,7 @@
   按照如下文件目录结构将文件内容移动到`dataset/`目录下
 
   ```
-  |--- 210610338/
+  |--- dfcnn/
       |--- dataset/
           |--- data_thchs30/
           	|--- data/
@@ -106,10 +106,10 @@
   device: GPU # options: GPU / Ascend, 项目运行环境
   device_id: 0 # 当使用GPU时，指明的设备id
   dataset_sink_mode: False
-  obs_datapath: obs://mindspore-lyx/210610338/dataset/data_thchs30/
-  obs_saved_model: obs://mindspore-lyx/210610338/saved_model/
-  obs_best_model: obs://mindspore-lyx/210610338/saved_model/best_model/
-  obs_log: obs://mindspore-lyx/210610338/log/
+  obs_datapath: obs://xxxx/dataset/data_thchs30/ # obs数据集地址，例如：obs://xxxx/dataset/data_thchs30/
+  obs_saved_model: obs://xxxx/saved_model/ # obs保存模型的地址，例如：obs://xxxx/saved_model/
+  obs_best_model: obs://xxxx/saved_model/best_model/ # obs最好模型的保存地址，例如:obs://xxxx/saved_model/best_model/
+  obs_log: obs://xxxx/log/ # obs日志文件保存地址，例如：obs://xxxx/log/
 
 
   # 模型初始化设置
@@ -208,7 +208,7 @@
 
 # 代码结构说明
 ```
-├── 210610338
+├── dfcnn
     ├── config.yaml // 运行配置相关
     ├── eval.py // 评估脚本
     ├── log // 日志记录

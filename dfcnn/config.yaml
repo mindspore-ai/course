@@ -1,14 +1,14 @@
 # 训练设置
 resume: False # options: True / False 是否复训，若是则需要在resume_config_log中指明待复训模型的编号，可在./log下找到相应日志
-resume_config_log: 20210826042753 # 待复训模型的编号
+resume_config_log: 20210826042753 # 待复训模型的编号，例如：20210826042753
 mode: GRAPH # options: PYNATIVE / GRAPH, mindspore运行的模式
 device: GPU # options: GPU / Ascend, 项目运行环境
 device_id: 0 # 当使用GPU时，指明的设备id
 dataset_sink_mode: False
-obs_datapath: obs://mindspore-lyx/210610338/dataset/data_thchs30/
-obs_saved_model: obs://mindspore-lyx/210610338/saved_model/
-obs_best_model: obs://mindspore-lyx/210610338/saved_model/best_model/
-obs_log: obs://mindspore-lyx/210610338/log/
+obs_datapath: obs://xxxx/dataset/data_thchs30/ # obs数据集地址，例如：obs://xxxx/dataset/data_thchs30/
+obs_saved_model: obs://xxxx/saved_model/ # obs保存模型的地址，例如：obs://xxxx/saved_model/
+obs_best_model: obs://xxxx/saved_model/best_model/ # obs最好模型的保存地址，例如:obs://xxxx/saved_model/best_model/
+obs_log: obs://xxxx/log/ # obs日志文件保存地址，例如：obs://xxxx/log/
 
 
 # 模型初始化设置
@@ -44,5 +44,5 @@ eval_epoch: 5 # 验证的epoch步数
 patience: 3 # 早停法耐心值
 
 # 评估
-log_to_eval: 20210910123618 # 待评估的模型编号，可在./log下找到相应日志
+log_to_eval: 20210910123618 # 待评估的模型编号，可在./log下找到相应日志，例如：20210826042753
 test_dataset_size: -1 # 对测试集中的多少数据进行评估，小于0则意为评估完整的数据集
