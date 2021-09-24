@@ -1,0 +1,2 @@
+PyYAML==5.3
+matplotlib==3.4.3

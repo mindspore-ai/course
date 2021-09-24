@@ -1,0 +1,48 @@
+# 训练设置
+resume: False # options: True / False 是否复训，若是则需要在resume_config_log中指明待复训模型的编号，可在./log下找到相应日志
+resume_config_log: 20210826042753 # 待复训模型的编号，例如：20210826042753
+mode: GRAPH # options: PYNATIVE / GRAPH, mindspore运行的模式
+device: GPU # options: GPU / Ascend, 项目运行环境
+device_id: 0 # 当使用GPU时，指明的设备id
+dataset_sink_mode: False
+obs_datapath: obs://xxxx/dataset/data_thchs30/ # obs数据集地址，例如：obs://xxxx/dataset/data_thchs30/
+obs_saved_model: obs://xxxx/saved_model/ # obs保存模型的地址，例如：obs://xxxx/saved_model/
+obs_best_model: obs://xxxx/saved_model/best_model/ # obs最好模型的保存地址，例如:obs://xxxx/saved_model/best_model/
+obs_log: obs://xxxx/log/ # obs日志文件保存地址，例如：obs://xxxx/log/
+
+
+# 模型初始化设置
+pad_mode: pad # options: same / pad , CNN层的padding模式，默认为pad, 当为pad模式时，需要指明padding的值，same模式则按默认值处理
+padding: 1 # padding值，当为pad模式时，padding的值应当大于等于0
+has_bias: False # CNN层是否使用偏差
+use_dropout: True # 是否使用drop-out
+
+# 超参数
+batch_size: 16 # 训练时的batch大小
+test_dev_batch_size: 16 # 边训练边验证与测试时的 batch 大小
+learning_rate: 0.0005 # 学习率
+epochs: 100 # 迭代次数
+loss_scale: 8096 # loss scale
+use_dynamic_lr: True # 是否使用动态学习率
+warmup_step: 2000 # 动态学习率相关参数
+warmup_ratio: 0.0625 # 动态学习率相关参数
+
+# 优化器
+opt: rms # options: adam / rms, 优化器
+
+# 回调函数
+use_summary: False # 是否使用mindInsight
+save_checkpoint_steps: 200 # 多久保存一次模型 可选一个epoch的大小(设置为0)
+keep_checkpoint_max: 3 # 最多保存的模型个数
+prefix: dfcnn # 模型文件名前缀
+model_dir: ./saved_model # 模型保存路径
+loss_monitor_step: 10 # loss监测步长
+
+use_step_eval: True # 是否边训练边验证
+eval_step: -1 # 验证步长, 可选一个epoch的大小(0)，将eval_step设为-1时按照epoch数为步数进行验证，此时需要设置eval_epoch
+eval_epoch: 5 # 验证的epoch步数
+patience: 3 # 早停法耐心值
+
+# 评估
+log_to_eval: 20210910123618 # 待评估的模型编号，可在./log下找到相应日志，例如：20210826042753
+test_dataset_size: -1 # 对测试集中的多少数据进行评估，小于0则意为评估完整的数据集
